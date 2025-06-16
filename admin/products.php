@@ -40,7 +40,7 @@ if (!isset($_SESSION['admin_id'])) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="admins.php">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Admins</span>
                             </a>

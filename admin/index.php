@@ -141,13 +141,13 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="admins.php">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Admins</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="staff.php">
                                 <i class="bi bi-person-badge"></i>
                                 <span>Staff</span>
                             </a>
