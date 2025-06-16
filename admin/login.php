@@ -4,7 +4,7 @@ session_start();
 
 // Redirect if already logged in
 if (isset($_SESSION['admin_id'])) {
-    header('Location: admin_dashboard.php');
+    header('Location: index.php');
     exit();
 }
 
@@ -76,171 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --light-bg: #f8f9fa;
-            --dark-text: #212529;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #4361ee, #3f37c9);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 450px;
-            overflow: hidden;
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .login-header {
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
-        }
-        
-        .login-body {
-            padding: 30px;
-        }
-        
-        .form-control {
-            padding: 12px 15px;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s;
-        }
-        
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-        }
-        
-        .btn-login {
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s;
-        }
-        
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
-        }
-        
-        .password-container {
-            position: relative;
-        }
-        
-        .password-toggle {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #6c757d;
-        }
-        
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .logo i {
-            font-size: 2.5rem;
-            color: var(--primary-color);
-        }
-        
-        .form-label {
-            font-weight: 500;
-            color: #495057;
-            margin-bottom: 8px;
-        }
-        
-        .divider {
-            display: flex;
-            align-items: center;
-            text-align: center;
-            color: #6c757d;
-            margin: 20px 0;
-        }
-        
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .divider::before {
-            margin-right: 10px;
-        }
-        
-        .divider::after {
-            margin-left: 10px;
-        }
-        
-        .forgot-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-        
-        .forgot-link:hover {
-            color: var(--secondary-color);
-            text-decoration: underline;
-        }
-        
-        .alert {
-            border-radius: 10px;
-        }
-        
-        .footer-links {
-            text-align: center;
-            margin-top: 20px;
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        
-        .footer-links a {
-            color: #6c757d;
-            text-decoration: none;
-            margin: 0 10px;
-            transition: all 0.3s;
-        }
-        
-        .footer-links a:hover {
-            color: var(--primary-color);
-            text-decoration: underline;
-        }
-    </style>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body>
+<body class="login-page">
     <div class="login-container">
         <div class="login-header">
             <div class="logo">
