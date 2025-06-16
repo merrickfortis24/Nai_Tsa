@@ -22,7 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Validate inputs
     if (empty($email) || empty($password)) {
-        $error = "Both email and password are required!";
+        $sweetAlertConfig = "<script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Failed',
+                text: 'Both email and password are required!'
+            });
+        </script>";
     } else {
         try {
             // Create database connection
@@ -47,20 +53,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['admin_name'] = $admin['Admin_Name'];
                         $_SESSION['admin_role'] = $admin['Admin_Role'];
                         
-                        // Redirect to dashboard
-                        header('Location: index.php');
-                        exit();
+                        // SweetAlert success and redirect
+                        $sweetAlertConfig = "<script>
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Login Successful',
+                                text: 'Welcome, " . addslashes(htmlspecialchars($admin['Admin_Name'])) . "!',
+                                confirmButtonText: 'Continue'
+                            }).then(() => {
+                                window.location.href = 'index.php';
+                            });
+                        </script>";
                     } else {
-                        $error = "Your account is inactive. Please contact the system administrator.";
+                        $sweetAlertConfig = "<script>
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Account Inactive',
+                                text: 'Your account is inactive. Please contact the system administrator.'
+                            });
+                        </script>";
                     }
                 } else {
-                    $error = "Invalid email or password!";
+                    $sweetAlertConfig = "<script>
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Login Failed',
+                            text: 'Invalid email or password!'
+                        });
+                    </script>";
                 }
             } else {
-                $error = "Invalid email or password!";
+                $sweetAlertConfig = "<script>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Login Failed',
+                        text: 'Invalid email or password!'
+                    });
+                </script>";
             }
         } catch (PDOException $e) {
-            $error = "Database Error: " . $e->getMessage();
+            $sweetAlertConfig = "<script>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Database Error',
+                    text: '" . addslashes($e->getMessage()) . "'
+                });
+            </script>";
         }
     }
 }
@@ -145,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script>
         // Toggle password visibility
@@ -186,3 +225,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </script>
 </body>
 </html>
+
+<?php if (isset($sweetAlertConfig)) echo $sweetAlertConfig; ?>
