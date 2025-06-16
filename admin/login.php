@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['admin_role'] = $admin['Admin_Role'];
                         
                         // Redirect to dashboard
-                        header('Location: admin_dashboard.php');
+                        header('Location: index.php');
                         exit();
                     } else {
                         $error = "Your account is inactive. Please contact the system administrator.";

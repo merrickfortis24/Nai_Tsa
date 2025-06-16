@@ -1,4 +1,13 @@
 <?php
+// Start session to check if user is logged in
+session_start();
+
+// Redirect to login if not authenticated
+if (!isset($_SESSION['admin_id'])) {
+    header('Location: login.php');
+    exit();
+}
+
 // Include the database class
 require_once('classes/database.php');
 
@@ -10,15 +19,15 @@ $admin_email = '';
 $admin_role = '';
 $status = 'Active';
 
-// Process form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Process add admin form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_admin'])) {
     $admin_name = trim($_POST['admin_name'] ?? '');
     $admin_email = trim($_POST['admin_email'] ?? '');
     $admin_password = $_POST['admin_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     $admin_role = $_POST['admin_role'] ?? '';
     $status = $_POST['status'] ?? 'Active';
-    
+
     // Validate inputs
     if (empty($admin_name) || empty($admin_email) || empty($admin_password) || empty($admin_role)) {
         $error = "All fields are required!";
@@ -30,22 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Hash password
             $hashed_password = password_hash($admin_password, PASSWORD_DEFAULT);
-            
+
             // Create database connection
             $db = new database();
             $conn = $db->opencon();
-            
+
             // Prepare SQL statement
             $stmt = $conn->prepare("INSERT INTO Admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
                                    VALUES (:name, :password, :email, :role, NOW(), :status)");
-            
+
             // Bind parameters
             $stmt->bindParam(':name', $admin_name);
             $stmt->bindParam(':password', $hashed_password);
             $stmt->bindParam(':email', $admin_email);
             $stmt->bindParam(':role', $admin_role);
             $stmt->bindParam(':status', $status);
-            
+
             // Execute the query
             if ($stmt->execute()) {
                 $success = "Admin added successfully!";
@@ -515,7 +524,11 @@ try {
                                         <td><?= date('M d, Y', strtotime($admin['Created_At'])) ?></td>
                                         <td>
                                             <a href="#" class="action-btn edit-admin-btn"
-                                               data-edit='<?= json_encode($admin, JSON_HEX_APOS | JSON_HEX_QUOT) ?>'>
+                                               data-id="<?= $admin['Admin_ID'] ?>"
+                                               data-name="<?= htmlspecialchars($admin['Admin_Name']) ?>"
+                                               data-email="<?= htmlspecialchars($admin['Admin_Email']) ?>"
+                                               data-role="<?= htmlspecialchars($admin['Admin_Role']) ?>"
+                                               data-status="<?= htmlspecialchars($admin['Status']) ?>">
                                                <i class="bi bi-pencil"></i>
                                             </a>
                                             <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
@@ -625,7 +638,7 @@ try {
                 <!-- Edit Admin Modal -->
                 <div class="modal fade" id="editAdminModal" tabindex="-1" aria-labelledby="editAdminModalLabel" aria-hidden="true">
                   <div class="modal-dialog modal-lg">
-                    <form method="POST" id="editAdminForm">
+                    <form id="editAdminForm" method="POST" action="update_admin.php">
                       <div class="modal-content">
                         <div class="modal-header">
                           <h5 class="modal-title" id="editAdminModalLabel">Edit Administrator</h5>
@@ -759,22 +772,68 @@ try {
         document.querySelectorAll('.edit-admin-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
-                const admin = JSON.parse(this.getAttribute('data-edit'));
-                document.getElementById('edit_admin_id').value = admin.Admin_ID;
-                document.getElementById('edit_admin_name').value = admin.Admin_Name;
-                document.getElementById('edit_admin_email').value = admin.Admin_Email;
-                document.getElementById('edit_admin_role').value = admin.Admin_Role;
-                if (admin.Status === 'Active') {
+
+                // Get admin data from data attributes
+                const adminId = this.getAttribute('data-id');
+                const adminName = this.getAttribute('data-name');
+                const adminEmail = this.getAttribute('data-email');
+                const adminRole = this.getAttribute('data-role');
+                const adminStatus = this.getAttribute('data-status');
+
+                // Populate the form
+                document.getElementById('edit_admin_id').value = adminId;
+                document.getElementById('edit_admin_name').value = adminName;
+                document.getElementById('edit_admin_email').value = adminEmail;
+                document.getElementById('edit_admin_role').value = adminRole;
+
+                // Set status radio button
+                if (adminStatus === 'Active') {
                     document.getElementById('edit_status_active').checked = true;
                 } else {
                     document.getElementById('edit_status_inactive').checked = true;
                 }
+
                 // Clear password fields
                 document.getElementById('edit_admin_password').value = '';
                 document.getElementById('edit_confirm_password').value = '';
+
                 // Show modal
-                var editModal = new bootstrap.Modal(document.getElementById('editAdminModal'));
+                const editModal = new bootstrap.Modal(document.getElementById('editAdminModal'));
                 editModal.show();
+            });
+        });
+
+        // Handle edit form submission via AJAX
+        document.getElementById('editAdminForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch('update_admin.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showToast(data.message, true);
+
+                    // Close modal
+                    const editModal = bootstrap.Modal.getInstance(document.getElementById('editAdminModal'));
+                    editModal.hide();
+
+                    // Reload the page after a short delay
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showToast(data.message, false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while updating the admin.', false);
             });
         });
     </script>
