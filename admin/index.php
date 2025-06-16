@@ -420,7 +420,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="logout.php">
                                 <i class="bi bi-box-arrow-right"></i>
                                 <span>Logout</span>
                             </a>
@@ -731,7 +731,7 @@ try {
                 toggleIcon.classList.add('bi-eye');
             }
         }
-        
+
         // Close alerts after 5 seconds
         setTimeout(() => {
             const alerts = document.querySelectorAll('.alert');
@@ -740,40 +740,13 @@ try {
                 bsAlert.close();
             });
         }, 5000);
-        
-        // Populate edit admin modal
-        const editAdminModal = document.getElementById('editAdminModal');
-        editAdminModal.addEventListener('show.bs.modal', (event) => {
-            const button = event.relatedTarget;
-            const adminId = button.getAttribute('data-admin-id');
-            const adminName = button.getAttribute('data-admin-name');
-            const adminEmail = button.getAttribute('data-admin-email');
-            const adminRole = button.getAttribute('data-admin-role');
-            const status = button.getAttribute('data-status');
-            
-            const modalTitle = editAdminModal.querySelector('.modal-title');
-            const adminIdField = editAdminModal.querySelector('#edit_admin_id');
-            const adminNameField = editAdminModal.querySelector('#edit_admin_name');
-            const adminEmailField = editAdminModal.querySelector('#edit_admin_email');
-            const adminRoleField = editAdminModal.querySelector('#edit_admin_role');
-            const statusActiveField = editAdminModal.querySelector('#edit_status_active');
-            const statusInactiveField = editAdminModal.querySelector('#edit_status_inactive');
-            
-            modalTitle.textContent = `Edit Administrator - ${adminName}`;
-            adminIdField.value = adminId;
-            adminNameField.value = adminName;
-            adminEmailField.value = adminEmail;
-            adminRoleField.value = adminRole;
-            statusActiveField.checked = (status === 'Active');
-            statusInactiveField.checked = (status === 'Inactive');
-        });
-        
-        // Edit button click handler
+
+        // Edit button click handler (CORRECTED)
         document.querySelectorAll('.edit-admin-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
 
-                // Get admin data from data attributes
+                // Get admin data from data attributes (CORRECTED)
                 const adminId = this.getAttribute('data-id');
                 const adminName = this.getAttribute('data-name');
                 const adminEmail = this.getAttribute('data-email');
@@ -816,24 +789,17 @@ try {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show success message
-                    showToast(data.message, true);
-
-                    // Close modal
+                    // Close modal and reload page
                     const editModal = bootstrap.Modal.getInstance(document.getElementById('editAdminModal'));
                     editModal.hide();
-
-                    // Reload the page after a short delay
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
+                    location.reload();
                 } else {
-                    showToast(data.message, false);
+                    alert('Error: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast('An error occurred while updating the admin.', false);
+                alert('An error occurred while updating the admin.');
             });
         });
     </script>

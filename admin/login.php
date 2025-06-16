@@ -4,7 +4,7 @@ session_start();
 
 // Redirect if already logged in
 if (isset($_SESSION['admin_id'])) {
-    header('Location: admin_dashboard.php');
+    header('Location: index.php');
     exit();
 }
 
