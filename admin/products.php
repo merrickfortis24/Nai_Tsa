@@ -46,19 +46,19 @@ if (!isset($_SESSION['admin_id'])) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="staff.php">
                                 <i class="bi bi-person-badge"></i>
                                 <span>Staff</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
                             </a>
@@ -70,7 +70,7 @@ if (!isset($_SESSION['admin_id'])) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="categories.php">
                                 <i class="bi bi-tags"></i>
                                 <span>Categories</span>
                             </a>

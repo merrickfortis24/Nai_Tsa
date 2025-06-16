@@ -7,14 +7,15 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
-// Fetch all admins
-$admins = [];
+// Fetch all orders
+$orders = [];
+$error = '';
 try {
     $db = new database();
     $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
+    $stmt = $conn->prepare("SELECT * FROM Orders ORDER BY Order_Date DESC");
     $stmt->execute();
-    $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
@@ -24,7 +25,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admins | Admin Panel</title>
+    <title>Orders | Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/style.css">
@@ -49,7 +50,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="admins.php">
+                            <a class="nav-link" href="admins.php">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Admins</span>
                             </a>
@@ -61,7 +62,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="orders.php">
+                            <a class="nav-link active" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
                             </a>
@@ -103,21 +104,13 @@ try {
             <div class="col-md-10 col-lg-10 main-content">
                 <div class="header d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="mb-0 fw-bold">Admins</h4>
-                        <p class="mb-0 text-muted">List of all administrators</p>
+                        <h4 class="mb-0 fw-bold">Orders</h4>
+                        <p class="mb-0 text-muted">List of all orders</p>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Administrators List</span>
-                        <div>
-                            <select class="form-select form-select-sm">
-                                <option>All Roles</option>
-                                <option>Super Admin</option>
-                                <option>Manager</option>
-                                <option>Staff</option>
-                            </select>
-                        </div>
+                        <span>Orders List</span>
                     </div>
                     <div class="card-body">
                         <?php if (!empty($error)): ?>
@@ -127,29 +120,25 @@ try {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Admin</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Created At</th>
+                                        <th>Order ID</th>
+                                        <th>Customer ID</th>
+                                        <th>Date</th>
+                                        <th>Total</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($admins as $admin): ?>
+                                    <?php foreach ($orders as $order): ?>
                                     <tr>
+                                        <td><?= htmlspecialchars($order['Order_ID']) ?></td>
+                                        <td><?= htmlspecialchars($order['Customer_ID']) ?></td>
+                                        <td><?= date('M d, Y', strtotime($order['Order_Date'])) ?></td>
+                                        <td>$<?= number_format($order['Order_Amount'], 2) ?></td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="admin-avatar me-3"><?= strtoupper(substr($admin['Admin_Name'], 0, 2)) ?></div>
-                                                <div>
-                                                    <div class="fw-bold"><?= htmlspecialchars($admin['Admin_Name']) ?></div>
-                                                    <div class="text-muted small">ID: <?= htmlspecialchars($admin['Admin_ID']) ?></div>
-                                                </div>
-                                            </div>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
                                         </td>
-                                        <td><?= htmlspecialchars($admin['Admin_Email']) ?></td>
-                                        <td><span class="role-badge"><?= htmlspecialchars($admin['Admin_Role']) ?></span></td>
-                                        <td><span class="status-badge <?= $admin['Status'] === 'Active' ? 'status-active' : 'status-inactive' ?>"><?= htmlspecialchars($admin['Status']) ?></span></td>
-                                        <td><?= date('M d, Y', strtotime($admin['Created_At'])) ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>

@@ -7,14 +7,15 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
-// Fetch all admins
-$admins = [];
+// Fetch all categories
+$categories = [];
+$error = '';
 try {
     $db = new database();
     $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
+    $stmt = $conn->prepare("SELECT * FROM category ORDER BY Category_ID DESC");
     $stmt->execute();
-    $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
@@ -24,7 +25,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admins | Admin Panel</title>
+    <title>Categories | Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/style.css">
@@ -49,7 +50,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" href="admins.php">
+                            <a class="nav-link" href="admins.php">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Admins</span>
                             </a>
@@ -79,7 +80,7 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
+                            <a class="nav-link active" href="categories.php">
                                 <i class="bi bi-tags"></i>
                                 <span>Categories</span>
                             </a>
@@ -103,21 +104,13 @@ try {
             <div class="col-md-10 col-lg-10 main-content">
                 <div class="header d-flex justify-content-between align-items-center">
                     <div>
-                        <h4 class="mb-0 fw-bold">Admins</h4>
-                        <p class="mb-0 text-muted">List of all administrators</p>
+                        <h4 class="mb-0 fw-bold">Categories</h4>
+                        <p class="mb-0 text-muted">List of all product categories</p>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Administrators List</span>
-                        <div>
-                            <select class="form-select form-select-sm">
-                                <option>All Roles</option>
-                                <option>Super Admin</option>
-                                <option>Manager</option>
-                                <option>Staff</option>
-                            </select>
-                        </div>
+                        <span>Categories List</span>
                     </div>
                     <div class="card-body">
                         <?php if (!empty($error)): ?>
@@ -127,29 +120,21 @@ try {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Admin</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Created At</th>
+                                        <th>Category ID</th>
+                                        <th>Name</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($admins as $admin): ?>
+                                    <?php foreach ($categories as $category): ?>
                                     <tr>
+                                        <td><?= htmlspecialchars($category['Category_ID']) ?></td>
+                                        <td><?= htmlspecialchars($category['Category_Name']) ?></td>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="admin-avatar me-3"><?= strtoupper(substr($admin['Admin_Name'], 0, 2)) ?></div>
-                                                <div>
-                                                    <div class="fw-bold"><?= htmlspecialchars($admin['Admin_Name']) ?></div>
-                                                    <div class="text-muted small">ID: <?= htmlspecialchars($admin['Admin_ID']) ?></div>
-                                                </div>
-                                            </div>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
                                         </td>
-                                        <td><?= htmlspecialchars($admin['Admin_Email']) ?></td>
-                                        <td><span class="role-badge"><?= htmlspecialchars($admin['Admin_Role']) ?></span></td>
-                                        <td><span class="status-badge <?= $admin['Status'] === 'Active' ? 'status-active' : 'status-inactive' ?>"><?= htmlspecialchars($admin['Status']) ?></span></td>
-                                        <td><?= date('M d, Y', strtotime($admin['Created_At'])) ?></td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -162,29 +147,4 @@ try {
                                     <a class="page-link" href="#" tabindex="-1">Previous</a>
                                 </li>
                                 <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                <li class="page-item">
-                                    <a class="page-link" href="#">Next</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Close alerts after 5 seconds
-        setTimeout(() => {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
-    </script>
-</body>
-</html>
+                                <li
