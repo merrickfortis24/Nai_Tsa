@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Naitsa Coffee Shop</title>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --beige: #f6efe7;
+      --soft-orange: #f2b880;
+      --muted-brown: #bfa077;
+      --brown: #8b6f4e;
+      --white: #fff;
+      --shadow: 0 4px 24px rgba(191,160,119,0.08);
+      --nav-height: 70px;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--beige);
+      font-family: 'Montserrat', Arial, sans-serif;
+      color: var(--brown);
+      height: 100%;
+      min-height: 100vh;
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Navigation Bar */
+    .navbar {
+      width: 100%;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background: var(--beige);
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(191,160,119,0.03);
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+    }
+    .logo-placeholder {
+      width: 48px;
+      height: 48px;
+      margin-right: 1.1rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--soft-orange) 60%, var(--muted-brown) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: var(--white);
+      box-shadow: 0 2px 8px rgba(191,160,119,0.15);
+      border: 2px solid #f5e7d6;
+      user-select: none;
+      overflow: hidden;
+    }
+    .logo-placeholder img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1.4rem;
+      align-items: center;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--brown);
+      font-weight: 500;
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+      transition: color 0.16s;
+      position: relative;
+      padding: 3px 2px;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--soft-orange);
+    }
+    .nav-icons {
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+      margin-left: 1.2rem;
+    }
+    .nav-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted-brown);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .nav-icon:hover {
+      color: var(--soft-orange);
+    }
+    /* Hamburger for mobile */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    .hamburger span {
+      width: 24px;
+      height: 3px;
+      background: var(--muted-brown);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+    /* Hero Section */
+    .hero-bg {
+      position: relative;
+      width: 100%;
+      min-height: 480px;
+      background: linear-gradient(120deg, var(--soft-orange) 0%, var(--beige) 70%);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hero-bg::before {
+      /* Placeholder for customizable background image */
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url('https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/500901111_696004739860858_5978289012828601449_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeEH83TYlMACOHgUzsoWoeVJ3IAsrcyaYDLcgCytzJpgMuAtq6jtktwB0isENcW9Sdaht7MoidUM83f6hFryWuv-&_nc_ohc=kI3z8OvKaNUQ7kNvwEaa8ls&_nc_oc=AdnC9-ME2iSBxNWwP1zTbgMrrcJ9sLLOvQPrTSHZzEEl_kwCeAcvxNC7jh818zEWEi0&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=Nejdj_KH4Yn2sZ4AZjeuzQ&oh=00_AfMIaXb4ofnbmfvRAT1-zlsn8tTPHnhvOYnPcgEy9guBTw&oe=6855F408') center/cover no-repeat;
+      opacity: 0.18;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .hero-content-wrap {
+      width: 100%;
+      max-width: 1160px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3.5rem 2rem 2rem 2rem;
+      position: relative;
+      z-index: 2;
+    }
+    .hero-left {
+      flex: 1 1 0px;
+      max-width: 510px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .hero-welcome {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--brown);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.35em;
+      line-height: 1.08;
+      text-shadow: 0 2px 18px rgba(191,160,119,0.12);
+      text-transform: uppercase;
+    }
+    .hero-description {
+      font-size: 1.28rem;
+      color: var(--muted-brown);
+      margin-bottom: 1.4em;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .hero-hours {
+      font-size: 1.05rem;
+      color: var(--brown);
+      margin-bottom: 1.6em;
+      background: rgba(255,255,255,0.5);
+      padding: 0.4em 1em;
+      border-radius: 1.2em;
+      box-shadow: 0 1px 4px rgba(191,160,119,0.06);
+      font-weight: 600;
+    }
+    .hero-btn {
+      border: none;
+      background: linear-gradient(90deg, var(--soft-orange) 60%, var(--muted-brown) 100%);
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 0.9em 2.1em;
+      border-radius: 2em;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background 0.18s, transform 0.18s;
+      margin-bottom: 0.2em;
+    }
+    .hero-btn:hover {
+      background: linear-gradient(90deg, var(--muted-brown) 40%, var(--soft-orange) 100%);
+      transform: translateY(-2px) scale(1.03);
+    }
+    .hero-right {
+      flex: 1 1 0px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 220px;
+      min-height: 320px;
+      position: relative;
+    }
+    .product-image-placeholder {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fff7ef 70%, var(--soft-orange) 100%);
+      box-shadow: 0 4px 24px rgba(191,160,119,0.10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .product-image-placeholder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .product-image-placeholder span {
+      color: var(--muted-brown);
+      font-size: 5rem;
+      opacity: 0.14;
+      user-select: none;
+    }
+    /* Responsive Styles */
+    @media (max-width: 900px) {
+      .hero-content-wrap {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2.2rem 1rem;
+        gap: 2.2rem;
+      }
+      .hero-left,
+      .hero-right {
+        max-width: 100%;
+        width: 100%;
+        align-items: center;
+        text-align: center;
+      }
+      .hero-left {
+        align-items: center;
+      }
+    }
+    @media (max-width: 700px) {
+      .navbar {
+        padding: 0 1rem;
+        height: 58px;
+      }
+      .logo-placeholder {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+        margin-right: 0.7rem;
+      }
+      .nav-links {
+        display: none;
+        position: absolute;
+        top: var(--nav-height);
+        right: 0;
+        flex-direction: column;
+        background: var(--beige);
+        box-shadow: 0 2px 16px rgba(191,160,119,0.08);
+        padding: 1.1rem 2rem;
+        gap: 1.2rem;
+      }
+      .nav-links.mobile-active {
+        display: flex;
+        top: 58px;
+      }
+      .nav-icons {
+        gap: 0.7rem;
+        margin-left: 0.7rem;
+      }
+      .hamburger {
+        display: flex;
+      }
+      .hero-content-wrap {
+        padding: 1.6rem 0.5rem;
+      }
+      .product-image-placeholder {
+        width: 180px;
+        height: 180px;
+      }
+    }
+    @media (max-width: 480px) {
+      .hero-welcome {
+        font-size: 1.3rem;
+      }
+      .hero-hours,
+      .hero-description {
+        font-size: 0.97rem;
+      }
+      .hero-btn {
+        font-size: 1rem;
+        padding: 0.7em 1.3em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <div class="logo-placeholder" title="Naitsa Logo">
+        <!-- Your actual logo image here -->
+        <img 
+          src="https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/305017926_123739037082830_6536344361033765846_n.jpg?_nc_cat=101&amp;ccb=1-7&amp;_nc_sid=6ee11a&amp;_nc_eui2=AeF6gojYSTdWNY4orY0VNUkSmvcRd1ll5jia9xF3WWXmODD-saAHrmXgUQmKemzloGzWiKXvFLnLMDOAGKdxzyD6&amp;_nc_ohc=7iBKmMdkBywQ7kNvwFRDQYs&amp;_nc_oc=AdlY_BYvScrT1IflonpxA1Qvq5KxK43IM6csPvtUSzdETsmOm1huAnaj3u8V2bhL94M&amp;_nc_zt=23&amp;_nc_ht=scontent.fmnl17-1.fna&amp;_nc_gid=zr_iO0JmrhCwDGAHOAqdbQ&amp;oh=00_AfP71h0Bxwo_zXF6XA1C60idZzXqlq6yMUdhgIvHHgnRbA&amp;oe=6855DFB1" 
+          alt="Naitsa Coffee Shop Logo"
+        />
+      </div>
+      <div class="nav-links" id="navLinks">
+        <a href="#" class="active">Home</a>
+        <a href="#">About</a>
+        <a href="#">Menu</a>
+        <a href="#">Gallery</a>
+        <a href="#">Contact</a>
+        <a href="#">Login</a>
+      </div>
+    </div>
+    <div class="nav-icons">
+      <div class="nav-icon" title="Search">
+        <!-- Search Icon SVG -->
+        <svg width="20" height="20" fill="none" viewBox="0 0 20 20">
+          <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/>
+          <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M14.35 14.35L18 18"/>
+        </svg>
+      </div>
+      <div class="nav-icon" title="Cart">
+        <!-- Cart Icon SVG -->
+        <svg width="22" height="22" fill="none" viewBox="0 0 22 22">
+          <circle cx="8.2" cy="18.2" r="1.3" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="16.2" cy="18.2" r="1.3" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M2 2h2.5l2.3 11.1a1.2 1.2 0 001.2 1h7.2a1.2 1.2 0 001.2-1l1.7-6.4H6.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="hamburger" id="hamburger" aria-label="Open navigation menu" tabindex="0">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </nav>
+  <!-- Hero Section -->
+  <section class="hero-bg">
+    <div class="hero-content-wrap">
+      <div class="hero-left">
+        <div class="hero-welcome">
+          WELCOME TO NAITSA COFFEE SHOP!
+        </div>
+        <div class="hero-description">
+          <b>Brewed with passion. Served with warmth.</b><br>
+          Discover your favorite flavors—one cup at a time.
+        </div>
+        <div class="hero-hours">
+          Open 8:00 AM – 10:00 PM
+        </div>
+        <button class="hero-btn">Order Now</button>
+      </div>
+      <div class="hero-right">
+        <div class="product-image-placeholder" title="Your Product Image Here">
+          <!-- Placeholder: use your image here -->
+          <span>☕</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+    // Responsive nav toggle
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      navLinks.classList.toggle('mobile-active');
+    });
+    hamburger.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') navLinks.classList.toggle('mobile-active');
+    });
+    // Optional: close nav when link is clicked (mobile)
+    Array.from(navLinks.children).forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 700) navLinks.classList.remove('mobile-active');
+      });
+    });
+  </script>
+</body>
+</html>
