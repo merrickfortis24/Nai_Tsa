@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Management System</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --light-bg: #f8f9fa;
+            --dark-text: #212529;
+            --success-color: #4cc9f0;
+            --warning-color: #f72585;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            height: 100vh;
+            position: fixed;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.85);
+            border-radius: 5px;
+            margin: 5px 0;
+            padding: 10px 15px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eaeaea;
+            padding: 15px 20px;
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background-color: rgba(76, 201, 240, 0.15);
+            color: #4cc9f0;
+        }
+        
+        .status-inactive {
+            background-color: rgba(247, 37, 133, 0.15);
+            color: #f72585;
+        }
+        
+        .admin-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .search-container {
+            position: relative;
+        }
+        
+        .search-container i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        
+        .search-container input {
+            padding-left: 40px;
+            border-radius: 50px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .action-btn {
+            width: 35px;
+            height: 35px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+            margin: 0 3px;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .role-badge {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .stats-card {
+            text-align: center;
+            padding: 20px 15px;
+        }
+        
+        .stats-card i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .stats-card .number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stats-card .label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                overflow: hidden;
+            }
+            
+            .sidebar .logo-text, .sidebar .nav-link span {
+                display: none;
+            }
+            
+            .sidebar .nav-link {
+                text-align: center;
+                padding: 15px 5px;
+            }
+            
+            .sidebar .nav-link i {
+                margin-right: 0;
+                font-size: 1.3rem;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+            
+            .sidebar {
+                width: 0;
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
+                <div class="pt-3">
+                    <div class="d-flex align-items-center mb-4 px-3">
+                        <div class="bg-white p-2 rounded me-2">
+                            <i class="bi bi-shield-lock text-primary fs-4"></i>
+                        </div>
+                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#">
+                                <i class="bi bi-speedometer2"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-people-fill"></i>
+                                <span>Admins</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-person-badge"></i>
+                                <span>Staff</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-cart4"></i>
+                                <span>Orders</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-credit-card"></i>
+                                <span>Payments</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-box-seam"></i>
+                                <span>Products</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-tags"></i>
+                                <span>Categories</span>
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-gear"></i>
+                                <span>Settings</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span>Logout</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10 col-lg-10 main-content">
+                <!-- Header -->
+                <div class="header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0 fw-bold">Admin Management</h4>
+                        <p class="mb-0 text-muted">Manage administrators and their roles</p>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="search-container me-3">
+                            <i class="bi bi-search"></i>
+                            <input type="text" class="form-control" placeholder="Search admins...">
+                        </div>
+                        <button class="btn btn-primary d-flex align-items-center">
+                            <i class="bi bi-plus-lg me-2"></i> Add Admin
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-people-fill"></i>
+                            <div class="number">24</div>
+                            <div class="label">Total Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-person-check"></i>
+                            <div class="number">18</div>
+                            <div class="label">Active Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-person-x"></i>
+                            <div class="number">6</div>
+                            <div class="label">Inactive Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-shield-lock"></i>
+                            <div class="number">5</div>
+                            <div class="label">Super Admins</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Admin List -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Administrators List</span>
+                        <div>
+                            <select class="form-select form-select-sm">
+                                <option>All Roles</option>
+                                <option>Super Admin</option>
+                                <option>Manager</option>
+                                <option>Staff</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Admin</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Created At</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="admin-avatar me-3">JS</div>
+                                                <div>
+                                                    <div class="fw-bold">John Smith</div>
+                                                    <div class="text-muted small">ID: ADM001</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>john@example.com</td>
+                                        <td><span class="role-badge">Super Admin</span></td>
+                                        <td><span class="status-badge status-active">Active</span></td>
+                                        <td>Jun 12, 2023</td>
+                                        <td>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="admin-avatar me-3" style="background-color: #f72585;">ES</div>
+                                                <div>
+                                                    <div class="fw-bold">Emma Stone</div>
+                                                    <div class="text-muted small">ID: ADM002</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>emma@example.com</td>
+                                        <td><span class="role-badge">Manager</span></td>
+                                        <td><span class="status-badge status-active">Active</span></td>
+                                        <td>Apr 5, 2024</td>
+                                        <td>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="admin-avatar me-3" style="background-color: #4cc9f0;">MD</div>
+                                                <div>
+                                                    <div class="fw-bold">Michael Doe</div>
+                                                    <div class="text-muted small">ID: ADM003</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>michael@example.com</td>
+                                        <td><span class="role-badge">Staff</span></td>
+                                        <td><span class="status-badge status-inactive">Inactive</span></td>
+                                        <td>Jan 18, 2024</td>
+                                        <td>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="admin-avatar me-3" style="background-color: #7209b7;">SR</div>
+                                                <div>
+                                                    <div class="fw-bold">Sarah Roberts</div>
+                                                    <div class="text-muted small">ID: ADM004</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>sarah@example.com</td>
+                                        <td><span class="role-badge">Manager</span></td>
+                                        <td><span class="status-badge status-active">Active</span></td>
+                                        <td>Mar 22, 2024</td>
+                                        <td>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="admin-avatar me-3" style="background-color: #f8961e;">RJ</div>
+                                                <div>
+                                                    <div class="fw-bold">Robert Johnson</div>
+                                                    <div class="text-muted small">ID: ADM005</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>robert@example.com</td>
+                                        <td><span class="role-badge">Super Admin</span></td>
+                                        <td><span class="status-badge status-active">Active</span></td>
+                                        <td>Feb 10, 2023</td>
+                                        <td>
+                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav>
+                            <ul class="pagination justify-content-end">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                </li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                
+                <!-- Add Admin Form -->
+                <div class="card">
+                    <div class="card-header">
+                        Add New Administrator
+                    </div>
+                    <div class="card-body">
+                        <form>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" placeholder="Enter full name">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" placeholder="Enter email">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" class="form-control" placeholder="Create password">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Confirm Password</label>
+                                    <input type="password" class="form-control" placeholder="Confirm password">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Admin Role</label>
+                                    <select class="form-select">
+                                        <option selected>Select role</option>
+                                        <option>Super Admin</option>
+                                        <option>Manager</option>
+                                        <option>Staff</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Status</label>
+                                    <div class="d-flex">
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input" type="radio" name="status" id="active" checked>
+                                            <label class="form-check-label" for="active">Active</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="status" id="inactive">
+                                            <label class="form-check-label" for="inactive">Inactive</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary px-4">Add Administrator</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
