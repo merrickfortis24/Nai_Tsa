@@ -328,18 +328,18 @@ try {
                     </div>
                     <div class="card-body">
                         <?php if ($success): ?>
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <?= $success ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <?php if ($error): ?>
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <?= $error ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        <?php endif; ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <?= $success ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if ($error): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <?= $error ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
                         
                         <form method="POST" action="">
                             <div class="row">
@@ -394,7 +394,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-primary px-4">Add Administrator</button>
+                                    <button type="submit" name="add_admin" class="btn btn-primary px-4">Add Administrator</button>
                                 </div>
                             </div>
                         </form>
@@ -480,7 +480,8 @@ try {
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Toggle password visibility
         function togglePassword(inputId) {
@@ -699,6 +700,34 @@ try {
                 }
             });
         });
+
+<?php if ($success): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: <?= json_encode($success) ?>,
+        timer: 2500,
+        showConfirmButton: false
+    });
+});
+</script>
+<?php endif; ?>
+
+<?php if ($error): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: <?= json_encode($error) ?>,
+        timer: 3500,
+        showConfirmButton: false
+    });
+});
+</script>
+<?php endif; ?>
     </script>
 </body>
 </html>
