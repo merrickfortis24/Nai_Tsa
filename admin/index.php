@@ -44,26 +44,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_admin'])) {
             $db = new database();
             $conn = $db->opencon();
 
-            // Prepare SQL statement
-            $stmt = $conn->prepare("INSERT INTO Admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
-                                   VALUES (:name, :password, :email, :role, NOW(), :status)");
-
-            // Bind parameters
-            $stmt->bindParam(':name', $admin_name);
-            $stmt->bindParam(':password', $hashed_password);
-            $stmt->bindParam(':email', $admin_email);
-            $stmt->bindParam(':role', $admin_role);
-            $stmt->bindParam(':status', $status);
-
-            // Execute the query
-            if ($stmt->execute()) {
-                $success = "Admin added successfully!";
-                // Reset form fields
-                $admin_name = '';
-                $admin_email = '';
-                $admin_role = '';
+            // Check if email already exists
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
+            $stmt->execute([$admin_email]);
+            if ($stmt->fetchColumn() > 0) {
+                $error = "This email is already taken!";
             } else {
-                $error = "Error adding admin: " . implode(" ", $stmt->errorInfo());
+                // Prepare SQL statement
+                $stmt = $conn->prepare("INSERT INTO Admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
+                                       VALUES (:name, :password, :email, :role, NOW(), :status)");
+
+                // Bind parameters
+                $stmt->bindParam(':name', $admin_name);
+                $stmt->bindParam(':password', $hashed_password);
+                $stmt->bindParam(':email', $admin_email);
+                $stmt->bindParam(':role', $admin_role);
+                $stmt->bindParam(':status', $status);
+
+                // Execute the query
+                if ($stmt->execute()) {
+                    $success = "Admin added successfully!";
+                    // Reset form fields
+                    $admin_name = '';
+                    $admin_email = '';
+                    $admin_role = '';
+                } else {
+                    $error = "Error adding admin: " . implode(" ", $stmt->errorInfo());
+                }
             }
         } catch (PDOException $e) {
             $error = "Database Error: " . $e->getMessage();
@@ -347,7 +354,9 @@ try {
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Password <span class="text-danger">*</span></label>
                                     <div class="password-container">
-                                        <input type="password" name="admin_password" id="admin_password" class="form-control" placeholder="Create password">
+                                        <input type="password" name="admin_password" id="admin_password" class="form-control" placeholder="Create password"
+    pattern="^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$"
+    title="At least 6 characters, one uppercase, one number, one special character">
                                         <span class="password-toggle" onclick="togglePassword('admin_password')">
                                             <i class="bi bi-eye"></i>
                                         </span>
@@ -561,6 +570,43 @@ try {
         });
 
         document.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.querySelector('input[name="admin_email"]');
+            const emailWarning = document.createElement('div');
+            emailWarning.className = 'text-danger mb-2';
+            emailInput.parentNode.appendChild(emailWarning);
+
+            emailInput.addEventListener('blur', function() {
+                const email = emailInput.value.trim();
+                if (email) {
+                    fetch('ajax/check_email.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'email=' + encodeURIComponent(email)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.exists) {
+                            emailWarning.textContent = 'This email is already taken.';
+                        } else {
+                            emailWarning.textContent = '';
+                        }
+                    });
+                } else {
+                    emailWarning.textContent = '';
+                }
+            });
+
+            // Prevent form submission if email is taken
+            const addAdminForm = document.querySelector('form[action=""]');
+            addAdminForm.addEventListener('submit', function(e) {
+                if (emailWarning.textContent) {
+                    e.preventDefault();
+                    emailInput.focus();
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.querySelector('.search-container input[type="text"]');
             const tbody = document.querySelector('table tbody');
 
@@ -610,6 +656,47 @@ try {
                         });
                     }
                 });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.querySelector('input[name="admin_password"]');
+            const confirmInput = document.querySelector('input[name="confirm_password"]');
+            const addAdminForm = document.querySelector('form[action=""]');
+
+            // Create warning element if not exists
+            let pwWarning = document.getElementById('pw-warning');
+            if (!pwWarning) {
+                pwWarning = document.createElement('div');
+                pwWarning.className = 'text-danger mb-2';
+                pwWarning.id = 'pw-warning';
+                confirmInput.parentNode.appendChild(pwWarning);
+            }
+
+            // Password regex
+            const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+
+            function checkPasswords() {
+                if (passwordInput.value && !passwordRegex.test(passwordInput.value)) {
+                    pwWarning.textContent = 'Password must be at least 6 characters, include an uppercase letter, a number, and a special character.';
+                    return false;
+                } else if (passwordInput.value && confirmInput.value && passwordInput.value !== confirmInput.value) {
+                    pwWarning.textContent = 'Passwords do not match.';
+                    return false;
+                } else {
+                    pwWarning.textContent = '';
+                    return true;
+                }
+            }
+
+            passwordInput.addEventListener('input', checkPasswords);
+            confirmInput.addEventListener('input', checkPasswords);
+
+            addAdminForm.addEventListener('submit', function(e) {
+                if (!checkPasswords()) {
+                    e.preventDefault();
+                    confirmInput.focus();
+                }
             });
         });
     </script>
