@@ -559,6 +559,59 @@ try {
                 alert('An error occurred while updating the admin.');
             });
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('.search-container input[type="text"]');
+            const tbody = document.querySelector('table tbody');
+
+            searchInput.addEventListener('input', function() {
+                const keyword = this.value;
+                fetch('ajax/search_admin.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'keyword=' + encodeURIComponent(keyword)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear current rows
+                        tbody.innerHTML = '';
+                        // Add new rows
+                        data.admins.forEach(admin => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="admin-avatar me-3">${admin.Admin_Name.substr(0,2).toUpperCase()}</div>
+                                            <div>
+                                                <div class="fw-bold">${admin.Admin_Name}</div>
+                                                <div class="text-muted small">ID: ${admin.Admin_ID}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${admin.Admin_Email}</td>
+                                    <td><span class="role-badge">${admin.Admin_Role}</span></td>
+                                    <td><span class="status-badge ${admin.Status === 'Active' ? 'status-active' : 'status-inactive'}">${admin.Status}</span></td>
+                                    <td>${new Date(admin.Created_At).toLocaleDateString()}</td>
+                                    <td>
+                                        <a href="#" class="action-btn edit-admin-btn"
+                                           data-id="${admin.Admin_ID}"
+                                           data-name="${admin.Admin_Name}"
+                                           data-email="${admin.Admin_Email}"
+                                           data-role="${admin.Admin_Role}"
+                                           data-status="${admin.Status}">
+                                           <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                        <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html>

@@ -163,5 +163,13 @@ class database{
         }
     }
 
+    function searchAdmin($keyword) {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT * FROM Admin WHERE Admin_Name LIKE ? OR Admin_Email LIKE ? ORDER BY Created_At DESC");
+        $search = '%' . $keyword . '%';
+        $stmt->execute([$search, $search]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
 }
