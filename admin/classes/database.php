@@ -172,4 +172,15 @@ class database{
     }
 
 
+    function deleteAdmin($admin_id) {
+        $con = $this->opencon();
+        try {
+            $stmt = $con->prepare("DELETE FROM Admin WHERE Admin_ID = ?");
+            $stmt->execute([$admin_id]);
+            return ['success' => true, 'message' => 'Admin deleted successfully!'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
+        }
+    }
+
 }

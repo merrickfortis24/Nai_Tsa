@@ -63,11 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_admin'])) {
 
                 // Execute the query
                 if ($stmt->execute()) {
-                    $success = "Admin added successfully!";
+                    $_SESSION['success'] = "Admin added successfully!";
                     // Reset form fields
-                    $admin_name = '';
-                    $admin_email = '';
-                    $admin_role = '';
+                    header("Location: index.php");
+                    exit();
                 } else {
                     $error = "Error adding admin: " . implode(" ", $stmt->errorInfo());
                 }
@@ -206,7 +205,7 @@ try {
                             <i class="bi bi-search"></i>
                             <input type="text" class="form-control" placeholder="Search admins...">
                         </div>
-                        <button class="btn btn-primary d-flex align-items-center">
+                        <button id="scrollToAddAdminBtn" class="btn btn-primary d-flex align-items-center">
                             <i class="bi bi-plus-lg me-2"></i> Add Admin
                         </button>
                     </div>
@@ -295,8 +294,9 @@ try {
                                                data-status="<?= htmlspecialchars($admin['Status']) ?>">
                                                <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                            <a href="#" class="action-btn delete-admin-btn" data-admin-id="<?= $admin['Admin_ID'] ?>">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -322,7 +322,7 @@ try {
                 </div>
                 
                 <!-- Add Admin Form -->
-                <div class="card">
+                <div class="card" id="addAdminFormSection">
                     <div class="card-header">
                         Add New Administrator
                     </div>
@@ -486,8 +486,10 @@ try {
         // Toggle password visibility
         function togglePassword(inputId) {
             const passwordInput = document.getElementById(inputId);
-            const toggleIcon = passwordInput.nextElementSibling.querySelector('i');
-            
+            // Find the icon inside the same password-container
+            const container = passwordInput.closest('.password-container');
+            const toggleIcon = container.querySelector('.password-toggle i');
+
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 toggleIcon.classList.remove('bi-eye');
@@ -556,12 +558,25 @@ try {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Close modal and reload page
                     const editModal = bootstrap.Modal.getInstance(document.getElementById('editAdminModal'));
                     editModal.hide();
-                    location.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: data.message || 'Admin updated successfully!',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
                 } else {
-                    alert('Error: ' + data.message);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: data.message || 'Failed to update admin.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
                 }
             })
             .catch(error => {
@@ -649,8 +664,9 @@ try {
                                            data-status="${admin.Status}">
                                            <i class="bi bi-pencil"></i>
                                         </a>
-                                        <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                        <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                        <a href="#" class="action-btn delete-admin-btn" data-admin-id="${admin.Admin_ID}">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             `;
@@ -701,6 +717,47 @@ try {
             });
         });
 
+        document.addEventListener('DOMContentLoaded', function() {
+    const tbody = document.querySelector('table tbody');
+    tbody.addEventListener('click', function(e) {
+        const btn = e.target.closest('.delete-admin-btn');
+        if (btn) {
+            e.preventDefault();
+            const adminId = btn.getAttribute('data-admin-id');
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will permanently delete the admin.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('ajax/delete_admin.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'admin_id=' + encodeURIComponent(adminId)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Deleted!', data.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire('Error', 'Network error: ' + error.message, 'error');
+                    });
+                }
+            });
+        }
+    });
+});
+
 <?php if ($success): ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -728,6 +785,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <?php endif; ?>
+
+document.addEventListener('DOMContentLoaded', function() {
+    const scrollBtn = document.getElementById('scrollToAddAdminBtn');
+    const formSection = document.getElementById('addAdminFormSection');
+    if (scrollBtn && formSection) {
+        scrollBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            formSection.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+});
     </script>
 </body>
 </html>
