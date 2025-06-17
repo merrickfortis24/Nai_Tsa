@@ -85,12 +85,6 @@ try {
                                 <span>Categories</span>
                             </a>
                         </li>
-                        <li class="nav-item mt-4">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-gear"></i>
-                                <span>Settings</span>
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">
                                 <i class="bi bi-box-arrow-right"></i>
@@ -140,8 +134,11 @@ try {
                                                data-category-name="<?= htmlspecialchars($category['Category_Name']) ?>">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                            <a href="#" 
+                                               class="action-btn delete-category-btn"
+                                               data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -243,6 +240,43 @@ document.querySelectorAll('.edit-category-btn').forEach(function(btn) {
         document.querySelector('#addCategoryForm button[type="submit"]').innerText = 'Update Category';
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal'));
         modal.show();
+    });
+});
+
+document.querySelectorAll('.delete-category-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const categoryId = this.dataset.categoryId;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This will permanently delete the category.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('ajax/delete_category.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'category_id=' + encodeURIComponent(categoryId)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Deleted!', data.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire('Error', 'Network error: ' + error.message, 'error');
+                });
+            }
+        });
     });
 });
 
