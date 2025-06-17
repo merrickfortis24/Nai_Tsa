@@ -2,401 +2,439 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Naitsa Coffee Shop</title>
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:700,400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nai Tsa - Coffee & Milk Tea</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Fonts: Poppins for modern look -->
+  <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --beige: #f6efe7;
-      --soft-orange: #f2b880;
-      --muted-brown: #bfa077;
-      --brown: #8b6f4e;
-      --white: #fff;
-      --shadow: 0 4px 24px rgba(191,160,119,0.08);
-      --nav-height: 70px;
+      --soft-orange: #FFB27A;
+      --beige: #FFF6ED;
+      --accent: #F8D6B8;
+      --text-dark: #61391D;
+      --shadow: 0 4px 20px rgba(255, 178, 122, 0.15);
     }
-    html, body {
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      color: var(--text-dark);
+      min-height: 100vh;
       margin: 0;
       padding: 0;
       background: var(--beige);
-      font-family: 'Montserrat', Arial, sans-serif;
-      color: var(--brown);
-      height: 100%;
+    }
+
+    .section {
       min-height: 100vh;
-    }
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    /* Navigation Bar */
-    .navbar {
-      width: 100%;
-      height: var(--nav-height);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 2rem;
-      background: var(--beige);
-      position: relative;
-      z-index: 10;
-      box-shadow: 0 2px 8px rgba(191,160,119,0.03);
-    }
-    .nav-left {
-      display: flex;
-      align-items: center;
-    }
-    .logo-placeholder {
-      width: 48px;
-      height: 48px;
-      margin-right: 1.1rem;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--soft-orange) 60%, var(--muted-brown) 100%);
+      width: 100vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      font-size: 1.2rem;
-      color: var(--white);
-      box-shadow: 0 2px 8px rgba(191,160,119,0.15);
-      border: 2px solid #f5e7d6;
-      user-select: none;
-      overflow: hidden;
-    }
-    .logo-placeholder img {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
-      display: block;
-    }
-    .nav-links {
-      display: flex;
-      gap: 1.4rem;
-      align-items: center;
-    }
-    .nav-links a {
-      text-decoration: none;
-      color: var(--brown);
-      font-weight: 500;
-      font-size: 1rem;
-      letter-spacing: 0.01em;
-      transition: color 0.16s;
       position: relative;
-      padding: 3px 2px;
+      padding: 0;
+      margin: 0;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      transition: background-image 0.6s cubic-bezier(.77,0,.18,1);
+      /* For fallback color if image fails */
+      background-color: var(--beige);
     }
-    .nav-links a:hover, .nav-links a.active {
-      color: var(--soft-orange);
-    }
-    .nav-icons {
-      display: flex;
-      align-items: center;
-      gap: 1.1rem;
-      margin-left: 1.2rem;
-    }
-    .nav-icon {
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted-brown);
-      cursor: pointer;
-      transition: color 0.15s;
-    }
-    .nav-icon:hover {
-      color: var(--soft-orange);
-    }
-    /* Hamburger for mobile */
-    .hamburger {
-      display: none;
-      flex-direction: column;
-      gap: 4px;
-      cursor: pointer;
-      margin-left: 8px;
-    }
-    .hamburger span {
-      width: 24px;
-      height: 3px;
-      background: var(--muted-brown);
-      border-radius: 2px;
-      transition: all 0.3s;
-    }
-    /* Hero Section */
-    .hero-bg {
-      position: relative;
-      width: 100%;
-      min-height: 480px;
-      background: linear-gradient(120deg, var(--soft-orange) 0%, var(--beige) 70%);
-      overflow: hidden;
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .hero-bg::before {
-      /* Placeholder for customizable background image */
-      content: "";
+    .section-overlay {
       position: absolute;
       inset: 0;
-      background: url('https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/500901111_696004739860858_5978289012828601449_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeEH83TYlMACOHgUzsoWoeVJ3IAsrcyaYDLcgCytzJpgMuAtq6jtktwB0isENcW9Sdaht7MoidUM83f6hFryWuv-&_nc_ohc=kI3z8OvKaNUQ7kNvwEaa8ls&_nc_oc=AdnC9-ME2iSBxNWwP1zTbgMrrcJ9sLLOvQPrTSHZzEEl_kwCeAcvxNC7jh818zEWEi0&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=Nejdj_KH4Yn2sZ4AZjeuzQ&oh=00_AfMIaXb4ofnbmfvRAT1-zlsn8tTPHnhvOYnPcgEy9guBTw&oe=6855F408') center/cover no-repeat;
-      opacity: 0.18;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(120deg, var(--beige) 88%, var(--soft-orange) 100%);
+      opacity: 0.45;
       z-index: 1;
       pointer-events: none;
+      transition: opacity 0.4s;
     }
-    .hero-content-wrap {
-      width: 100%;
-      max-width: 1160px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 3.5rem 2rem 2rem 2rem;
+    .section-content {
       position: relative;
       z-index: 2;
-    }
-    .hero-left {
-      flex: 1 1 0px;
-      max-width: 510px;
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      justify-content: center;
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 540px;
+      margin: 0 auto;
     }
-    .hero-welcome {
-      font-size: 2.5rem;
-      font-weight: 800;
-      color: var(--brown);
-      letter-spacing: 0.02em;
-      margin-bottom: 0.35em;
-      line-height: 1.08;
-      text-shadow: 0 2px 18px rgba(191,160,119,0.12);
-      text-transform: uppercase;
-    }
-    .hero-description {
-      font-size: 1.28rem;
-      color: var(--muted-brown);
-      margin-bottom: 1.4em;
+    .section-title {
+      font-size: 2.8rem;
       font-weight: 700;
-      line-height: 1.4;
+      color: var(--text-dark);
+      margin-bottom: 1rem;
+      letter-spacing: -0.03em;
+      text-shadow: 0 2px 20px rgba(255,255,255,0.19);
     }
-    .hero-hours {
-      font-size: 1.05rem;
-      color: var(--brown);
-      margin-bottom: 1.6em;
-      background: rgba(255,255,255,0.5);
-      padding: 0.4em 1em;
-      border-radius: 1.2em;
-      box-shadow: 0 1px 4px rgba(191,160,119,0.06);
+    .section-desc {
+      color: #825e3a;
+      font-size: 1.21rem;
+      margin-bottom: 2rem;
+      font-weight: 400;
+      text-shadow: 0 2px 10px rgba(255,255,255,0.12);
+    }
+    .btn-section {
+      font-size: 1.15rem;
+      padding: 0.78rem 2.1rem;
+      border-radius: 999px;
+      box-shadow: 0 2px 16px rgba(255,178,122,0.18);
       font-weight: 600;
-    }
-    .hero-btn {
+      background-color: var(--soft-orange);
+      color: #fff;
       border: none;
-      background: linear-gradient(90deg, var(--soft-orange) 60%, var(--muted-brown) 100%);
-      color: var(--white);
-      font-weight: 700;
-      font-size: 1.1rem;
-      padding: 0.9em 2.1em;
-      border-radius: 2em;
-      cursor: pointer;
+      transition: background 0.17s;
+      margin-bottom: 2rem;
+    }
+    .btn-section:hover, .btn-section:focus {
+      background-color: #f89e53;
+      color: #fff;
+    }
+    .menu-cards {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2.2rem;
+      margin-bottom: 2.9rem;
+    }
+    .menu-card {
+      background: #fff;
+      border-radius: 24px;
       box-shadow: var(--shadow);
-      transition: background 0.18s, transform 0.18s;
-      margin-bottom: 0.2em;
-    }
-    .hero-btn:hover {
-      background: linear-gradient(90deg, var(--muted-brown) 40%, var(--soft-orange) 100%);
-      transform: translateY(-2px) scale(1.03);
-    }
-    .hero-right {
-      flex: 1 1 0px;
+      width: 220px;
+      padding: 1.5rem 1.2rem 1.2rem 1.2rem;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-width: 220px;
-      min-height: 320px;
-      position: relative;
+      transition: transform 0.18s, box-shadow 0.18s;
+      cursor: pointer;
+      border: 1.5px solid var(--accent);
     }
-    .product-image-placeholder {
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #fff7ef 70%, var(--soft-orange) 100%);
-      box-shadow: 0 4px 24px rgba(191,160,119,0.10);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
+    .menu-card:hover {
+      transform: translateY(-6px) scale(1.025);
+      box-shadow: 0 8px 32px rgba(255,178,122,0.21);
+      border-color: var(--soft-orange);
     }
-    .product-image-placeholder img {
-      width: 100%;
-      height: 100%;
+    .menu-card img {
+      width: 72px;
+      height: 72px;
       object-fit: cover;
       border-radius: 50%;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 10px rgba(255,178,122,0.13);
+      background: var(--accent);
+    }
+    .menu-card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.3rem;
+    }
+    .menu-card-desc {
+      color: #825e3a;
+      font-size: 0.97rem;
+      text-align: center;
+      margin-bottom: 0.7rem;
+    }
+
+    .form-control, .form-control:focus {
+      border-radius: 14px;
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 1px 4px rgba(255,178,122,0.08);
+      font-size: 1rem;
+    }
+    .form-control:focus {
+      border-color: var(--soft-orange);
+      box-shadow: 0 2px 10px rgba(255,178,122,0.15);
+    }
+
+    .footer {
+      background: rgba(255,246,237,0.96);
+      color: var(--text-dark);
+      border-radius: 24px 24px 0 0;
+      text-align: center;
+      padding: 1.1rem 0 0.7rem 0;
+      font-size: 1rem;
+      margin-top: 2.5rem;
+      box-shadow: var(--shadow);
+      z-index: 99;
+      position: relative;
+    }
+
+    .navbar {
+      background: rgba(255,255,255,0.68);
+      box-shadow: var(--shadow);
+      border-radius: 0 0 24px 24px;
+      padding: 0.9rem 1.2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .navbar-brand {
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: var(--soft-orange) !important;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55em;
+      padding: 0;
+      margin: 0;
+    }
+    .navbar-brand img {
+      height: 54px;
+      width: 54px;
+      object-fit: cover;
       display: block;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(255,178,122,0.10);
+      padding: 2px;
     }
-    .product-image-placeholder span {
-      color: var(--muted-brown);
-      font-size: 5rem;
-      opacity: 0.14;
-      user-select: none;
+    .nav-link {
+      color: var(--text-dark) !important;
+      font-weight: 500;
+      margin-right: 0.7em;
+      transition: color 0.2s;
+      font-size: 1.02rem;
     }
-    /* Responsive Styles */
-    @media (max-width: 900px) {
-      .hero-content-wrap {
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 2.2rem 1rem;
-        gap: 2.2rem;
-      }
-      .hero-left,
-      .hero-right {
-        max-width: 100%;
-        width: 100%;
-        align-items: center;
-        text-align: center;
-      }
-      .hero-left {
-        align-items: center;
-      }
+    .nav-link.active, .nav-link:hover {
+      color: var(--soft-orange) !important;
     }
-    @media (max-width: 700px) {
+    .navbar-right-text {
+      color: var(--text-dark);
+      font-weight: 500;
+      margin-right: 1.1em;
+      font-size: 1rem;
+      white-space: nowrap;
+    }
+    .btn-soft-orange {
+      background-color: var(--soft-orange);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(255,178,122,0.16);
+      padding: 0.45rem 1.3rem;
+      font-weight: 600;
+      transition: background 0.17s;
+    }
+    .btn-soft-orange:hover, .btn-soft-orange:focus {
+      background-color: #f89e53;
+      color: #fff;
+    }
+    .btn-outline-soft-orange {
+      background: transparent;
+      color: var(--soft-orange);
+      border: 2px solid var(--soft-orange);
+      border-radius: 999px;
+      box-shadow: none;
+      padding: 0.42rem 1.2rem;
+      font-weight: 600;
+      transition: background 0.17s, color 0.17s;
+    }
+    .btn-outline-soft-orange:hover, .btn-outline-soft-orange:focus {
+      background-color: var(--soft-orange);
+      color: #fff;
+    }
+
+    @media (max-width: 991px) {
+      .section-content {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
       .navbar {
-        padding: 0 1rem;
-        height: 58px;
+        padding: 0.6rem 0.7rem;
       }
-      .logo-placeholder {
-        width: 38px;
-        height: 38px;
-        font-size: 1rem;
-        margin-right: 0.7rem;
-      }
-      .nav-links {
-        display: none;
-        position: absolute;
-        top: var(--nav-height);
-        right: 0;
-        flex-direction: column;
-        background: var(--beige);
-        box-shadow: 0 2px 16px rgba(191,160,119,0.08);
-        padding: 1.1rem 2rem;
+      .menu-cards {
         gap: 1.2rem;
       }
-      .nav-links.mobile-active {
-        display: flex;
-        top: 58px;
-      }
-      .nav-icons {
-        gap: 0.7rem;
-        margin-left: 0.7rem;
-      }
-      .hamburger {
-        display: flex;
-      }
-      .hero-content-wrap {
-        padding: 1.6rem 0.5rem;
-      }
-      .product-image-placeholder {
-        width: 180px;
-        height: 180px;
+      .section-title {
+        font-size: 1.6rem;
       }
     }
-    @media (max-width: 480px) {
-      .hero-welcome {
-        font-size: 1.3rem;
+    @media (max-width: 575px) {
+      .navbar {
+        border-radius: 0 0 16px 16px;
       }
-      .hero-hours,
-      .hero-description {
-        font-size: 0.97rem;
+      .section-content {
+        padding: 1.4rem 0.7rem;
       }
-      .hero-btn {
-        font-size: 1rem;
-        padding: 0.7em 1.3em;
+      .section-title {
+        font-size: 2rem;
+      }
+      .footer {
+        border-radius: 14px 14px 0 0;
+        font-size: 0.95rem;
+      }
+      .menu-card {
+        width: 96vw;
+        max-width: 270px;
+      }
+      .navbar-brand img {
+        height: 38px;
+        width: 38px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Navigation Bar -->
-  <nav class="navbar">
-    <div class="nav-left">
-      <div class="logo-placeholder" title="Naitsa Logo">
-        <!-- Your actual logo image here -->
-        <img 
-          src="https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/305017926_123739037082830_6536344361033765846_n.jpg?_nc_cat=101&amp;ccb=1-7&amp;_nc_sid=6ee11a&amp;_nc_eui2=AeF6gojYSTdWNY4orY0VNUkSmvcRd1ll5jia9xF3WWXmODD-saAHrmXgUQmKemzloGzWiKXvFLnLMDOAGKdxzyD6&amp;_nc_ohc=7iBKmMdkBywQ7kNvwFRDQYs&amp;_nc_oc=AdlY_BYvScrT1IflonpxA1Qvq5KxK43IM6csPvtUSzdETsmOm1huAnaj3u8V2bhL94M&amp;_nc_zt=23&amp;_nc_ht=scontent.fmnl17-1.fna&amp;_nc_gid=zr_iO0JmrhCwDGAHOAqdbQ&amp;oh=00_AfP71h0Bxwo_zXF6XA1C60idZzXqlq6yMUdhgIvHHgnRbA&amp;oe=6855DFB1" 
-          alt="Naitsa Coffee Shop Logo"
-        />
-      </div>
-      <div class="nav-links" id="navLinks">
-        <a href="#" class="active">Home</a>
-        <a href="#">About</a>
-        <a href="#">Menu</a>
-        <a href="#">Gallery</a>
-        <a href="#">Contact</a>
-        <a href="#">Login</a>
-      </div>
-    </div>
-    <div class="nav-icons">
-      <div class="nav-icon" title="Search">
-        <!-- Search Icon SVG -->
-        <svg width="20" height="20" fill="none" viewBox="0 0 20 20">
-          <circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/>
-          <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M14.35 14.35L18 18"/>
-        </svg>
-      </div>
-      <div class="nav-icon" title="Cart">
-        <!-- Cart Icon SVG -->
-        <svg width="22" height="22" fill="none" viewBox="0 0 22 22">
-          <circle cx="8.2" cy="18.2" r="1.3" stroke="currentColor" stroke-width="1.4"/>
-          <circle cx="16.2" cy="18.2" r="1.3" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M2 2h2.5l2.3 11.1a1.2 1.2 0 001.2 1h7.2a1.2 1.2 0 001.2-1l1.7-6.4H6.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="hamburger" id="hamburger" aria-label="Open navigation menu" tabindex="0">
-        <span></span>
-        <span></span>
-        <span></span>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container-fluid px-2">
+      <a class="navbar-brand me-4" href="#" aria-label="Nai Tsa Home">
+        <img src="https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/305017926_123739037082830_6536344361033765846_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeF6gojYSTdWNY4orY0VNUkSmvcRd1ll5jia9xF3WWXmODD-saAHrmXgUQmKemzloGzWiKXvFLnLMDOAGKdxzyD6&_nc_ohc=7iBKmMdkBywQ7kNvwFRDQYs&_nc_oc=AdlY_BYvScrT1IflonpxA1Qvq5KxK43IM6csPvtUSzdETsmOm1huAnaj3u8V2bhL94M&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=zr_iO0JmrhCwDGAHOAqdbQ&oh=00_AfP71h0Bxwo_zXF6XA1C60idZzXqlq6yMUdhgIvHHgnRbA&oe=6855DFB1" alt="Nai Tsa Logo">
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
+          <li class="nav-item">
+            <a class="nav-link" href="#home">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#about">About</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#menu">Menu</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#contact">Contact</a>
+          </li>
+        </ul>
+        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
+          <span class="navbar-right-text me-lg-3">OPEN 10:00AM TO 12AM</span>
+          <button class="btn btn-outline-soft-orange me-2" type="button">Sign In</button>
+          <button class="btn btn-soft-orange" type="button">Join Now</button>
+        </div>
       </div>
     </div>
   </nav>
-  <!-- Hero Section -->
-  <section class="hero-bg">
-    <div class="hero-content-wrap">
-      <div class="hero-left">
-        <div class="hero-welcome">
-          WELCOME TO NAITSA COFFEE SHOP!
+
+  <!-- Home Section -->
+  <section class="section" id="home" style="background-image: url('https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/500230252_692319856896013_8852028192218548547_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeF-RPA8YMrq0jSRkO2a0609EMOea9UkhbkQw55r1SSFuTfggM7u_KphE4xaukwWnHiAvNIb54Tdug6LylldXazD&_nc_ohc=8WcA0JIr4KIQ7kNvwFY78B0&_nc_oc=AdlTPV6RJW8qhyOfoECtVos5lPInQmWRuboETiLNzFvf83N1xvPdu7pD2Hn9uOOZzWU&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=Gq6LmE5At4ZrlEznx7hrpA&oh=00_AfPJo1WfXQ6mGewsL6MBctLZTzlYWpdf38MhNxyZzLAhew&oe=6856EF07');">
+    <div class="section-overlay"></div>
+    <div class="section-content">
+      <h1 class="section-title">MILKTEA PLEASE</h1>
+      <p class="section-desc">Welcome to Nai Tsa - your neighborhood spot for fresh-brewed coffee and vibrant milk tea creations. Sip, chill, and enjoy our soft orange and beige ambiance, every day from 10AM till midnight.</p>
+      <a href="#menu" class="btn btn-section">ORDER NOW</a>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="section" id="about" style="background-image: url('https://scontent.fmnl17-8.fna.fbcdn.net/v/t39.30808-6/500901111_696004739860858_5978289012828601449_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeEH83TYlMACOHgUzsoWoeVJ3IAsrcyaYDLcgCytzJpgMuAtq6jtktwB0isENcW9Sdaht7MoidUM83f6hFryWuv-&_nc_ohc=kI3z8OvKaNUQ7kNvwEaa8ls&_nc_oc=AdnC9-ME2iSBxNWwP1zTbgMrrcJ9sLLOvQPrTSHZzEEl_kwCeAcvxNC7jh818zEWEi0&_nc_zt=23&_nc_ht=scontent.fmnl17-8.fna&_nc_gid=Nejdj_KH4Yn2sZ4AZjeuzQ&oh=00_AfMIaXb4ofnbmfvRAT1-zlsn8tTPHnhvOYnPcgEy9guBTw&oe=6855F408');">
+    <div class="section-overlay"></div>
+    <div class="section-content">
+      <h2 class="section-title">About Nai Tsa</h2>
+      <p class="section-desc">
+        At Nai Tsa, we celebrate the art of milk tea and coffee with every cup. Our drinks are crafted with premium ingredients and a dash of creativity, designed to brighten your day. Whether you crave classic milk tea, a signature blend, or a comforting coffee, our cozy lounge and friendly baristas are here for you. Come for the flavor, stay for the vibe!
+      </p>
+    </div>
+  </section>
+
+  <!-- Menu Section -->
+  <section class="section" id="menu" style="background-image: url('https://scontent.fmnl17-5.fna.fbcdn.net/v/t39.30808-6/500095638_693034116824587_6703998157941781571_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGTy6t0311sDOjs3B_ZrWyH1VnQrkMgptDVWdCuQyCm0GL_ld9PBi_S6BbxUNtG8I9yjVxaij9uO3KNd-feaGTt&_nc_ohc=IKX6xKrp0DcQ7kNvwHzPi06&_nc_oc=AdlE5jvDw92Ppr48247FRBf-T8eji8SEiE5aPZ8jZZ4CMOtc9Pzm6np2Gh1hOCZJS7w&_nc_zt=23&_nc_ht=scontent.fmnl17-5.fna&_nc_gid=Bi-lBtiSn2EF8gs618683w&oh=00_AfMZmSQSb9NUaYgqB8W5VSPVzwq260NBXkOwzym0lNpYGg&oe=6856DC4D');">
+    <div class="section-overlay"></div>
+    <div class="section-content" style="max-width: 950px;">
+      <h2 class="section-title text-center w-100">Our Bestsellers</h2>
+      <div class="menu-cards w-100 justify-content-center">
+        <div class="menu-card">
+          <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80" alt="Classic Milk Tea">
+          <div class="menu-card-title">Classic Milk Tea</div>
+          <div class="menu-card-desc">Traditional black tea with creamy milk, slightly sweet, perfectly chilled.</div>
         </div>
-        <div class="hero-description">
-          <b>Brewed with passion. Served with warmth.</b><br>
-          Discover your favorite flavors—one cup at a time.
+        <div class="menu-card">
+          <img src="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=150&q=80" alt="Brown Sugar Boba">
+          <div class="menu-card-title">Brown Sugar Boba</div>
+          <div class="menu-card-desc">Rich brown sugar syrup, chewy pearls, and velvety milk tea.</div>
         </div>
-        <div class="hero-hours">
-          Open 8:00 AM – 10:00 PM
+        <div class="menu-card">
+          <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=150&q=80" alt="Coffee Latte">
+          <div class="menu-card-title">Coffee Latte</div>
+          <div class="menu-card-desc">Espresso meets creamy steamed milk, topped with light foam.</div>
         </div>
-        <button class="hero-btn">Order Now</button>
-      </div>
-      <div class="hero-right">
-        <div class="product-image-placeholder" title="Your Product Image Here">
-          <!-- Placeholder: use your image here -->
-          <span>☕</span>
+        <div class="menu-card">
+          <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=150&q=80" alt="Strawberry Matcha">
+          <div class="menu-card-title">Strawberry Matcha</div>
+          <div class="menu-card-desc">Earthy matcha layered with fresh strawberry milk for a vibrant treat.</div>
         </div>
       </div>
     </div>
   </section>
+
+  <!-- Contact Section -->
+  <section class="section" id="contact" style="background-image: url('https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/481769924_632646612863338_6450550044507221992_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeHG8Qo8ULMGeOjUNGCQ5X9TISMkV1GUOEwhIyRXUZQ4TOM6Tww37MXgPwu4W8OapX_jdXhf-8l8Z5a8DJ4C8New&_nc_ohc=O_F_483MXAoQ7kNvwHzT7uE&_nc_oc=AdnF6Qv5qebDjFO00L66Tmt7crSQ5oUPoNuqYeNvQpmceUsk7bW7wquCI8m4yBGB2tE&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=bx0ZbWniLljDtluDUELNUw&oh=00_AfNvkJcQEa5h0WmDsF-bPPSHsLp6c9TmxcqB3Raq5HKjqw&oe=6856D6E8');">
+    <div class="section-overlay"></div>
+    <div class="section-content">
+      <h2 class="section-title">Contact Us</h2>
+      <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
+      <form>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input type="text" class="form-control" placeholder="Your Name" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <input type="email" class="form-control" placeholder="Your Email" required>
+          </div>
+        </div>
+        <textarea class="form-control mb-3" rows="3" placeholder="Your Message" required></textarea>
+        <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    &copy; 2025 Nai Tsa &mdash; Coffee & Milk Tea. Designed with <span style="color: var(--soft-orange);">&#10084;</span>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Responsive nav toggle
-    const hamburger = document.getElementById('hamburger');
-    const navLinks = document.getElementById('navLinks');
-    hamburger.addEventListener('click', () => {
-      navLinks.classList.toggle('mobile-active');
+    // Smooth scroll and highlight active nav
+    document.querySelectorAll('.nav-link').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var targetId = this.getAttribute('href').replace('#','');
+        var target = document.getElementById(targetId);
+        if (target) {
+          e.preventDefault();
+          window.scrollTo({
+            top: target.offsetTop - document.querySelector('.navbar').offsetHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
     });
-    hamburger.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') navLinks.classList.toggle('mobile-active');
-    });
-    // Optional: close nav when link is clicked (mobile)
-    Array.from(navLinks.children).forEach(link => {
-      link.addEventListener('click', () => {
-        if (window.innerWidth <= 700) navLinks.classList.remove('mobile-active');
+
+    // Highlight nav on scroll
+    window.addEventListener('scroll', function() {
+      var scrollPos = window.scrollY + document.querySelector('.navbar').offsetHeight + 10;
+      document.querySelectorAll('.section').forEach(function(section) {
+        var id = section.id;
+        if (
+          scrollPos >= section.offsetTop &&
+          scrollPos < section.offsetTop + section.offsetHeight
+        ) {
+          document.querySelectorAll('.nav-link').forEach(function(link) {
+            if (link.getAttribute('href') === '#' + id) {
+              link.classList.add('active');
+            } else {
+              link.classList.remove('active');
+            }
+          });
+        }
       });
     });
   </script>
