@@ -134,7 +134,12 @@ try {
                                         <td><?= htmlspecialchars($category['Category_ID']) ?></td>
                                         <td><?= htmlspecialchars($category['Category_Name']) ?></td>
                                         <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" 
+                                               class="action-btn edit-category-btn"
+                                               data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>"
+                                               data-category-name="<?= htmlspecialchars($category['Category_Name']) ?>">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
                                             <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
                                         </td>
@@ -167,6 +172,7 @@ try {
     <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <form id="addCategoryForm" class="modal-content" action="ajax/add_category.php" method="POST">
+      <input type="hidden" id="edit_category_id" name="category_id" value="">
       <div class="modal-header">
         <h5 class="modal-title" id="addCategoryModalLabel">Add Category</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -184,6 +190,7 @@ try {
     </form>
   </div>
 </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -226,6 +233,28 @@ document.getElementById('addCategoryForm').addEventListener('submit', function(e
         });
     });
 });
+
+document.querySelectorAll('.edit-category-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('category_name').value = this.dataset.categoryName;
+        document.getElementById('edit_category_id').value = this.dataset.categoryId;
+        document.getElementById('addCategoryModalLabel').innerText = 'Edit Category';
+        document.querySelector('#addCategoryForm button[type="submit"]').innerText = 'Update Category';
+        var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal'));
+        modal.show();
+    });
+});
+
+// Reset modal on close
+document.getElementById('addCategoryModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('addCategoryModalLabel').innerText = 'Add Category';
+    document.querySelector('#addCategoryForm button[type="submit"]').innerText = 'Add Category';
+    document.getElementById('addCategoryForm').reset();
+    document.getElementById('edit_category_id').value = '';
+});
+
+
 </script>
 </body>
 </html>
