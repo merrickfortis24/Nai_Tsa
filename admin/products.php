@@ -118,12 +118,6 @@ try {
                                 <span>Categories</span>
                             </a>
                         </li>
-                        <li class="nav-item mt-4">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-gear"></i>
-                                <span>Settings</span>
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">
                                 <i class="bi bi-box-arrow-right"></i>

@@ -85,12 +85,6 @@ try {
                                 <span>Categories</span>
                             </a>
                         </li>
-                        <li class="nav-item mt-4">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-gear"></i>
-                                <span>Settings</span>
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">
                                 <i class="bi bi-box-arrow-right"></i>
@@ -134,9 +128,17 @@ try {
                                         <td><?= htmlspecialchars($category['Category_ID']) ?></td>
                                         <td><?= htmlspecialchars($category['Category_Name']) ?></td>
                                         <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
+                                            <a href="#" 
+                                               class="action-btn edit-category-btn"
+                                               data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>"
+                                               data-category-name="<?= htmlspecialchars($category['Category_Name']) ?>">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="#" 
+                                               class="action-btn delete-category-btn"
+                                               data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -167,6 +169,7 @@ try {
     <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <form id="addCategoryForm" class="modal-content" action="ajax/add_category.php" method="POST">
+      <input type="hidden" id="edit_category_id" name="category_id" value="">
       <div class="modal-header">
         <h5 class="modal-title" id="addCategoryModalLabel">Add Category</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -184,6 +187,7 @@ try {
     </form>
   </div>
 </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -226,6 +230,65 @@ document.getElementById('addCategoryForm').addEventListener('submit', function(e
         });
     });
 });
+
+document.querySelectorAll('.edit-category-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('category_name').value = this.dataset.categoryName;
+        document.getElementById('edit_category_id').value = this.dataset.categoryId;
+        document.getElementById('addCategoryModalLabel').innerText = 'Edit Category';
+        document.querySelector('#addCategoryForm button[type="submit"]').innerText = 'Update Category';
+        var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal'));
+        modal.show();
+    });
+});
+
+document.querySelectorAll('.delete-category-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const categoryId = this.dataset.categoryId;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "This will permanently delete the category.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('ajax/delete_category.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'category_id=' + encodeURIComponent(categoryId)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Deleted!', data.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire('Error', 'Network error: ' + error.message, 'error');
+                });
+            }
+        });
+    });
+});
+
+// Reset modal on close
+document.getElementById('addCategoryModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('addCategoryModalLabel').innerText = 'Add Category';
+    document.querySelector('#addCategoryForm button[type="submit"]').innerText = 'Add Category';
+    document.getElementById('addCategoryForm').reset();
+    document.getElementById('edit_category_id').value = '';
+});
+
+
 </script>
 </body>
 </html>

@@ -151,4 +151,25 @@ class database{
             return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
         }
     }
+
+    function deleteCategory($category_id) {
+        $con = $this->opencon();
+        try {
+            $stmt = $con->prepare("DELETE FROM category WHERE Category_ID = ?");
+            $stmt->execute([$category_id]);
+            return ['success' => true, 'message' => 'Category deleted successfully!'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
+        }
+    }
+
+    function searchAdmin($keyword) {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT * FROM Admin WHERE Admin_Name LIKE ? OR Admin_Email LIKE ? ORDER BY Created_At DESC");
+        $search = '%' . $keyword . '%';
+        $stmt->execute([$search, $search]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
 }
