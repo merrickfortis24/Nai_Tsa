@@ -6,15 +6,48 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
-$db = new database();
-
+// Fetch all products
+$products = [];
 $error = '';
 try {
-    $products = $db->getAllProducts();
-    $categories_list = $db->getAllCategories();
-    $prices_list = $db->getAllPrices();
+    $db = new database();
+    $conn = $db->opencon();
+    $stmt = $conn->prepare("
+        SELECT 
+            p.*, 
+            pp.Price_Amount, 
+            c.Category_Name, 
+            a.Admin_Name
+        FROM product p
+        LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+        LEFT JOIN category c ON p.Category_ID = c.Category_ID
+        LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
+        ORDER BY p.Created_at DESC
+    ");
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
+}
+
+// Fetch all categories for the dropdown
+$categories_list = [];
+try {
+    $stmt = $conn->prepare("SELECT Category_ID, Category_Name FROM category ORDER BY Category_Name ASC");
+    $stmt->execute();
+    $categories_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Optionally handle error
+}
+
+// Fetch all prices for the dropdown
+$prices_list = [];
+try {
+    $stmt = $conn->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
+    $stmt->execute();
+    $prices_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Optionally handle error
 }
 ?>
 <!DOCTYPE html>
@@ -113,18 +146,14 @@ try {
                             <i class="bi bi-search"></i>
                             <input type="text" class="form-control" placeholder="Search products...">
                         </div>
-                        <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-primary d-flex align-items-center px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                                <i class="bi bi-plus-lg me-2"></i> Add Product
-                            </button>
-                            <button class="btn btn-primary d-flex align-items-center px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#addPriceModal">
-                                <i class="bi bi-plus-lg me-2"></i> Add Price
-                            </button>
-                        </div>
+                        <button class="btn btn-primary d-flex align-items-center me-2" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                            <i class="bi bi-plus-lg me-2"></i> Add Product
+                        </button>
+                        <button class="btn btn-outline-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                            <i class="bi bi-plus-lg me-2"></i> Add Price
+                        </button>
                     </div>
-                    
                 </div>
-
                 <!-- Products List -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -143,6 +172,7 @@ try {
                         <?php if (!empty($error)): ?>
                             <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
                         <?php endif; ?>
+
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -150,9 +180,9 @@ try {
                                         <th>Image</th>
                                         <th>Product Name</th>
                                         <th>Description</th>
-                                        <th>Admin Name</th>
                                         <th>Created At</th>
                                         <th>Updated At</th>
+                                        <th>Admin Name</th>
                                         <th>Category</th>
                                         <th>Price</th>
                                         <th>Actions</th>
@@ -170,20 +200,22 @@ try {
                                         </td>
                                         <td><?= htmlspecialchars($product['Product_Name']) ?></td>
                                         <td><?= htmlspecialchars($product['Product_desc']) ?></td>
-                                        <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
                                         <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
                                         <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
+                                        <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
                                         <td><?= htmlspecialchars($product['Category_Name']) ?></td>
                                         <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
                                         <td>
                                             <a href="#" 
                                                class="action-btn edit-product-btn"
-                                               data-product-id="<?= $product['Product_ID'] ?>"
+                                               data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>"
                                                data-product-name="<?= htmlspecialchars($product['Product_Name']) ?>"
                                                data-product-desc="<?= htmlspecialchars($product['Product_desc']) ?>"
-                                               data-product-image="<?= htmlspecialchars($product['Product_Image']) ?>"
-                                               data-category-id="<?= $product['Category_ID'] ?>"
-                                               data-price-id="<?= $product['Price_ID'] ?>"
+                                               data-category-id="<?= htmlspecialchars($product['Category_ID']) ?>"
+                                               data-price-id="<?= htmlspecialchars($product['Price_ID']) ?>"
+                                               data-image="<?= htmlspecialchars($product['Product_Image']) ?>"
+                                               data-effective-from="<?= htmlspecialchars($product['Effective_From'] ?? '') ?>"
+                                               data-effective-to="<?= htmlspecialchars($product['Effective_To'] ?? '') ?>"
                                             >
                                                 <i class="bi bi-pencil"></i>
                                             </a>
@@ -259,7 +291,8 @@ try {
                 <?php endforeach; ?>
               </select>
             </div>
-            <!-- Add more fields as needed -->
+
+            <input type="hidden" id="product_id" name="product_id" value="">
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -280,7 +313,7 @@ try {
           <div class="modal-body">
             <div class="mb-3">
               <label for="price_amount" class="form-label">Price Amount</label>
-              <input type="number" class="form-control" id="price_amount" name="price_amount" step="0.01" required>
+              <input type="text" pattern="^\d+(\.\d{1,2})?$" class="form-control" id="price_amount" name="price_amount" required>
             </div>
             <div class="mb-3">
               <label for="effective_from" class="form-label">Effective From</label>
@@ -303,123 +336,115 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Close alerts after 5 seconds
-        setTimeout(() => {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
-
-        document.getElementById('addProductForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            var form = this;
-            var formData = new FormData(form);
-
-            fetch('ajax/add_product.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Product Added',
-                        text: data.message
-                    }).then(() => {
-                        // Hide modal and reload page to show new product
-                        var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
-                        modal.hide();
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message
-                    });
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'An error occurred while adding the product.'
-                });
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    // Close alerts after 5 seconds
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
         });
+    }, 5000);
 
-        document.getElementById('addPriceForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            var form = this;
-            var formData = new FormData(form);
-
-            fetch('ajax/add_price.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Price Added',
-                        text: data.message
-                    }).then(() => {
-                        // Hide modal and reload page to show new price
-                        var modal = bootstrap.Modal.getInstance(document.getElementById('addPriceModal'));
-                        modal.hide();
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message
-                    });
-                }
-            })
-            .catch(error => {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'An error occurred while adding the price.'
-                });
-            });
-        });
-
-        document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
+    document.getElementById('addProductForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        // Fill modal fields with product data
-        document.getElementById('product_name').value = this.dataset.productName;
-        document.getElementById('product_desc').value = this.dataset.productDesc;
-        document.getElementById('category_id').value = this.dataset.categoryId;
-        document.getElementById('price_id').value = this.dataset.priceId;
-        // Optionally handle image preview if needed
 
-        // Set a hidden field for Product_ID
-        let hiddenId = document.getElementById('edit_product_id');
-        if (!hiddenId) {
-            hiddenId = document.createElement('input');
-            hiddenId.type = 'hidden';
-            hiddenId.name = 'product_id';
-            hiddenId.id = 'edit_product_id';
-            document.getElementById('addProductForm').appendChild(hiddenId);
-        }
-        hiddenId.value = this.dataset.productId;
+        var form = this;
+        var formData = new FormData(form);
 
-        // Change modal title and button text for editing
-        document.getElementById('addProductModalLabel').innerText = 'Edit Product';
-        document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
+        fetch('ajax/add_product.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Product Added',
+                    text: data.message
+                }).then(() => {
+                    // Hide modal and reload page to show new product
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+                    modal.hide();
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while adding the product.'
+            });
+        });
+    });
 
-        // Show the modal
-        var modal = new bootstrap.Modal(document.getElementById('addProductModal'));
-        modal.show();
+    document.getElementById('addPriceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        var formData = new FormData(form);
+
+        fetch('ajax/add_price.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Price Added',
+                    text: data.message
+                }).then(() => {
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addPriceModal'));
+                    modal.hide();
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while adding the price.'
+            });
+        });
+    });
+
+    document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('product_name').value = this.dataset.productName;
+            document.getElementById('product_desc').value = this.dataset.productDesc;
+            document.getElementById('category_id').value = this.dataset.categoryId;
+            document.getElementById('price_id').value = this.dataset.priceId;
+            document.getElementById('product_id').value = this.dataset.productId;
+            document.getElementById('addProductModalLabel').innerText = 'Edit Product';
+            document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
+            var modalEl = document.getElementById('addProductModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        });
+    });
+
+    document.getElementById('addProductModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('addProductModalLabel').innerText = 'Add Product';
+        document.querySelector('#addProductForm button[type="submit"]').innerText = 'Add Product';
+        document.getElementById('addProductForm').reset();
+        document.getElementById('product_id').value = '';
     });
 });
     </script>

@@ -5,14 +5,32 @@ class database{
     function opencon() {
  
         return new PDO(
-            'mysql:host=localhost; dbname=naitsa',
-            username: 'root',
-            password: '');
-   
- 
-        }
+            'mysql:host=localhost;dbname=naitsa',
+            'root',
+            ''
+        );
+    }
 
-        //functions here
+    function addProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '') {
+        $con = $this->opencon();
+        try {
+            $stmt = $con->prepare("INSERT INTO product 
+                (Product_Name, Product_desc, Product_Image, Category_ID, Price_ID, Created_at, Updated_at, Admin_ID)
+                VALUES (:name, :desc, :image, :category, :price, NOW(), NOW(), :admin)");
+            $stmt->execute([
+                ':name' => $product_name,
+                ':desc' => $product_desc,
+                ':image' => $image_name,
+                ':category' => $category_id,
+                ':price' => $price_id,
+                ':admin' => $admin_id
+            ]);
+            return ['success' => true, 'message' => 'Product added successfully!'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
+        }
+    }
+
     // Fetch all products with joins
     function getAllProducts() {
         $con = $this->opencon();
@@ -47,9 +65,21 @@ class database{
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     function saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '', $product_id = null) {
         $con = $this->opencon();
-    
+
+        // Validate foreign keys
+        if (!$this->isValidId($con, 'category', $category_id)) {
+            return ['success' => false, 'message' => 'Invalid Category ID'];
+        }
+        if (!$this->isValidId($con, 'product_price', $price_id)) {
+            return ['success' => false, 'message' => 'Invalid Price ID'];
+        }
+        if (!$this->isValidId($con, 'admin', $admin_id)) {
+            return ['success' => false, 'message' => 'Invalid Admin ID'];
+        }
+
         try {
             if (!empty($product_id)) {
                 // UPDATE existing product
@@ -92,7 +122,22 @@ class database{
                 return ['success' => true, 'message' => 'Product added successfully!'];
             }
         } catch (PDOException $e) {
+            error_log("Product Save Error: " . $e->getMessage());
             return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
         }
+    }
+
+    // Helper function to validate foreign keys
+    private function isValidId($con, $table, $id) {
+        // Map table names to their primary key fields
+        $primaryKeys = [
+            'category' => 'Category_ID',
+            'product_price' => 'Price_ID',
+            'admin' => 'Admin_ID'
+        ];
+        $idField = $primaryKeys[$table] ?? ($table . '_ID');
+        $stmt = $con->prepare("SELECT 1 FROM $table WHERE $idField = ?");
+        $stmt->execute([$id]);
+        return (bool)$stmt->fetch();
     }
 }
