@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $category_id = $_POST['category_id'] ?? null;
     $price_id = $_POST['price_id'] ?? null;
     $admin_id = $_SESSION['admin_id'] ?? null;
+    $product_id = $_POST['product_id'] ?? null;
 
     // Validate required fields
     if (empty($product_name) || empty($category_id) || empty($price_id) || empty($admin_id)) {
@@ -19,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Handle image upload
+    // Handle image upload (optional, only if a new image is uploaded)
     $image_name = '';
     if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
         $ext = pathinfo($_FILES['product_image']['name'], PATHINFO_EXTENSION);
@@ -36,28 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    try {
-        $db = new database();
-        $conn = $db->opencon();
-        $stmt = $conn->prepare("INSERT INTO product 
-            (Product_Name, Product_desc, Product_Image, Category_ID, Price_ID, Created_at, Updated_at, Admin_ID)
-            VALUES (:name, :desc, :image, :category, :price, NOW(), NOW(), :admin)");
-        $stmt->execute([
-            ':name' => $product_name,
-            ':desc' => $product_desc,
-            ':image' => $image_name,
-            ':category' => $category_id,
-            ':price' => $price_id,
-            ':admin' => $admin_id
-        ]);
-        $response['success'] = true;
-        $response['message'] = 'Product added successfully!';
-    } catch (PDOException $e) {
-        $response['message'] = 'Database Error: ' . $e->getMessage();
-    }
+    $db = new database();
+    $result = $db->saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id);
+    echo json_encode($result);
+    exit;
 } else {
     $response['message'] = 'Invalid request method.';
+    echo json_encode($response);
+    exit;
 }
-
-header('Content-Type: application/json');
-echo json_encode($response);

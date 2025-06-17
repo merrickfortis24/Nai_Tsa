@@ -6,40 +6,15 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
-// Fetch all products
-$products = [];
+$db = new database();
+
 $error = '';
 try {
-    $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT p.*, pp.Price_Amount
-FROM product p
-LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
-ORDER BY p.Created_at DESC");
-    $stmt->execute();
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $products = $db->getAllProducts();
+    $categories_list = $db->getAllCategories();
+    $prices_list = $db->getAllPrices();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
-}
-
-// Fetch all categories for the dropdown
-$categories_list = [];
-try {
-    $stmt = $conn->prepare("SELECT Category_ID, Category_Name FROM category ORDER BY Category_Name ASC");
-    $stmt->execute();
-    $categories_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Optionally handle error
-}
-
-// Fetch all prices for the dropdown
-$prices_list = [];
-try {
-    $stmt = $conn->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
-    $stmt->execute();
-    $prices_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // Optionally handle error
 }
 ?>
 <!DOCTYPE html>
@@ -138,42 +113,18 @@ try {
                             <i class="bi bi-search"></i>
                             <input type="text" class="form-control" placeholder="Search products...">
                         </div>
-                        <button class="btn btn-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                            <i class="bi bi-plus-lg me-2"></i> Add Product
-                        </button>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-primary d-flex align-items-center px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                                <i class="bi bi-plus-lg me-2"></i> Add Product
+                            </button>
+                            <button class="btn btn-primary d-flex align-items-center px-4 rounded-pill" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                                <i class="bi bi-plus-lg me-2"></i> Add Price
+                            </button>
+                        </div>
                     </div>
+                    
                 </div>
-                <!-- Stats Cards for Products -->
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-box-seam"></i>
-                            <div class="number"><?= count($products) ?></div>
-                            <div class="label">Total Products</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-check-circle"></i>
-                            <div class="number">95</div>
-                            <div class="label">In Stock</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-exclamation-circle"></i>
-                            <div class="number">25</div>
-                            <div class="label">Low Stock</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-x-circle"></i>
-                            <div class="number">5</div>
-                            <div class="label">Out of Stock</div>
-                        </div>
-                    </div>
-                </div>
+
                 <!-- Products List -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -199,11 +150,11 @@ try {
                                         <th>Image</th>
                                         <th>Product Name</th>
                                         <th>Description</th>
+                                        <th>Admin Name</th>
                                         <th>Created At</th>
                                         <th>Updated At</th>
-                                        <th>Admin ID</th>
-                                        <th>Category ID</th>
-                                        <th>Price ID</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -219,13 +170,23 @@ try {
                                         </td>
                                         <td><?= htmlspecialchars($product['Product_Name']) ?></td>
                                         <td><?= htmlspecialchars($product['Product_desc']) ?></td>
-                                        <td><?= htmlspecialchars($product['Created_at']) ?></td>
-                                        <td><?= htmlspecialchars($product['Updated_at']) ?></td>
-                                        <td><?= htmlspecialchars($product['Admin_ID']) ?></td>
-                                        <td><?= htmlspecialchars($product['Category_ID']) ?></td>
-                                        <td><?= htmlspecialchars($product['Price_ID']) ?></td>
+                                        <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
+                                        <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
+                                        <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
+                                        <td><?= htmlspecialchars($product['Category_Name']) ?></td>
+                                        <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
                                         <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" 
+                                               class="action-btn edit-product-btn"
+                                               data-product-id="<?= $product['Product_ID'] ?>"
+                                               data-product-name="<?= htmlspecialchars($product['Product_Name']) ?>"
+                                               data-product-desc="<?= htmlspecialchars($product['Product_desc']) ?>"
+                                               data-product-image="<?= htmlspecialchars($product['Product_Image']) ?>"
+                                               data-category-id="<?= $product['Category_ID'] ?>"
+                                               data-price-id="<?= $product['Price_ID'] ?>"
+                                            >
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
                                             <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
                                         </td>
@@ -308,6 +269,36 @@ try {
       </div>
     </div>
 
+    <!-- Add Price Modal -->
+    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="addPriceForm" action="ajax/add_price.php" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addPriceModalLabel">Add Price</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="price_amount" class="form-label">Price Amount</label>
+              <input type="number" class="form-control" id="price_amount" name="price_amount" step="0.01" required>
+            </div>
+            <div class="mb-3">
+              <label for="effective_from" class="form-label">Effective From</label>
+              <input type="date" class="form-control" id="effective_from" name="effective_from" required>
+            </div>
+            <div class="mb-3">
+              <label for="effective_to" class="form-label">Effective To</label>
+              <input type="date" class="form-control" id="effective_to" name="effective_to">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Price</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -360,6 +351,77 @@ try {
                 });
             });
         });
+
+        document.getElementById('addPriceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var form = this;
+            var formData = new FormData(form);
+
+            fetch('ajax/add_price.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Price Added',
+                        text: data.message
+                    }).then(() => {
+                        // Hide modal and reload page to show new price
+                        var modal = bootstrap.Modal.getInstance(document.getElementById('addPriceModal'));
+                        modal.hide();
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred while adding the price.'
+                });
+            });
+        });
+
+        document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Fill modal fields with product data
+        document.getElementById('product_name').value = this.dataset.productName;
+        document.getElementById('product_desc').value = this.dataset.productDesc;
+        document.getElementById('category_id').value = this.dataset.categoryId;
+        document.getElementById('price_id').value = this.dataset.priceId;
+        // Optionally handle image preview if needed
+
+        // Set a hidden field for Product_ID
+        let hiddenId = document.getElementById('edit_product_id');
+        if (!hiddenId) {
+            hiddenId = document.createElement('input');
+            hiddenId.type = 'hidden';
+            hiddenId.name = 'product_id';
+            hiddenId.id = 'edit_product_id';
+            document.getElementById('addProductForm').appendChild(hiddenId);
+        }
+        hiddenId.value = this.dataset.productId;
+
+        // Change modal title and button text for editing
+        document.getElementById('addProductModalLabel').innerText = 'Edit Product';
+        document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
+
+        // Show the modal
+        var modal = new bootstrap.Modal(document.getElementById('addProductModal'));
+        modal.show();
+    });
+});
     </script>
 </body>
 </html>
