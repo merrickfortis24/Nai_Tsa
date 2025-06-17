@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 16, 2025 at 01:53 PM
+-- Generation Time: Jun 17, 2025 at 02:15 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -43,7 +43,7 @@ CREATE TABLE `admin` (
 --
 
 INSERT INTO `admin` (`Admin_ID`, `Admin_Name`, `Admin_Password`, `Admin_Email`, `Admin_Role`, `Created_At`, `Updated_At`, `Status`) VALUES
-(1, 'John Merrick Faigmani Fortis', '$2y$10$Ey4Qx6poPd4ETOc8tMzJjehcenPUx03UkE4T1Dr.4l4hLgkOyaZKG', 'fortismerrick@gmail.com', 'Super Admin', '2025-06-16 19:04:56', '2025-06-16 19:40:58', 'Active');
+(1, 'John Merrick Fortis', '$2y$10$eYlTLYFOVdkRFrzCZUMzvOp4yx6xA1JkxkVCCcH6mVcHRG0u5XAN6', 'fortismerrick@gmail.com', 'Super Admin', '2025-06-16 19:04:56', '2025-06-16 20:57:16', 'Active');
 
 -- --------------------------------------------------------
 
@@ -55,6 +55,16 @@ CREATE TABLE `category` (
   `Category_ID` int(11) NOT NULL,
   `Category_Name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `category`
+--
+
+INSERT INTO `category` (`Category_ID`, `Category_Name`) VALUES
+(2, 'Coffee'),
+(3, 'Dessert'),
+(4, 'Juice'),
+(1, 'Snacks');
 
 -- --------------------------------------------------------
 
@@ -120,12 +130,25 @@ CREATE TABLE `product` (
   `Product_ID` int(11) NOT NULL,
   `Product_Name` varchar(255) NOT NULL,
   `Product_desc` text DEFAULT NULL,
+  `Product_Image` varchar(255) DEFAULT NULL,
   `Created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `Updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
   `Admin_ID` int(11) NOT NULL,
   `Category_ID` int(11) NOT NULL,
   `Price_ID` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `product`
+--
+
+INSERT INTO `product` (`Product_ID`, `Product_Name`, `Product_desc`, `Product_Image`, `Created_at`, `Updated_at`, `Admin_ID`, `Category_ID`, `Price_ID`) VALUES
+(5, 'Kape', 'Barako', 'prod_6850e473acda40.60150267.png', '2025-06-17 11:29:45', '2025-06-17 11:44:27', 1, 2, 2),
+(10, 'Cake', 'Matamis', 'prod_6850e8dc40c311.17112224.jpg', '2025-06-17 12:02:36', '2025-06-17 12:02:36', 1, 2, 2),
+(11, 'Sopas', 'Masabaw', 'prod_6850f0d2b41952.03284208.png', '2025-06-17 12:36:34', '2025-06-17 12:36:34', 1, 4, 2),
+(12, 'Pizza', 'Creamy Pizza', 'prod_6850f1c8eddb47.39331295.jpg', '2025-06-17 12:40:40', '2025-06-17 12:40:40', 1, 1, 2),
+(13, 'Ice Cream', 'Cold', 'prod_6850f2f3e164f2.47345723.jpg', '2025-06-17 12:45:39', '2025-06-17 12:45:39', 1, 3, 2),
+(14, 'ticket', 'hthrt', 'prod_6850ff2cefdbf7.13372498.jpg', '2025-06-17 13:37:48', '2025-06-17 14:15:00', 1, 3, 1);
 
 -- --------------------------------------------------------
 
@@ -135,9 +158,20 @@ CREATE TABLE `product` (
 
 CREATE TABLE `product_price` (
   `Price_ID` int(11) NOT NULL,
+  `Price_Amount` decimal(10,2) NOT NULL,
   `Effective_From` date NOT NULL,
   `Effective_To` date DEFAULT NULL
 ) ;
+
+--
+-- Dumping data for table `product_price`
+--
+
+INSERT INTO `product_price` (`Price_ID`, `Price_Amount`, `Effective_From`, `Effective_To`) VALUES
+(1, 199.99, '2024-06-01', NULL),
+(2, 150.00, '2025-06-17', '2025-07-17'),
+(3, 120.00, '2025-06-17', '2025-09-17'),
+(4, 34.00, '2025-06-17', '2025-07-08');
 
 -- --------------------------------------------------------
 
@@ -237,7 +271,7 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `category`
 --
 ALTER TABLE `category`
-  MODIFY `Category_ID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Category_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `customer`
@@ -267,7 +301,7 @@ ALTER TABLE `payment`
 -- AUTO_INCREMENT for table `product`
 --
 ALTER TABLE `product`
-  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `product_price`
