@@ -219,9 +219,12 @@ try {
                                             >
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
-                                        </td>
+                                            <a href="#" 
+                                               class="action-btn delete-product-btn"
+                                               data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                            </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -445,6 +448,43 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#addProductForm button[type="submit"]').innerText = 'Add Product';
         document.getElementById('addProductForm').reset();
         document.getElementById('product_id').value = '';
+    });
+
+    document.querySelectorAll('.delete-product-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const productId = this.dataset.productId;
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will permanently delete the product.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('ajax/delete_product.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'product_id=' + encodeURIComponent(productId)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Deleted!', data.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire('Error', 'Network error: ' + error.message, 'error');
+                    });
+                }
+            });
+        });
     });
 });
     </script>

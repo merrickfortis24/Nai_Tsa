@@ -140,4 +140,15 @@ class database{
         $stmt->execute([$id]);
         return (bool)$stmt->fetch();
     }
+
+    function deleteProduct($product_id) {
+        $con = $this->opencon();
+        try {
+            $stmt = $con->prepare("DELETE FROM product WHERE Product_ID = ?");
+            $stmt->execute([$product_id]);
+            return ['success' => true, 'message' => 'Product deleted successfully!'];
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
+        }
+    }
 }
