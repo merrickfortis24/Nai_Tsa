@@ -1,9 +1,53 @@
 <?php
-
 session_start();
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit();
+}
+require_once('classes/database.php');
+
+// Fetch all products
+$products = [];
+$error = '';
+try {
+    $db = new database();
+    $conn = $db->opencon();
+    $stmt = $conn->prepare("
+        SELECT 
+            p.*, 
+            pp.Price_Amount, 
+            c.Category_Name, 
+            a.Admin_Name
+        FROM product p
+        LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+        LEFT JOIN category c ON p.Category_ID = c.Category_ID
+        LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
+        ORDER BY p.Created_at DESC
+    ");
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $error = "Database Error: " . $e->getMessage();
+}
+
+// Fetch all categories for the dropdown
+$categories_list = [];
+try {
+    $stmt = $conn->prepare("SELECT Category_ID, Category_Name FROM category ORDER BY Category_Name ASC");
+    $stmt->execute();
+    $categories_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Optionally handle error
+}
+
+// Fetch all prices for the dropdown
+$prices_list = [];
+try {
+    $stmt = $conn->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
+    $stmt->execute();
+    $prices_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Optionally handle error
 }
 ?>
 <!DOCTYPE html>
@@ -18,7 +62,6 @@ if (!isset($_SESSION['admin_id'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Custom Admin CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
-
 </head>
 <body class="dashboard-page">
     <div class="container-fluid">
@@ -40,25 +83,25 @@ if (!isset($_SESSION['admin_id'])) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="admins.php">
                                 <i class="bi bi-people-fill"></i>
                                 <span>Admins</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="staff.php">
                                 <i class="bi bi-person-badge"></i>
                                 <span>Staff</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
                             </a>
@@ -70,7 +113,7 @@ if (!isset($_SESSION['admin_id'])) {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">
+                            <a class="nav-link" href="categories.php">
                                 <i class="bi bi-tags"></i>
                                 <span>Categories</span>
                             </a>
@@ -103,40 +146,12 @@ if (!isset($_SESSION['admin_id'])) {
                             <i class="bi bi-search"></i>
                             <input type="text" class="form-control" placeholder="Search products...">
                         </div>
-                        <button class="btn btn-primary d-flex align-items-center">
+                        <button class="btn btn-primary d-flex align-items-center me-2" data-bs-toggle="modal" data-bs-target="#addProductModal">
                             <i class="bi bi-plus-lg me-2"></i> Add Product
                         </button>
-                    </div>
-                </div>
-                <!-- Stats Cards for Products -->
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-box-seam"></i>
-                            <div class="number">120</div>
-                            <div class="label">Total Products</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-check-circle"></i>
-                            <div class="number">95</div>
-                            <div class="label">In Stock</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-exclamation-circle"></i>
-                            <div class="number">25</div>
-                            <div class="label">Low Stock</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <i class="bi bi-x-circle"></i>
-                            <div class="number">5</div>
-                            <div class="label">Out of Stock</div>
-                        </div>
+                        <button class="btn btn-outline-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                            <i class="bi bi-plus-lg me-2"></i> Add Price
+                        </button>
                     </div>
                 </div>
                 <!-- Products List -->
@@ -146,114 +161,69 @@ if (!isset($_SESSION['admin_id'])) {
                         <div>
                             <select class="form-select form-select-sm">
                                 <option>All Categories</option>
-                                <option>Electronics</option>
-                                <option>Clothing</option>
-                                <option>Books</option>
+                                <!-- You can populate categories here if needed -->
+                                <?php foreach ($categories_list as $category): ?>
+                                    <option value="<?= htmlspecialchars($category['Category_ID']) ?>"><?= htmlspecialchars($category['Category_Name']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
                     <div class="card-body">
+                        <?php if (!empty($error)): ?>
+                            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+                        <?php endif; ?>
+
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Product</th>
+                                        <th>Image</th>
+                                        <th>Product Name</th>
+                                        <th>Description</th>
+                                        <th>Created At</th>
+                                        <th>Updated At</th>
+                                        <th>Admin Name</th>
                                         <th>Category</th>
                                         <th>Price</th>
-                                        <th>Stock</th>
-                                        <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php foreach ($products as $product): ?>
                                     <tr>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="me-3" style="width: 45px; height: 45px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="bi bi-phone" style="font-size: 1.2rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-bold">Smartphone X</div>
-                                                    <div class="text-muted small">ID: P001</div>
-                                                </div>
-                                            </div>
+                                            <?php if (!empty($product['Product_Image'])): ?>
+                                                <img src="uploads/products/<?= htmlspecialchars($product['Product_Image']) ?>" alt="Product Image" style="width:45px; height:45px; object-fit:cover; border-radius:8px;">
+                                            <?php else: ?>
+                                                <span class="text-muted">No image</span>
+                                            <?php endif; ?>
                                         </td>
-                                        <td>Electronics</td>
-                                        <td>$699.99</td>
-                                        <td>45</td>
-                                        <td><span class="status-badge status-active">In Stock</span></td>
+                                        <td><?= htmlspecialchars($product['Product_Name']) ?></td>
+                                        <td><?= htmlspecialchars($product['Product_desc']) ?></td>
+                                        <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
+                                        <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
+                                        <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
+                                        <td><?= htmlspecialchars($product['Category_Name']) ?></td>
+                                        <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
                                         <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
+                                            <a href="#" 
+                                               class="action-btn edit-product-btn"
+                                               data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>"
+                                               data-product-name="<?= htmlspecialchars($product['Product_Name']) ?>"
+                                               data-product-desc="<?= htmlspecialchars($product['Product_desc']) ?>"
+                                               data-category-id="<?= htmlspecialchars($product['Category_ID']) ?>"
+                                               data-price-id="<?= htmlspecialchars($product['Price_ID']) ?>"
+                                               data-image="<?= htmlspecialchars($product['Product_Image']) ?>"
+                                               data-effective-from="<?= htmlspecialchars($product['Effective_From'] ?? '') ?>"
+                                               data-effective-to="<?= htmlspecialchars($product['Effective_To'] ?? '') ?>"
+                                            >
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
                                             <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="me-3" style="width: 45px; height: 45px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="bi bi-laptop" style="font-size: 1.2rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-bold">Laptop Pro</div>
-                                                    <div class="text-muted small">ID: P002</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>Electronics</td>
-                                        <td>$1299.99</td>
-                                        <td>22</td>
-                                        <td><span class="status-badge status-active">In Stock</span></td>
-                                        <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="me-3" style="width: 45px; height: 45px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="bi bi-tshirt" style="font-size: 1.2rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-bold">Cotton T-Shirt</div>
-                                                    <div class="text-muted small">ID: P003</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>Clothing</td>
-                                        <td>$19.99</td>
-                                        <td>3</td>
-                                        <td><span class="status-badge status-inactive">Low Stock</span></td>
-                                        <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="me-3" style="width: 45px; height: 45px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="bi bi-book" style="font-size: 1.2rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <div class="fw-bold">The Great Novel</div>
-                                                    <div class="text-muted small">ID: P004</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>Books</td>
-                                        <td>$24.99</td>
-                                        <td>0</td>
-                                        <td><span class="status-badge status-inactive">Out of Stock</span></td>
-                                        <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
-                                        </td>
-                                    </tr>
+                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -277,17 +247,206 @@ if (!isset($_SESSION['admin_id'])) {
             </div>
         </div>
     </div>
+
+    <!-- Add Product Modal -->
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="addProductForm" action="add_product.php" method="POST" enctype="multipart/form-data">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addProductModalLabel">Add Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="product_name" class="form-label">Product Name</label>
+              <input type="text" class="form-control" id="product_name" name="product_name" required>
+            </div>
+            <div class="mb-3">
+              <label for="product_desc" class="form-label">Description</label>
+              <textarea class="form-control" id="product_desc" name="product_desc" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="product_image" class="form-label">Product Image</label>
+              <input type="file" class="form-control" id="product_image" name="product_image" accept="image/*">
+            </div>
+            <div class="mb-3">
+              <label for="category_id" class="form-label">Category</label>
+              <select class="form-select" id="category_id" name="category_id" required>
+                <option value="">Select Category</option>
+                <?php foreach ($categories_list as $cat): ?>
+                  <option value="<?= htmlspecialchars($cat['Category_ID']) ?>">
+                    <?= htmlspecialchars($cat['Category_Name']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="price_id" class="form-label">Price</label>
+              <select class="form-select" id="price_id" name="price_id" required>
+                <option value="">Select Price</option>
+                <?php foreach ($prices_list as $price): ?>
+                  <option value="<?= htmlspecialchars($price['Price_ID']) ?>">
+                    <?= htmlspecialchars($price['Price_Amount']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <input type="hidden" id="product_id" name="product_id" value="">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Price Modal -->
+    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="addPriceForm" action="ajax/add_price.php" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addPriceModalLabel">Add Price</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="price_amount" class="form-label">Price Amount</label>
+              <input type="text" pattern="^\d+(\.\d{1,2})?$" class="form-control" id="price_amount" name="price_amount" required>
+            </div>
+            <div class="mb-3">
+              <label for="effective_from" class="form-label">Effective From</label>
+              <input type="date" class="form-control" id="effective_from" name="effective_from" required>
+            </div>
+            <div class="mb-3">
+              <label for="effective_to" class="form-label">Effective To</label>
+              <input type="date" class="form-control" id="effective_to" name="effective_to">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Price</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Close alerts after 5 seconds
-        setTimeout(() => {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
+document.addEventListener('DOMContentLoaded', function() {
+    // Close alerts after 5 seconds
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+
+    document.getElementById('addProductForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var form = this;
+        var formData = new FormData(form);
+
+        fetch('ajax/add_product.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Product Added',
+                    text: data.message
+                }).then(() => {
+                    // Hide modal and reload page to show new product
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+                    modal.hide();
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while adding the product.'
             });
-        }, 5000);
+        });
+    });
+
+    document.getElementById('addPriceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        var formData = new FormData(form);
+
+        fetch('ajax/add_price.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Price Added',
+                    text: data.message
+                }).then(() => {
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('addPriceModal'));
+                    modal.hide();
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.message
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while adding the price.'
+            });
+        });
+    });
+
+    document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('product_name').value = this.dataset.productName;
+            document.getElementById('product_desc').value = this.dataset.productDesc;
+            document.getElementById('category_id').value = this.dataset.categoryId;
+            document.getElementById('price_id').value = this.dataset.priceId;
+            document.getElementById('product_id').value = this.dataset.productId;
+            document.getElementById('addProductModalLabel').innerText = 'Edit Product';
+            document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
+            var modalEl = document.getElementById('addProductModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        });
+    });
+
+    document.getElementById('addProductModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('addProductModalLabel').innerText = 'Add Product';
+        document.querySelector('#addProductForm button[type="submit"]').innerText = 'Add Product';
+        document.getElementById('addProductForm').reset();
+        document.getElementById('product_id').value = '';
+    });
+});
     </script>
 </body>
 </html>
