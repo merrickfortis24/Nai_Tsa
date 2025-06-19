@@ -45,7 +45,6 @@
     </div>
   </nav>
 
-  <!-- Home Section -->
    <!-- Home Section -->
   <section class="section" id="home">
     <div class="section-overlay"></div>
