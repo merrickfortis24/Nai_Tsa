@@ -16,18 +16,28 @@
       --text-dark: #61391D;
       --shadow: 0 4px 20px rgba(255, 178, 122, 0.15);
     }
+    html, body {
+      height: 100%;
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: 'Poppins', sans-serif;
       color: var(--text-dark);
       background: var(--beige);
       min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
     }
     .signup-section {
-      min-height: 90vh;
+      min-height: 100vh;
+      height: 100vh;
+      width: 100vw;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -37,6 +47,7 @@
       position: relative;
       transition: background-image 0.6s cubic-bezier(.77,0,.18,1);
       background-color: var(--beige);
+      overflow: hidden;
     }
     .section-overlay {
       position: absolute;
@@ -133,6 +144,9 @@
         padding: 1.5rem 0.7rem 1.2rem 0.7rem;
         border-radius: 14px;
       }
+      .signup-section {
+        padding: 1.5rem 0;
+      }
     }
   </style>
 </head>
@@ -159,7 +173,7 @@
         </div>
         <button type="submit" class="btn btn-soft-orange">Sign Up</button>
       </form>
-      <a href="#" class="login-link">Already have an account? Sign In</a>
+      <a href="login.html" class="login-link">Already have an account? Sign In</a>
     </div>
   </section>
 
