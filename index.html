@@ -30,8 +30,9 @@
     .main-split-box {
       background: linear-gradient(90deg, var(--white) 70%, var(--tan) 70%);
       border-radius: 36px;
-      margin: 44px auto 0 auto;
-      max-width: 1050px;
+      /* Expand margin here */
+      margin: 70px auto 0 auto; /* was 44px auto 0 auto; */
+      max-width: 1150px; /* from 1050px for more width */
       box-shadow: var(--shadow);
       overflow: hidden;
       position: relative;
@@ -49,7 +50,7 @@
       display: flex;
       align-items: center;
       border-radius: 0 0 30px 30px;
-      margin-top: 18px;
+      margin-top: 28px; /* was 18px, expand nav margin-top */
       position: relative;
       z-index: 10;
       box-shadow: 0 2px 10px 0 rgba(60, 40, 22, 0.06);
@@ -58,8 +59,8 @@
     .nav-logo {
       display: flex;
       align-items: center;
-      margin-left: 0.8rem;
-      margin-right: 1.2rem;
+      margin-left: 1.5rem; /* was 0.8rem, more left margin */
+      margin-right: 2rem;  /* was 1.2rem, more right margin */
     }
     .nav-logo .logo-circle {
       height: 72px;
@@ -86,7 +87,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 1.3rem;
+      gap: 2.2rem; /* was 1.3rem, more spacing between nav links */
     }
     .nav-link-unified {
       color: var(--nav-link-color);
@@ -96,7 +97,7 @@
       background: transparent;
       border: none;
       transition: color 0.17s, background 0.17s;
-      padding: 0.1em 0.7em;
+      padding: 0.1em 1.2em; /* was 0.7em, more horizontal padding */
       letter-spacing: 0.01em;
       border-radius: 6px;
       line-height: 1.8;
@@ -109,27 +110,28 @@
     .nav-right {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
-      margin-right: 0.9rem;
-      margin-left: 1.2rem;
+      gap: 1.5rem; /* was 0.8rem, more gap */
+      margin-right: 2rem; /* was 0.9rem, more right margin */
+      margin-left: 2rem;  /* was 1.2rem, more left margin */
       height: 40px;
     }
     .login-btn, .signup-btn {
       border-radius: 7px;
       font-size: 1rem;
       font-weight: 500;
-      padding: 0.25em 1.1em;
+      padding: 0.25em 1.5em; /* was 1.1em, more horizontal padding */
       border: 2px solid var(--main-brown);
       background: transparent;
       color: var(--main-brown);
       transition: background 0.16s, color 0.16s, border 0.16s;
-      margin-left: 0.15em;
+      margin-left: 0.4em; /* was 0.15em, more space between buttons */
+      cursor: pointer;
     }
     .signup-btn {
       border: none;
       background: var(--accent-orange);
       color: #fff;
-      margin-left: 0.45em;
+      margin-left: 0.85em; /* was 0.45em */
       box-shadow: 0 2px 8px 0 rgba(127,98,68,0.13);
     }
     .login-btn:hover, .login-btn:focus {
@@ -152,7 +154,7 @@
     }
     .hero-left-unified {
       flex: 1.3;
-      padding: 2.3rem 2.1rem 2.3rem 3.1rem;
+      padding: 3.1rem 3rem 3.1rem 4.2rem; /* was 2.3rem 2.1rem 2.3rem 3.1rem */
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -163,14 +165,14 @@
       font-weight: 700;
       color: var(--main-brown);
       line-height: 1.09;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem; /* was 1rem */
       letter-spacing: -0.01em;
     }
     .hero-desc {
       font-size: 1.08rem;
       color: var(--tan);
       font-weight: 500;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2.1rem; /* was 1.5rem */
       line-height: 1.4;
       max-width: 95%;
     }
@@ -181,13 +183,13 @@
       justify-content: center;
       min-width: 220px;
       min-height: 200px;
-      padding: 1.2rem 1.1rem;
+      padding: 2rem 2rem; /* was 1.2rem 1.1rem */
       position: relative;
     }
     .hero-img-rect-wrapper {
       position: relative;
-      width: 355px;
-      height: 390px;
+      width: 385px; /* was 355px */
+      height: 410px; /* was 390px */
       background: #fff;
       border-radius: 18px;
       overflow: hidden;
@@ -231,10 +233,10 @@
       display: flex;
       flex-direction: row;
       width: 100%;
-      max-width: 1050px;
+      max-width: 1150px; /* was 1050px */
       border-radius: 36px;
       box-shadow: 0 6px 40px 0 rgba(60,40,22,0.11);
-      margin: 60px auto;
+      margin: 90px auto; /* was 60px auto, expand vertical margin */
       padding: 0;
       background: #fff;
       overflow: visible;
@@ -246,10 +248,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 3.5rem 3.1rem 3.5rem 3.1rem;
+      padding: 4.5rem 4rem 4.5rem 4rem; /* was 3.5rem 3.1rem ... */
     }
     .menu-title {
-      font-size: 2.7rem;
+      font-size: 2.9rem; /* was 2.7rem */
       font-weight: 700;
       letter-spacing: .08em;
       color: #857466;
@@ -261,7 +263,7 @@
       width: 100%;
       display: flex;
       flex-wrap: wrap;
-      gap: 2.2rem;
+      gap: 3rem; /* was 2.2rem */
       justify-content: center;
       align-items: stretch;
       margin-bottom: 2.5rem;
@@ -273,39 +275,31 @@
       background: #fff9f2;
       border-radius: 18px;
       box-shadow: 0 2px 14px 0 rgba(60, 40, 22, 0.12);
-      padding: 1.4rem 1.5rem 1.1rem 1.5rem;
-      width: 180px;
-      min-width: 150px;
+      padding: 2rem 2rem 1.3rem 2rem; /* was 1.4rem 1.5rem 1.1rem 1.5rem; */
+      width: 200px; /* was 180px */
+      min-width: 170px; /* was 150px */
       text-align: center;
       text-decoration: none;
       color: #857466;
       font-weight: 600;
-      font-size: 1.12rem;
+      font-size: 1.18rem; /* was 1.12rem */
       transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
       cursor: pointer;
       border: 2px solid #fff6f0;
     }
-    .menu-product:hover,
-    .menu-product:focus {
-      background: #fff3e6;
-      box-shadow: 0 8px 32px 0 rgba(255,178,122,0.12);
-      transform: translateY(-4px) scale(1.04);
-      border-color: #7F6244;
-      color: #7F6244;
-    }
     .menu-product img {
       width: 100%;
-      max-width: 110px;
-      height: 110px;
+      max-width: 120px; /* was 110px */
+      height: 120px;    /* was 110px */
       object-fit: cover;
       border-radius: 13px;
-      margin-bottom: 0.85rem;
+      margin-bottom: 1.05rem; /* was 0.85rem */
       box-shadow: 0 2px 12px rgba(185,160,130,0.06);
       background: #f4ece4;
     }
     .menu-product span {
-      margin-top: 0.2rem;
-      font-size: 1.09rem;
+      margin-top: 0.4rem; /* was 0.2rem */
+      font-size: 1.15rem; /* was 1.09rem */
       font-weight: 600;
       color: inherit;
     }
@@ -315,18 +309,18 @@
       justify-content: center;
     }
     .menu-more-btn {
-      font-size: 1.17rem;
+      font-size: 1.21rem; /* was 1.17rem */
       font-weight: 700;
-      padding: 0.7em 2.1em;
-      border-radius: 10px;
+      padding: 0.9em 2.8em; /* was 0.7em 2.1em */
+      border-radius: 12px; /* was 10px */
       background: #7F6244;
       color: #fff;
       border: none;
       text-decoration: none;
       box-shadow: 0 2px 12px 0 rgba(255,178,122,0.12);
       transition: background 0.15s, color 0.15s;
-      margin-top: 0.5rem;
-      margin-bottom: 0.2rem;
+      margin-top: 0.8rem; /* was 0.5rem */
+      margin-bottom: 0.5rem; /* was 0.2rem */
       letter-spacing: .04em;
       cursor: pointer;
       display: inline-block;
@@ -346,67 +340,67 @@
       align-items: center;
       border-radius: 36px;
       box-shadow: 0 6px 40px 0 rgba(60,40,22,0.11);
-      margin: 40px auto;
+      margin: 60px auto; /* was 40px auto */
       padding: 0;
-      max-width: 500px;
+      max-width: 600px; /* was 500px */
     }
     .contact-inner {
       width: 100%;
-      max-width: 320px;
-      padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+      max-width: 400px; /* was 320px */
+      padding: 2rem 1.2rem 2rem 1.2rem; /* was 1.2rem 0.5rem 1.2rem 0.5rem */
       display: flex;
       flex-direction: column;
       align-items: center;
       box-sizing: border-box;
     }
     .contact-title {
-      font-size: 1.2rem;
+      font-size: 1.5rem; /* was 1.2rem */
       font-weight: 700;
       color: #5d3c23;
-      margin: 0 0 0.6rem 0;
+      margin: 0 0 0.9rem 0; /* was 0 0 0.6rem 0 */
       letter-spacing: -0.01em;
       font-family: 'Poppins', Arial, sans-serif;
       width: 100%;
       text-align: center;
     }
     .contact-desc {
-      font-size: 0.97rem;
+      font-size: 1.08rem; /* was 0.97rem */
       color: #a78968;
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.9rem; /* was 0.6rem */
       font-family: 'Poppins', Arial, sans-serif;
       font-weight: 400;
       line-height: 1.18;
       width: 100%;
       text-align: center;
-      max-width: 320px;
+      max-width: 400px; /* was 320px */
     }
     .contact-form {
       width: 100%;
-      max-width: 260px;
+      max-width: 340px; /* was 260px */
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.7rem; /* was 0.5rem */
       align-items: center;
     }
     .contact-form-row {
       width: 100%;
       display: flex;
-      gap: 0.4rem;
+      gap: 0.7rem; /* was 0.4rem */
       justify-content: center;
     }
     .contact-input {
       flex: 1 1 0;
-      font-size: 0.94rem;
-      padding: 0.3em 0.7em;
+      font-size: 1.08rem; /* was 0.94rem */
+      padding: 0.5em 1em; /* was 0.3em 0.7em */
       border: 2px solid #7F6244;
-      border-radius: 10px;
+      border-radius: 12px; /* was 10px */
       background: #fff;
       color: #857466;
       font-family: 'Poppins', Arial, sans-serif;
       outline: none;
       margin-bottom: 0;
       transition: border 0.15s;
-      max-width: 90px;
+      max-width: 130px; /* was 90px */
       min-width: 0;
     }
     .contact-input:focus {
@@ -414,16 +408,16 @@
     }
     .contact-textarea {
       width: 100%;
-      font-size: 0.97rem;
-      padding: 0.4em 0.7em;
+      font-size: 1.08rem; /* was 0.97rem */
+      padding: 0.6em 1em; /* was 0.4em 0.7em */
       border: 2px solid #ffe2cc;
-      border-radius: 10px;
+      border-radius: 12px; /* was 10px */
       background: #fff;
       color: #857466;
       font-family: 'Poppins', Arial, sans-serif;
       outline: none;
       resize: vertical;
-      min-height: 36px;
+      min-height: 48px; /* was 36px */
       margin-bottom: 0;
       transition: border 0.15s;
       max-width: 100%;
@@ -434,13 +428,13 @@
     .contact-btn {
       background: #7F6244;
       color: #fff;
-      font-size: 1.1rem;
+      font-size: 1.2rem; /* was 1.1rem */
       font-family: 'Poppins', Arial, sans-serif;
       font-weight: 700;
       border: none;
-      border-radius: 14px;
-      padding: 0.5em 2.2em;
-      margin-top: 0.4em;
+      border-radius: 18px; /* was 14px */
+      padding: 0.7em 2.8em; /* was 0.5em 2.2em */
+      margin-top: 0.7em; /* was 0.4em */
       box-shadow: 0 2px 14px 0 rgba(255,178,122,0.12);
       cursor: pointer;
       transition: background 0.18s, color 0.18s;
@@ -451,136 +445,6 @@
     .contact-btn:focus {
       background: #7F6244;
       color: #fff;
-    }
-    @media (max-width: 700px) {
-      .contact-section-custom { max-width: 99vw; }
-      .contact-inner { max-width: 99vw; padding: 0.7rem 1vw; }
-      .contact-title { font-size: 0.89rem; }
-      .contact-desc { font-size: 0.69rem; }
-      .contact-form { max-width: 99vw; }
-      .contact-form-row { flex-direction: column; gap: 0.3rem; }
-      .contact-input, .contact-textarea { font-size: 0.77rem; min-width: 0; max-width: 100%; }
-      .contact-btn { font-size: 0.89rem; padding: 0.23em 0.8em; }
-    }
-    /* About, Menu, Contact plain white background */
-    .about-left {
-      flex: 1.3;
-      padding: 3.5rem 3.1rem 3.5rem 3.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 0;
-      background: transparent;
-    }
-    .about-title {
-      font-size: 2.8rem;
-      font-weight: 700;
-      color: #857466;
-      margin-bottom: 1.1rem;
-      letter-spacing: -0.01em;
-    }
-    .about-desc {
-      font-size: 1.28rem;
-      font-weight: 400;
-      color: #8d7862;
-      margin-bottom: 1.5rem;
-      line-height: 1.4;
-      max-width: 98%;
-    }
-    .about-phone {
-      color: #7F6244;
-      font-weight: 600;
-      text-decoration: none;
-      font-size: 1.15rem;
-    }
-    .about-phone:hover { text-decoration: underline; }
-    .about-right {
-      flex: 1.1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 280px;
-      min-height: 220px;
-      padding: 2.1rem 2.3rem 2.1rem 0.5rem;
-      position: relative;
-      background: transparent;
-    }
-    .about-img-rect-wrapper {
-      position: relative;
-      width: 370px;
-      height: 380px;
-      background: #fff;
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 4px 28px rgba(100, 65, 40, 0.10);
-      border: 7px solid #e6d2be;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: flex-start;
-    }
-    .about-map {
-      width: 100%;
-      height: 75%;
-      min-height: 180px;
-      border: none;
-      display: block;
-      border-radius: 17px 17px 0 0;
-      margin: 0;
-    }
-    .about-address {
-      width: 100%;
-      background: #fff9f2;
-      color: #857466;
-      font-size: 1.11rem;
-      font-weight: 600;
-      padding: 0.9rem 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      border-radius: 0 0 17px 17px;
-      border-top: 1px solid #e6d2be;
-    }
-    .about-address i {
-      color: #7F6244;
-      font-size: 1.16rem;
-    }
-    .plain-section {
-      background: #fff;
-      flex-direction: row;
-      min-height: 350px;
-      margin: 60px auto;
-      border-radius: 36px;
-      box-shadow: 0 6px 40px 0 rgba(60,40,22,0.11);
-      padding: 0;
-      width: 100%;
-      max-width: 1050px;
-      position: relative;
-      overflow: visible;
-    }
-    .plain-section-inner {
-      flex: 1 1 100%;
-      padding: 3.5rem 3.1rem 3.5rem 3.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 0;
-      background: transparent;
-    }
-    .plain-section h2 {
-      font-size: 2.6rem;
-      font-weight: 700;
-      color: #857466;
-      margin-bottom: 1.1rem;
-      letter-spacing: -0.01em;
-    }
-    .plain-section p {
-      font-size: 1.28rem;
-      font-weight: 400;
-      color: #8d7862;
-      margin-bottom: 1.5rem;
-      line-height: 1.4;
-      max-width: 98%;
     }
     @media (max-width: 1100px) {
       .about-hero-split, .plain-section { max-width: 97vw; }
@@ -602,6 +466,7 @@
   </style>
 </head>
 <body>
+  <!-- ...rest of your HTML stays the same... -->
   <div class="main-split-box">
     <!-- Navbar -->
     <nav class="custom-navbar-unified d-flex align-items-center">
@@ -643,31 +508,31 @@
   </div>
 
   <!-- Main Sections -->
-  <section id="about" class="about-hero-split plain-bg">
-    <div class="about-left">
-      <h1 class="about-title">About NaiTsa</h1>
-      <div class="about-desc">
-        NaiTsa is a place to relax and feel at home. We serve coffee, milk tea, and smiles every day in the heart of Pinagtongulan, Lipa City.<br><br>
-        <strong>Call us:</strong> <a class="about-phone" href="tel:+639123456789">0912-345-6789</a>
+  <section id="about" class="about-hero-split plain-bg" style="align-items: stretch;">
+  <div class="about-left" style="flex: 1.3; padding: 2.5rem 2.5rem 2.5rem 3rem; display: flex; flex-direction: column; justify-content: center;">
+    <h1 class="about-title" style="margin-bottom: 1rem;">About NaiTsa</h1>
+    <div class="about-desc" style="font-size: 1.2rem; margin-bottom: 1.5rem;">
+      NaiTsa is a place to relax and feel at home. We serve coffee, milk tea, and smiles every day in the heart of Pinagtongulan, Lipa City.<br><br>
+      <strong>Call us:</strong> <a class="about-phone" href="tel:+639123456789" style="color:#7F6244;">0912-345-6789</a>
+    </div>
+  </div>
+  <div class="about-right" style="flex: 1.1; display: flex; align-items: center; justify-content: center; padding: 2.5rem 2.5rem 2.5rem 0;">
+    <div class="about-img-rect-wrapper" style="width: 350px; min-width: 250px; height: 320px; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 28px rgba(100,65,40,0.10); border: 7px solid #e6d2be;">
+      <iframe
+        class="about-map"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=121.1376,13.9129,121.1741,13.9438&amp;layer=mapnik&amp;marker=13.9284,121.1585"
+        style="border:0; width:100%; height:75%; min-height:180px; display:block; border-radius:17px 17px 0 0; margin:0;"
+        allowfullscreen=""
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade">
+      </iframe>
+      <div class="about-address" style="width: 100%; background: #fff9f2; color: #857466; font-size: 1.11rem; font-weight: 600; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.7rem; border-radius: 0 0 17px 17px; border-top: 1px solid #e6d2be;">
+        <i class="fas fa-map-marker-alt" style="color: #7F6244; font-size: 1.16rem;"></i>
+        Pinagtongulan, Lipa City
       </div>
     </div>
-    <div class="about-right">
-      <div class="about-img-rect-wrapper">
-        <iframe
-          class="about-map"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=121.1376,13.9129,121.1741,13.9438&amp;layer=mapnik&amp;marker=13.9284,121.1585"
-          style="border:0;"
-          allowfullscreen=""
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-        <div class="about-address">
-          <i class="fas fa-map-marker-alt"></i>
-          Pinagtongulan, Lipa City
-        </div>
-      </div>
-    </div>
-  </section>
+  </div>
+</section>
 
   <section id="menu" class="menu-section plain-bg">
     <div class="menu-inner">
