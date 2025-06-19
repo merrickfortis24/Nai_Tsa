@@ -172,6 +172,7 @@ Open daily from 10AM to midnight..</p>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
@@ -251,9 +252,20 @@ Open daily from 10AM to midnight..</p>
 
     // Add to Cart functionality (simple alert for demo)
     document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        const product = this.getAttribute('data-product');
-        alert(product + " has been added to your cart!");
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        Swal.fire({
+          icon: 'warning',
+          title: 'Not Logged In',
+          text: 'You must log in first to add items to your cart.',
+          showCancelButton: true,
+          confirmButtonText: 'Log In',
+          cancelButtonText: 'Cancel'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = 'login.php';
+          }
+        });
       });
     });
   </script>
