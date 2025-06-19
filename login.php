@@ -1,3 +1,26 @@
+<?php
+session_start();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']);
+
+    // TODO: Authenticate user here (check email & password in DB)
+    $login_success = true; // Replace with your real authentication logic
+
+    if ($login_success) {
+        if ($remember) {
+            setcookie('remember_email', $email, time() + (86400 * 30), "/"); // 30 days
+            setcookie('remember_pass', $password, time() + (86400 * 30), "/"); // 30 days
+        } else {
+            setcookie('remember_email', '', time() - 3600, "/");
+            setcookie('remember_pass', '', time() - 3600, "/");
+        }
+        // Redirect or set session as needed
+        // header("Location: dashboard.php"); exit;
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,16 +43,23 @@
       <img class="login-logo" src="https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/305017926_123739037082830_6536344361033765846_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeF6gojYSTdWNY4orY0VNUkSmvcRd1ll5jia9xF3WWXmODD-saAHrmXgUQmKemzloGzWiKXvFLnLMDOAGKdxzyD6&_nc_ohc=7iBKmMdkBywQ7kNvwFRDQYs&_nc_oc=AdlY_BYvScrT1IflonpxA1Qvq5KxK43IM6csPvtUSzdETsmOm1huAnaj3u8V2bhL94M&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=zr_iO0JmrhCwDGAHOAqdbQ&oh=00_AfP71h0Bxwo_zXF6XA1C60idZzXqlq6yMUdhgIvHHgnRbA&oe=6855DFB1" alt="Nai Tsa Logo">
       <div class="login-title">Welcome Back</div>
       <div class="login-desc">Log in to your Nai Tsa account to continue.</div>
-      <form>
+      <form method="post" action="login.php">
         <div class="mb-3">
-          <input type="email" class="form-control" placeholder="Email Address" required>
+          <input type="email" name="email" class="form-control" placeholder="Email Address" required
+            value="<?php if(isset($_COOKIE['remember_email'])) echo htmlspecialchars($_COOKIE['remember_email']); ?>">
         </div>
         <div class="mb-3">
-          <input type="password" class="form-control" placeholder="Password" required minlength="6">
+          <input type="password" name="password" class="form-control" placeholder="Password" required minlength="6"
+            value="<?php if(isset($_COOKIE['remember_pass'])) echo htmlspecialchars($_COOKIE['remember_pass']); ?>">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="rememberMe" name="remember"
+            <?php if(isset($_COOKIE['remember_email'])) echo 'checked'; ?>>
+          <label class="form-check-label" for="rememberMe">Remember Me</label>
         </div>
         <button type="submit" class="btn btn-soft-orange">Log In</button>
       </form>
-      <a href="signup.html" class="signup-link">Don't have an account? Sign Up</a>
+      <a href="signup.php" class="signup-link">Don't have an account? Sign Up</a>
     </div>
   </section>
 

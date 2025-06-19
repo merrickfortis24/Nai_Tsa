@@ -38,8 +38,8 @@
         </ul>
         <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
           <span class="navbar-right-text me-lg-3">OPEN 10:00AM TO 12AM</span>
-          <button class="btn btn-outline-soft-orange me-2" type="button">Sign In</button>
-          <button class="btn btn-soft-orange" type="button">Join Now</button>
+          <a href="login.php" class="btn btn-outline-soft-orange me-2">Sign In</a>
+          <a href="signup.php" class="btn btn-soft-orange">Join Now</a>
         </div>
       </div>
     </div>

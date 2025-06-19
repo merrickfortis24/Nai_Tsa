@@ -35,7 +35,7 @@
         </div>
         <button type="submit" class="btn btn-soft-orange">Sign Up</button>
       </form>
-      <a href="login.html" class="login-link">Already have an account? Sign In</a>
+      <a href="login.php" class="login-link">Already have an account? Sign In</a>
     </div>
   </section>
 
