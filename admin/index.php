@@ -112,6 +112,16 @@ try {
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
+
+// Fetch sales data
+$sales = [];
+try {
+    $db = new database();
+    $sales = $db->viewSales();
+} catch (PDOException $e) {
+    // Optionally handle error
+    $sales = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -242,6 +252,43 @@ try {
                         </div>
                     </div>
                 </div>
+
+                <!-- Add this button above your sales chart card -->
+                <a href="export_sales_pdf.php" class="btn btn-outline-primary mb-2" target="_blank">
+                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
+                </a>
+
+                <!-- Recent Sales Card -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="bi bi-bar-chart"></i> Recent Sales
+                    </div>
+                    <div class="card-body">
+                        <canvas id="salesChart" height="100"></canvas>
+                    </div>
+                </div>
+
+                                <!-- Sales Stats Cards -->
+                <?php
+$total_sales = count($sales);
+$total_revenue = array_sum(array_column($sales, 'Total_Amount'));
+?>
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <i class="bi bi-cash-stack"></i>
+            <div class="number"><?= $total_sales ?></div>
+            <div class="label">Total Sales</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <i class="bi bi-currency-dollar"></i>
+            <div class="number">₱<?= number_format($total_revenue, 2) ?></div>
+            <div class="label">Total Revenue</div>
+        </div>
+    </div>
+</div>
                 
                 <!-- Admin List -->
                 <div class="card">
@@ -474,6 +521,10 @@ try {
                   </div>
                 </div>
                 <!-- End Edit Admin Modal -->
+                
+
+                
+
             </div>
         </div>
     </div>
@@ -482,6 +533,7 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Toggle password visibility
         function togglePassword(inputId) {
@@ -795,6 +847,34 @@ document.addEventListener('DOMContentLoaded', function() {
             formSection.scrollIntoView({ behavior: 'smooth' });
         });
     }
+});
+
+// Sales chart
+document.addEventListener('DOMContentLoaded', function() {
+    const salesData = <?= json_encode($sales) ?>;
+const labels = salesData.map(sale => sale.Sale_Date.substr(0, 10)); // e.g. '2024-06-18'
+const amounts = salesData.map(sale => parseFloat(sale.Total_Amount));
+
+const ctx = document.getElementById('salesChart').getContext('2d');
+const salesChart = new Chart(ctx, {
+    type: 'bar', // or 'line'
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Total Amount',
+            data: amounts,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            x: { title: { display: true, text: 'Date' } },
+            y: { title: { display: true, text: 'Sales (₱)' }, beginAtZero: true }
+        }
+    }
+});
 });
     </script>
 </body>

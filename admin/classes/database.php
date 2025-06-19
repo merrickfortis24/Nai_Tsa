@@ -182,5 +182,25 @@ class database{
             return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
         }
     }
+    
+    function viewSales() {
+        $con = $this->opencon();
+        $stmt = $con->prepare("
+            SELECT 
+                s.Sale_ID, 
+                s.Product_ID, 
+                p.Product_Name, 
+                s.Quantity, 
+                s.Total_Amount, 
+                s.Sale_Date, 
+                a.Admin_Name
+            FROM sales s
+            JOIN product p ON s.Product_ID = p.Product_ID
+            JOIN admin a ON s.Admin_ID = a.Admin_ID
+            ORDER BY s.Sale_Date DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
 }
