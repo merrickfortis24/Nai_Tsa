@@ -109,22 +109,37 @@ Open daily from 10AM to midnight..</p>
           <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80" alt="Classic Milk Tea">
           <div class="menu-card-title">Classic Milk Tea</div>
           <div class="menu-card-desc">Traditional black tea with creamy milk, slightly sweet, perfectly chilled.</div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Classic Milk Tea">Add to Cart</button>
         </div>
         <div class="menu-card">
           <img src="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=150&q=80" alt="Brown Sugar Boba">
           <div class="menu-card-title">Brown Sugar Boba</div>
           <div class="menu-card-desc">Rich brown sugar syrup, chewy pearls, and velvety milk tea.</div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Brown Sugar Boba">Add to Cart</button>
         </div>
         <div class="menu-card">
           <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=150&q=80" alt="Coffee Latte">
           <div class="menu-card-title">Coffee Latte</div>
           <div class="menu-card-desc">Espresso meets creamy steamed milk, topped with light foam.</div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Coffee Latte">Add to Cart</button>
         </div>
         <div class="menu-card">
           <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=150&q=80" alt="Strawberry Matcha">
           <div class="menu-card-title">Strawberry Matcha</div>
           <div class="menu-card-desc">Earthy matcha layered with fresh strawberry milk for a vibrant treat.</div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Strawberry Matcha">Add to Cart</button>
         </div>
+        <div class="menu-card">
+          <img src="https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=150&q=80" alt="Caramel Macchiato">
+          <div class="menu-card-title">Caramel Macchiato</div>
+          <div class="menu-card-desc">Sweet caramel, rich espresso, and frothy milk in an irresistible blend.</div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Caramel Macchiato">Add to Cart</button>
+        </div>
+      </div>
+      <div class="text-center w-100" style="margin-top: 0.2rem;">
+        <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
+          More Products
+        </a>
       </div>
     </div>
   </section>
@@ -233,6 +248,14 @@ Open daily from 10AM to midnight..</p>
     setupRotatingBg("about", aboutImages);
     setupRotatingBg("menu", menuImages);
     setupRotatingBg("contact", contactImages);
+
+    // Add to Cart functionality (simple alert for demo)
+    document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const product = this.getAttribute('data-product');
+        alert(product + " has been added to your cart!");
+      });
+    });
   </script>
 </body>
 </html>
