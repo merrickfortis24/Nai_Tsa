@@ -253,7 +253,12 @@ try {
                     </div>
                 </div>
 
-                                <!-- Recent Sales Card -->
+                <!-- Add this button above your sales chart card -->
+                <a href="export_sales_pdf.php" class="btn btn-outline-primary mb-2" target="_blank">
+                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
+                </a>
+
+                <!-- Recent Sales Card -->
                 <div class="card mt-4">
                     <div class="card-header">
                         <i class="bi bi-bar-chart"></i> Recent Sales
