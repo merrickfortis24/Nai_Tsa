@@ -232,6 +232,26 @@
             }
         }
         
+        @media (max-width: 576px) {
+    .main-content {
+        padding: 8px !important;
+    }
+    .stats-card {
+        margin-bottom: 15px;
+        padding: 15px 8px;
+    }
+    .card-header, .card-body {
+        padding: 10px !important;
+    }
+    .table-responsive {
+        font-size: 0.95rem;
+    }
+    .row > [class^="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+        
         .password-container {
             position: relative;
         }
@@ -409,3 +429,9 @@
             color: var(--primary-color);
             text-decoration: underline;
         }
+        
+        #salesChart {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+}
