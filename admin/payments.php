@@ -39,6 +39,27 @@ try {
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
+
+// Count unpaid payments
+$unpaidPayments = 0;
+foreach ($payments as $payment) {
+    if (($payment['payment_status'] ?? '') === 'Unpaid') {
+        $unpaidPayments++;
+    }
+}
+
+$db = new database();
+$con = $db->opencon();
+$stmt = $con->prepare("SELECT order_status FROM orders");
+$stmt->execute();
+$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$pendingOrders = 0;
+foreach ($orders as $order) {
+    if ($order['order_status'] === 'Pending' || $order['order_status'] === 'Processing') {
+        $pendingOrders++;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,12 +100,19 @@ try {
                             <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
+                                <!-- Orders badge (optional, see below for how to count) -->
+                                <?php if (!empty($pendingOrders) && $pendingOrders > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $pendingOrders ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link active" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
+                                <?php if ($unpaidPayments > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -133,7 +161,7 @@ try {
                                         <th>Method</th>
                                         <th>Date</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        <!-- <th>Actions</th> --> <!-- Removed Actions column -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -156,11 +184,20 @@ try {
                                         </td>
                                         <td>$<?= number_format($payment['Payment_Amount'], 2) ?></td>
                                         <td><?= htmlspecialchars($payment['Payment_Method']) ?></td>
-                                        <td><?= date('M d, Y', strtotime($payment['Payment_Date'])) ?></td>
+                                        <td><?= date('F j, Y g:i A', strtotime($payment['Payment_Date'])) ?></td>
                                         <td>
                                             <form method="post" action="payments.php" style="display:inline;">
                                                 <input type="hidden" name="payment_id" value="<?= $payment['Payment_ID'] ?>">
-                                                <select name="payment_status" onchange="this.form.submit()">
+                                                <select
+                                                    name="payment_status"
+                                                    class="form-select payment-status-select
+                                                        <?php
+                                                            if (($payment['payment_status'] ?? '') === 'Unpaid') echo ' bg-warning text-dark';
+                                                            elseif (($payment['payment_status'] ?? '') === 'Paid') echo ' bg-success text-white';
+                                                        ?>"
+                                                    onchange="this.form.submit()"
+                                                    style="min-width:100px;"
+                                                >
                                                     <?php
                                                     $pstatuses = ['Unpaid', 'Paid'];
                                                     foreach ($pstatuses as $status) {
@@ -171,11 +208,11 @@ try {
                                                 </select>
                                             </form>
                                         </td>
-                                        <td>
+                                        <!-- <td>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
                                             <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
                                             <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
-                                        </td>
+                                        </td> -->
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -211,6 +248,17 @@ try {
                 bsAlert.close();
             });
         }, 5000);
+
+document.querySelectorAll('.payment-status-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        select.classList.remove('bg-warning', 'bg-success', 'text-dark', 'text-white');
+        if (select.value === 'Unpaid') {
+            select.classList.add('bg-warning', 'text-dark');
+        } else if (select.value === 'Paid') {
+            select.classList.add('bg-success', 'text-white');
+        }
+    });
+});
     </script>
 </body>
 </html>

@@ -26,12 +26,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
         $stmt->execute([$_POST['order_status'], $_POST['order_id']]);
     }
+
     if (isset($_POST['payment_status'], $_POST['order_id'])) {
         $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Order_ID=?");
         $stmt->execute([$_POST['payment_status'], $_POST['order_id']]);
     }
+
+    // After updating, check if both Delivered and Paid, then insert into sales
+    if (
+        (isset($_POST['order_status']) || isset($_POST['payment_status'])) &&
+        isset($_POST['order_id'])
+    ) {
+        // Fetch current order and payment status
+        $stmt = $con->prepare("SELECT o.*, p.payment_status FROM orders o LEFT JOIN payment p ON o.Order_ID = p.Order_ID WHERE o.Order_ID = ?");
+        $stmt->execute([$_POST['order_id']]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (
+            isset($order['order_status'], $order['payment_status']) &&
+            $order['order_status'] === 'Delivered' &&
+            $order['payment_status'] === 'Paid'
+        ) {
+            // Check if already in sales to avoid duplicates
+            $check = $con->prepare("SELECT COUNT(*) FROM sales WHERE Order_ID = ?");
+            $check->execute([$_POST['order_id']]);
+            if ($check->fetchColumn() == 0) {
+                // Insert each item in the order into sales
+                $items = $db->fetchOrderItems($_POST['order_id']);
+                foreach ($items as $item) {
+                    $stmt = $con->prepare("INSERT INTO sales (Order_ID, Product_ID, Quantity, Total_Amount, Sale_Date, Admin_ID)
+                        VALUES (?, ?, ?, ?, NOW(), ?)");
+                    if (!$stmt->execute([
+                        $_POST['order_id'],
+                        $item['Product_ID'],
+                        $item['Quantity'],
+                        $order['Order_Amount'],
+                        $_SESSION['admin_id']
+                    ])) {
+                        error_log("Sales insert error: " . implode(" | ", $stmt->errorInfo()));
+                    }
+                }
+            }
+        }
+    }
     header("Location: orders.php");
     exit;
+}
+$pendingProcessingCount = 0;
+foreach ($orders as $order) {
+    if ($order['order_status'] === 'Pending' || $order['order_status'] === 'Processing') {
+        $pendingProcessingCount++;
+    }
+}
+
+// Fetch all payments
+$payments = [];
+try {
+    $con = $db->opencon();
+    $stmt = $con->prepare("SELECT payment_status FROM payment");
+    $stmt->execute();
+    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // handle error if needed
+}
+
+$unpaidPayments = 0;
+foreach ($payments as $payment) {
+    if (($payment['payment_status'] ?? '') === 'Unpaid') {
+        $unpaidPayments++;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -73,12 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <a class="nav-link active" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
+                                <?php if ($pendingProcessingCount > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
+                                <?php if ($unpaidPayments > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -165,7 +234,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <td>
                                             <form method="post" action="orders.php" style="display:inline;">
                                                 <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
-                                                <select name="order_status" onchange="this.form.submit()">
+                                                <select
+                                                    name="order_status"
+                                                    class="form-select order-status-select
+                                                        <?php
+                                                            if ($order['order_status'] === 'Pending') echo ' bg-warning text-dark';
+                                                            elseif ($order['order_status'] === 'Processing') echo ' bg-info text-dark';
+                                                            elseif ($order['order_status'] === 'Delivered') echo ' bg-success text-white';
+                                                        ?>"
+                                                    onchange="this.form.submit()"
+                                                    style="min-width:120px;"
+                                                >
                                                     <?php
                                                     $statuses = ['Pending', 'Processing', 'Delivered'];
                                                     foreach ($statuses as $status) {
@@ -248,6 +327,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 bsAlert.close();
             });
         }, 5000);
+
+document.querySelectorAll('.order-status-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'text-dark', 'text-white');
+        if (select.value === 'Pending') {
+            select.classList.add('bg-warning', 'text-dark');
+        } else if (select.value === 'Processing') {
+            select.classList.add('bg-info', 'text-dark');
+        } else if (select.value === 'Delivered') {
+            select.classList.add('bg-success', 'text-white');
+        }
+    });
+});
     </script>
 </body>
 </html>

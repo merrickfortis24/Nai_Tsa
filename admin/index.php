@@ -7,6 +7,7 @@ if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit();
 }
+include 'sidebar_counts.php';
 
 // Include the database class
 require_once('classes/database.php');
@@ -163,15 +164,21 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="orders.php">
+                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'orders.php' ? ' active' : '' ?>" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
+                                <?php if ($pendingProcessingCount > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="payments.php">
+                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'payments.php' ? ' active' : '' ?>" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
+                                <?php if ($unpaidPayments > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">

@@ -5,6 +5,7 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 require_once('classes/database.php');
+include 'sidebar_counts.php'; // This makes $pendingProcessingCount and $unpaidPayments available
 
 // Fetch all products
 $products = [];
@@ -92,12 +93,18 @@ try {
                             <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
+                                <?php if ($pendingProcessingCount > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="payments.php">
                                 <i class="bi bi-credit-card"></i>
                                 <span>Payments</span>
+                                <?php if ($unpaidPayments > 0): ?>
+                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
