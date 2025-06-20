@@ -1,14 +1,23 @@
 <?php
 session_start();
+$login_success = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
     $remember = isset($_POST['remember']);
 
-    // TODO: Authenticate user here (check email & password in DB)
-    $login_success = true; // Replace with your real authentication logic
+    // Connect to DB and check credentials
+    require_once("database/database.php");
+    $db = new database();
+    $con = $db->opencon();
+    $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_Email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($login_success) {
+    if ($user && password_verify($password, $user['Customer_Password'])) {
+        $login_success = true;
+        $_SESSION['customer_name'] = $user['Customer_Name'];
+        $_SESSION['customer_email'] = $user['Customer_Email'];
         if ($remember) {
             setcookie('remember_email', $email, time() + (86400 * 30), "/"); // 30 days
             setcookie('remember_pass', $password, time() + (86400 * 30), "/"); // 30 days
@@ -16,8 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setcookie('remember_email', '', time() - 3600, "/");
             setcookie('remember_pass', '', time() - 3600, "/");
         }
-        // Redirect or set session as needed
-        // header("Location: dashboard.php"); exit;
+        // Set session or other login logic here if needed
     }
 }
 ?>
@@ -33,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
-
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
   <!-- Login Section -->
@@ -79,6 +88,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     changeBg();
     setInterval(changeBg, 3500);
+
+    // SweetAlert for successful login
+    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && $login_success): ?>
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Successful!',
+        text: 'Redirecting to your dashboard...',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.href = 'users/index.php';
+      });
+    <?php endif; ?>
   </script>
 </body>
 </html>

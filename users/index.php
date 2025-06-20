@@ -1,3 +1,8 @@
+<?php
+session_start();
+$customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
+$first_name = explode(' ', trim($customer_name))[0];
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,7 +44,7 @@
         <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
           <button class="btn btn-outline-soft-orange me-2" type="button">Logout</button>
           <a href="#" class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;">
-            <span style="font-size:1.2em; margin-right:0.4em;">👤</span> John Doe
+            <span style="font-size:1.2em; margin-right:0.4em;">👤</span> <?php echo htmlspecialchars($first_name); ?>
           </a>
         </div>
       </div>
@@ -50,7 +55,9 @@
   <section class="section" id="home" style="background-image: url('https://scontent.fmnl17-5.fna.fbcdn.net/v/t39.30808-6/481348026_632646619530004_740397893899066208_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGjeWCZxoZbHgis-Iy92UoLfJc4_v2UeV98lzj-_ZR5X62vIJ6nZ8AEIKTkEyrTT0-NSz1c1Dnwv6l3ZYCKxOZO&_nc_ohc=IoXR7wyIjLUQ7kNvwHQwm6G&_nc_oc=AdnqvKOCbjlR6zsfT9Xit12YcARhX_I_8H_TIIkZAiqOAfER-36O27n62qJArtAolro&_nc_zt=23&_nc_ht=scontent.fmnl17-5.fna&_nc_gid=7SyQ3ne9y6nkAJJldJavpQ&oh=00_AfPuyO8_RiTXaOfVXlEjzq5g4I4HtOi4MssiFJUHE8K8-Q&oe=68573FCE');">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
-      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">Welcome, John Doe</h1>
+      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
+        Welcome, <?php echo htmlspecialchars($first_name); ?>
+      </h1>
       <p class="section-desc" style="text-align:left;">Welcome to Nai Tsa - Take a pause. You deserve this moment of calm and your favorite drink!</p>
       <a href="#menu" class="btn btn-section" style="align-self:flex-start;">ORDER NOW</a>
     </div>
