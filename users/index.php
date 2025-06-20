@@ -2,6 +2,9 @@
 session_start();
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
 $first_name = explode(' ', trim($customer_name))[0];
+require_once "classes/database.php";
+$db = new database();
+$products = $db->fetchAllProducts();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -41,11 +44,11 @@ $first_name = explode(' ', trim($customer_name))[0];
             <a class="nav-link" href="#contact">Contact</a>
           </li>
         </ul>
-        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
-          <a href="logout.php" class="btn btn-outline-soft-orange me-2">Logout</a>
-          <a href="#" class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;">
+        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0"></div>
+          <!-- Profile Button -->
+          <button class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;" type="button" data-bs-toggle="offcanvas" data-bs-target="#profileOffcanvas" aria-controls="profileOffcanvas">
             <span style="font-size:1.2em; margin-right:0.4em;">👤</span> <?php echo htmlspecialchars($first_name); ?>
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -64,48 +67,20 @@ $first_name = explode(' ', trim($customer_name))[0];
   </section>
 
   <!-- Menu Section -->
-  <section class="section" id="menu" 
-  style="background-image: url('https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/491355857_667464796048186_5563372254686319857_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeE0EMgNYAh3sK2ELezcsoNjzv-0_uK6yJ3O_7T-4rrInUs8ZlmDenP6NZyx0xgnzkzsNGivZydRi5Li6rGMQUB3&_nc_ohc=rAv1shhALVkQ7kNvwE3w9N4&_nc_oc=Adk6Jm3AmYFGOv995P_DfsKAQr-i0f8w53QvRtw5nwXiOvVljmBRX9sq1eTUXTIavbc&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=V2fgOrY4_pomG0SQG-3PXg&oh=00_AfO6pfYqaazFFNvB1wVfZ-BRs5H1FH2ww29kww2eww47Xg&oe=685739AE');
+  <section class="section" id="menu" style="background-image: url('https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/491355857_667464796048186_5563372254686319857_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeE0EMgNYAh3sK2ELezcsoNjzv-0_uK6yJ3O_7T-4rrInUs8ZlmDenP6NZyx0xgnzkzsNGivZydRi5Li6rGMQUB3&_nc_ohc=rAv1shhALVkQ7kNvwE3w9N4&_nc_oc=Adk6Jm3AmYFGOv995P_DfsKAQr-i0f8w53QvRtw5nwXiOvVljmBRX9sq1eTUXTIavbc&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=V2fgOrY4_pomG0SQG-3PXg&oh=00_AfO6pfYqaazFFNvB1wVfZ-BRs5H1FH2ww29kww2eww47Xg&oe=685739AE');
          min-height: 140vh;">
   <div class="section-overlay"></div>
   <div class="section-content" style="max-width: 1200px;">
     <h2 class="section-title text-center w-100">Our Bestsellers</h2>
     <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
-      <!-- Product 1 -->
-      <div class="menu-card">
-        <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80" alt="Classic Milk Tea">
-        <div class="menu-card-title">Classic Milk Tea</div>
-        <div class="menu-card-desc">Traditional black tea with creamy milk, slightly sweet, perfectly chilled.</div>
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Classic Milk Tea">Add to Cart</button>
-      </div>
-      <!-- Product 2 -->
-      <div class="menu-card">
-        <img src="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=150&q=80" alt="Brown Sugar Boba">
-        <div class="menu-card-title">Brown Sugar Boba</div>
-        <div class="menu-card-desc">Rich brown sugar syrup, chewy pearls, and velvety milk tea.</div>
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Brown Sugar Boba">Add to Cart</button>
-      </div>
-      <!-- Product 3 -->
-      <div class="menu-card">
-        <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=150&q=80" alt="Coffee Latte">
-        <div class="menu-card-title">Coffee Latte</div>
-        <div class="menu-card-desc">Espresso meets creamy steamed milk, topped with light foam.</div>
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Coffee Latte">Add to Cart</button>
-      </div>
-      <!-- Product 4 -->
-      <div class="menu-card">
-        <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=150&q=80" alt="Strawberry Matcha">
-        <div class="menu-card-title">Strawberry Matcha</div>
-        <div class="menu-card-desc">Earthy matcha layered with fresh strawberry milk for a vibrant treat.</div>
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Strawberry Matcha">Add to Cart</button>
-      </div>
-      <!-- Product 5 (new) -->
-      <div class="menu-card">
-        <img src="https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=150&q=80" alt="Caramel Macchiato">
-        <div class="menu-card-title">Caramel Macchiato</div>
-        <div class="menu-card-desc">Sweet caramel, rich espresso, and frothy milk in an irresistible blend.</div>
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Caramel Macchiato">Add to Cart</button>
-      </div>
+      <?php foreach($products as $product): ?>
+        <div class="menu-card">
+          <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+          <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
+          <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">Add to Cart</button>
+        </div>
+      <?php endforeach; ?>
     </div>
     <div class="text-center w-100" style="margin-top: 0.2rem;">
       <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
@@ -178,12 +153,50 @@ $first_name = explode(' ', trim($customer_name))[0];
     </div>
   </section>
 
+  <!-- Profile Offcanvas Sidebar -->
+<div class="offcanvas offcanvas-end profile-offcanvas" tabindex="-1" id="profileOffcanvas" aria-labelledby="profileOffcanvasLabel">
+  <div class="offcanvas-header" style="background:var(--soft-orange);color:#fff;">
+    <h5 class="offcanvas-title" id="profileOffcanvasLabel">My Profile</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column align-items-center" style="background:var(--beige);">
+    <div style="background:#fff; border-radius:50%; box-shadow:0 2px 12px rgba(255,178,122,0.10); padding:8px; margin-bottom:1.2rem;">
+      <span style="font-size:3.2rem;">👤</span>
+    </div>
+    <h4 style="font-weight:700; color:var(--text-dark); margin-bottom:0.5rem;"><?php echo htmlspecialchars($_SESSION['customer_name']); ?></h4>
+    <div style="color:#825e3a; font-size:1.08rem; margin-bottom:1.7rem;"><?php echo htmlspecialchars($_SESSION['customer_email']); ?></div>
+    <hr style="width:80%;margin:1.2rem 0;">
+    <a href="logout.php" class="btn btn-outline-soft-orange w-100 mb-2">Logout</a>
+    <button type="button" class="btn btn-soft-orange w-100" data-bs-dismiss="offcanvas">Close</button>
+  </div>
+</div>
+
   <!-- Cart Floating Action Button -->
-  <a href="#" class="cart-fab" title="View Cart" aria-label="Cart">
+  <a href="#" id="cartFab" class="cart-fab" title="View Cart" aria-label="Cart" data-bs-toggle="modal" data-bs-target="#cartModal">
     <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16" style="display:block;">
       <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 14H4a.5.5 0 0 1-.491-.408L1.01 2H.5a.5.5 0 0 1-.5-.5zm3.14 4l1.25 6h7.22l1.25-6H3.14zM5.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm7 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
     </svg>
   </a>
+
+  <!-- Cart Modal -->
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-end modal-lg">
+    <div class="modal-content" style="border-radius:24px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;border-top-left-radius:24px;border-top-right-radius:24px;">
+        <h5 class="modal-title" id="cartModalLabel">🛒 Your Cart</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="background:var(--beige);min-height:180px;">
+        <div class="text-center text-muted" style="font-size:1.1rem;">Your cart is empty.</div>
+        <!-- You can dynamically fill cart items here -->
+      </div>
+      <div class="modal-footer" style="background:var(--beige);border-bottom-left-radius:24px;border-bottom-right-radius:24px;">
+        <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-soft-orange" disabled>Checkout</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <!-- Footer -->
   <footer class="footer">
@@ -269,6 +282,17 @@ $first_name = explode(' ', trim($customer_name))[0];
         const product = this.getAttribute('data-product');
         alert(product + " added to cart!");
       });
+    });
+
+    // Animate cart button when modal opens/closes
+    const cartFab = document.getElementById('cartFab');
+    const cartModal = document.getElementById('cartModal');
+
+    cartModal.addEventListener('show.bs.modal', function () {
+      cartFab.classList.add('hide');
+    });
+    cartModal.addEventListener('hidden.bs.modal', function () {
+      cartFab.classList.remove('hide');
     });
   </script>
 </body>
