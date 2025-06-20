@@ -12,12 +12,26 @@ $orders = [];
 $error = '';
 try {
     $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM Orders ORDER BY Order_Date DESC");
-    $stmt->execute();
-    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $orders = $db->fetchOrders();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once('classes/database.php');
+    $db = new database();
+    $con = $db->opencon();
+
+    if (isset($_POST['order_status'], $_POST['order_id'])) {
+        $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
+        $stmt->execute([$_POST['order_status'], $_POST['order_id']]);
+    }
+    if (isset($_POST['payment_status'], $_POST['order_id'])) {
+        $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Order_ID=?");
+        $stmt->execute([$_POST['payment_status'], $_POST['order_id']]);
+    }
+    header("Location: orders.php");
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -112,6 +126,8 @@ try {
                                         <th>Customer ID</th>
                                         <th>Date</th>
                                         <th>Total</th>
+                                        <th>Order Status</th>
+                                        <th>Payment Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -123,9 +139,37 @@ try {
                                         <td><?= date('M d, Y', strtotime($order['Order_Date'])) ?></td>
                                         <td>$<?= number_format($order['Order_Amount'], 2) ?></td>
                                         <td>
-                                            <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-pencil"></i></a>
-                                            <a href="#" class="action-btn"><i class="bi bi-trash"></i></a>
+                                            <form method="post" action="orders.php" style="display:inline;">
+                                                <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
+                                                <select name="order_status" onchange="this.form.submit()">
+                                                    <?php
+                                                    $statuses = ['Pending', 'Processing', 'Delivered'];
+                                                    foreach ($statuses as $status) {
+                                                        $selected = $order['order_status'] === $status ? 'selected' : '';
+                                                        echo "<option value=\"$status\" $selected>$status</option>";
+                                                    }
+                                                    ?>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="orders.php" style="display:inline;">
+                                                <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
+                                                <select name="payment_status" onchange="this.form.submit()">
+                                                    <?php
+                                                    $pstatuses = ['Unpaid', 'Paid'];
+                                                    foreach ($pstatuses as $status) {
+                                                        $selected = ($order['payment_status'] ?? '') === $status ? 'selected' : '';
+                                                        echo "<option value=\"$status\" $selected>$status</option>";
+                                                    }
+                                                    ?>
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <a href="#" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -151,6 +195,31 @@ try {
             </div>
         </div>
     </div>
+    <!-- Order Items Modals -->
+    <?php foreach ($orders as $order): ?>
+    <div class="modal fade" id="orderItemsModal<?= $order['Order_ID'] ?>" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Order #<?= $order['Order_ID'] ?> Items</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <ul>
+              <?php
+                $items = $db->fetchOrderItems($order['Order_ID']);
+                foreach ($items as $item):
+              ?>
+                <li>
+                  <?= htmlspecialchars($item['Product_Name']) ?> x <?= $item['Quantity'] ?> @ ₱<?= number_format($item['Price'], 2) ?>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <?php endforeach; ?>
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>

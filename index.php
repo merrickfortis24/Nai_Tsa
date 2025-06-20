@@ -267,6 +267,82 @@ Open daily from 10AM to midnight..</p>
         });
       });
     });
+
+    // --- Real-time My Orders Modal Refresh ---
+    // Place this after your other <script> code, before </body>
+
+    function refreshMyOrders() {
+      fetch('fetch_orders.php')
+        .then(res => res.json())
+        .then(orders_by_status => {
+          // To Ship
+          let html = '';
+          if (orders_by_status['To Ship'].length) {
+            orders_by_status['To Ship'].forEach(order => {
+              html += `
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #${order.Order_ID}</strong> | ${order.Order_Date}</div>
+                    <div>Status: <span class="badge bg-warning text-dark">${order.order_status}</span></div>
+                    <div>Total: ₱${parseFloat(order.Order_Amount).toFixed(2)}</div>
+                  </div>
+                </div>
+              `;
+            });
+          } else {
+            html = '<div class="text-muted">No orders to ship.</div>';
+          }
+          document.querySelector('#to-ship').innerHTML = html;
+
+          // To Receive
+          html = '';
+          if (orders_by_status['To Receive'].length) {
+            orders_by_status['To Receive'].forEach(order => {
+              html += `
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #${order.Order_ID}</strong> | ${order.Order_Date}</div>
+                    <div>Status: <span class="badge bg-info text-dark">${order.order_status}</span></div>
+                    <div>Total: ₱${parseFloat(order.Order_Amount).toFixed(2)}</div>
+                  </div>
+                </div>
+              `;
+            });
+          } else {
+            html = '<div class="text-muted">No orders to receive.</div>';
+          }
+          document.querySelector('#to-receive').innerHTML = html;
+
+          // Delivered
+          html = '';
+          if (orders_by_status['Delivered'].length) {
+            orders_by_status['Delivered'].forEach(order => {
+              html += `
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #${order.Order_ID}</strong> | ${order.Order_Date}</div>
+                    <div>Status: <span class="badge bg-success">${order.order_status}</span></div>
+                    <div>Total: ₱${parseFloat(order.Order_Amount).toFixed(2)}</div>
+                  </div>
+                </div>
+              `;
+            });
+          } else {
+            html = '<div class="text-muted">No delivered orders.</div>';
+          }
+          document.querySelector('#delivered').innerHTML = html;
+        });
+    }
+
+    // When the My Orders modal is shown, start refreshing every 5 seconds
+    document.getElementById('myOrdersModal').addEventListener('show.bs.modal', function () {
+      refreshMyOrders();
+      window.myOrdersInterval = setInterval(refreshMyOrders, 5000);
+    });
+    // Stop refreshing when modal is hidden
+    document.getElementById('myOrdersModal').addEventListener('hidden.bs.modal', function () {
+      clearInterval(window.myOrdersInterval);
+    });
   </script>
 </body>
 </html>

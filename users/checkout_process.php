@@ -74,6 +74,29 @@ $payment_success = $payment_stmt->execute([
     'Unpaid'
 ]);
 
+// Insert each cart item into order_item
+foreach ($cart as $item) {
+    // Get product ID by name
+    $stmt = $con->prepare("SELECT Product_ID, Price_ID FROM product WHERE Product_Name=?");
+    $stmt->execute([$item['name']]);
+    $product = $stmt->fetch();
+    if ($product) {
+        // Get price
+        $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
+        $stmt2->execute([$product['Price_ID']]);
+        $price = $stmt2->fetchColumn();
+
+        // Insert into order_item
+        $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
+        $stmt3->execute([
+            $order_id,
+            $product['Product_ID'],
+            $item['qty'],
+            $price
+        ]);
+    }
+}
+
 if (!$order_success) {
     $error = $order_stmt->errorInfo();
     echo json_encode(['success' => false, 'message' => 'Order insert failed: ' . $error[2]]);

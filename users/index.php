@@ -3,8 +3,40 @@ session_start();
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
 $first_name = explode(' ', trim($customer_name))[0];
 require_once "classes/database.php";
+require_once "classes/order.php"; // Include the Order class
 $db = new database();
+$orderObj = new Order(); // Create an instance of the Order class
 $products = $db->fetchAllProducts();
+$order_id = 123; // The order you want to view
+$items = $orderObj->getOrderItems($order_id); // Get the order items
+
+// Fetch user's orders grouped by status
+$user_id = $_SESSION['customer_id'] ?? null;
+$orders_by_status = [
+    'To Ship' => [],
+    'To Receive' => [],
+    'Delivered' => []
+];
+if ($user_id) {
+    $stmt = $db->opencon()->prepare("
+        SELECT o.*, p.payment_status 
+        FROM orders o
+        LEFT JOIN payment p ON o.Order_ID = p.Order_ID
+        WHERE o.Customer_ID = ?
+        ORDER BY o.Order_Date DESC
+    ");
+    $stmt->execute([$user_id]);
+    $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($all_orders as $order) {
+        if ($order['order_status'] === 'Pending' && $order['payment_status'] === 'Unpaid') {
+            $orders_by_status['To Ship'][] = $order;
+        } elseif ($order['order_status'] === 'Processing' && $order['payment_status'] === 'Paid') {
+            $orders_by_status['To Receive'][] = $order;
+        } elseif ($order['order_status'] === 'Delivered') {
+            $orders_by_status['Delivered'][] = $order;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -166,6 +198,8 @@ $products = $db->fetchAllProducts();
     <h4 style="font-weight:700; color:var(--text-dark); margin-bottom:0.5rem;"><?php echo htmlspecialchars($_SESSION['customer_name']); ?></h4>
     <div style="color:#825e3a; font-size:1.08rem; margin-bottom:1.7rem;"><?php echo htmlspecialchars($_SESSION['customer_email']); ?></div>
     <hr style="width:80%;margin:1.2rem 0;">
+        <a href="#" class="btn btn-soft-orange w-100 mb-2" data-bs-toggle="modal" data-bs-target="#myOrdersModal">My Orders</a>
+    <hr style="width:80%;margin:1.2rem 0;">
     <a href="logout.php" class="btn btn-outline-soft-orange w-100 mb-2">Logout</a>
     <button type="button" class="btn btn-soft-orange w-100" data-bs-dismiss="offcanvas">Close</button>
   </div>
@@ -274,6 +308,95 @@ $products = $db->fetchAllProducts();
           <button type="submit" class="btn btn-soft-orange">Confirm</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+  <!-- My Orders Modal -->
+<div class="modal fade" id="myOrdersModal" tabindex="-1" aria-labelledby="myOrdersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+        <h5 class="modal-title" id="myOrdersModalLabel">My Orders</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:var(--beige);">
+        <ul class="nav nav-tabs mb-3" id="ordersTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="to-ship-tab" data-bs-toggle="tab" data-bs-target="#to-ship" type="button" role="tab">To Ship</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="to-receive-tab" data-bs-toggle="tab" data-bs-target="#to-receive" type="button" role="tab">To Receive</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="delivered-tab" data-bs-toggle="tab" data-bs-target="#delivered" type="button" role="tab">Delivered</button>
+          </li>
+        </ul>
+        <div class="tab-content" id="ordersTabContent">
+          <div class="tab-pane fade show active" id="to-ship" role="tabpanel">
+            <?php if (count($orders_by_status['To Ship'])): ?>
+              <?php foreach ($orders_by_status['To Ship'] as $order): ?>
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
+                    <div>Status: 
+                      <?php if ($order['order_status'] === 'Delivered'): ?>
+                        <span class="badge bg-success"><?= htmlspecialchars($order['order_status']) ?></span>
+                      <?php elseif ($order['order_status'] === 'Processing'): ?>
+                        <span class="badge bg-info text-dark"><?= htmlspecialchars($order['order_status']) ?></span>
+                      <?php else: ?>
+                        <span class="badge bg-warning text-dark"><?= htmlspecialchars($order['order_status']) ?></span>
+                      <?php endif; ?>
+                    </div>
+                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
+                    <div class="mt-2" style="font-size:0.97em;">
+                      <strong>Items:</strong><br>
+                      <?php
+                        $items = $orderObj->getOrderItems($order['Order_ID']); // Use $orderObj or $order as your Order class instance
+                        foreach ($items as $item) {
+                          echo htmlspecialchars($item['Product_Name']) . " x " . $item['Quantity'] . "<br>";
+                        }
+                      ?>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="text-muted">No orders to ship.</div>
+            <?php endif; ?>
+          </div>
+          <div class="tab-pane fade" id="to-receive" role="tabpanel">
+            <?php if (count($orders_by_status['To Receive'])): ?>
+              <?php foreach ($orders_by_status['To Receive'] as $order): ?>
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
+                    <div>Status: <span class="badge bg-info text-dark"><?= htmlspecialchars($order['order_status']) ?></span></div>
+                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="text-muted">No orders to receive.</div>
+            <?php endif; ?>
+          </div>
+          <div class="tab-pane fade" id="delivered" role="tabpanel">
+            <?php if (count($orders_by_status['Delivered'])): ?>
+              <?php foreach ($orders_by_status['Delivered'] as $order): ?>
+                <div class="card mb-2">
+                  <div class="card-body">
+                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
+                    <div>Status: <span class="badge bg-success"><?= htmlspecialchars($order['order_status']) ?></span></div>
+                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="text-muted">No delivered orders.</div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

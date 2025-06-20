@@ -203,4 +203,34 @@ class database{
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    function fetchOrders() {
+        $con = $this->opencon();
+        $stmt = $con->prepare("
+            SELECT 
+                o.Order_ID,
+                o.Customer_ID,
+                o.Order_Date,
+                o.Order_Amount,
+                o.order_status,
+                p.payment_status
+            FROM orders o
+            LEFT JOIN payment p ON o.Order_ID = p.Order_ID
+            ORDER BY o.Order_Date DESC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    function fetchOrderItems($order_id) {
+        $con = $this->opencon();
+        $stmt = $con->prepare("
+            SELECT oi.*, p.Product_Name
+            FROM order_item oi
+            JOIN product p ON oi.Product_ID = p.Product_ID
+            WHERE oi.Order_ID = ?
+        ");
+        $stmt->execute([$order_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
