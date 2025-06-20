@@ -208,9 +208,13 @@ class database{
         $stmt = $con->prepare("
             SELECT 
                 o.Order_ID,
-                o.Customer_ID,
                 o.Order_Date,
                 o.Order_Amount,
+                o.Customer_ID,
+                o.Street,
+                o.Barangay,
+                o.City,
+                o.Contact_Number,
                 o.order_status,
                 p.payment_status
             FROM orders o

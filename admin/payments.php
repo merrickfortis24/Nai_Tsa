@@ -7,6 +7,26 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
+// Update payment status
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_status'], $_POST['payment_id'])) {
+    $db = new database();
+    $con = $db->opencon();
+    $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Payment_ID=?");
+    $stmt->execute([$_POST['payment_status'], $_POST['payment_id']]);
+    header("Location: payments.php");
+    exit;
+}
+
+// Update order status (from suggested code change)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_status'], $_POST['order_id'])) {
+    $db = new database();
+    $con = $db->opencon();
+    $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
+    $stmt->execute([$_POST['order_status'], $_POST['order_id']]);
+    header("Location: orders.php");
+    exit;
+}
+
 // Fetch all payments
 $payments = [];
 $error = '';
@@ -108,8 +128,7 @@ try {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Payment ID</th>
-                                        <th>Order ID</th>
+                                        <th>Customer Name</th>
                                         <th>Amount</th>
                                         <th>Method</th>
                                         <th>Date</th>
@@ -120,15 +139,37 @@ try {
                                 <tbody>
                                     <?php foreach ($payments as $payment): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($payment['Payment_ID']) ?></td>
-                                        <td><?= htmlspecialchars($payment['Order_ID']) ?></td>
+                                        <td>
+                                            <?php
+                                            $customerName = '';
+                                            try {
+                                                $db2 = new database();
+                                                $con2 = $db2->opencon();
+                                                $stmt2 = $con2->prepare("SELECT c.Customer_Name FROM orders o JOIN customer c ON o.Customer_ID = c.Customer_ID WHERE o.Order_ID = ?");
+                                                $stmt2->execute([$payment['Order_ID']]);
+                                                $customerName = $stmt2->fetchColumn();
+                                            } catch (PDOException $e) {
+                                                $customerName = 'Unknown';
+                                            }
+                                            echo htmlspecialchars($customerName);
+                                            ?>
+                                        </td>
                                         <td>$<?= number_format($payment['Payment_Amount'], 2) ?></td>
                                         <td><?= htmlspecialchars($payment['Payment_Method']) ?></td>
                                         <td><?= date('M d, Y', strtotime($payment['Payment_Date'])) ?></td>
                                         <td>
-                                            <span class="status-badge <?= ($payment['Status'] ?? '') === 'Completed' ? 'status-active' : 'status-inactive' ?>">
-                                                <?= htmlspecialchars($payment['Status'] ?? 'Pending') ?>
-                                            </span>
+                                            <form method="post" action="payments.php" style="display:inline;">
+                                                <input type="hidden" name="payment_id" value="<?= $payment['Payment_ID'] ?>">
+                                                <select name="payment_status" onchange="this.form.submit()">
+                                                    <?php
+                                                    $pstatuses = ['Unpaid', 'Paid'];
+                                                    foreach ($pstatuses as $status) {
+                                                        $selected = ($payment['payment_status'] ?? '') === $status ? 'selected' : '';
+                                                        echo "<option value=\"$status\" $selected>$status</option>";
+                                                    }
+                                                    ?>
+                                                </select>
+                                            </form>
                                         </td>
                                         <td>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>

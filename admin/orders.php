@@ -122,10 +122,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Order ID</th>
-                                        <th>Customer ID</th>
+                                        <!-- <th>Order ID</th> --> <!-- Removed Order ID column -->
+                                        <th>Customer Name</th>
                                         <th>Date</th>
                                         <th>Total</th>
+                                        <th>Street</th>
+                                        <th>Barangay</th>
+                                        <th>City</th>
+                                        <th>Contact Number</th>
                                         <th>Order Status</th>
                                         <th>Payment Status</th>
                                         <th>Actions</th>
@@ -134,10 +138,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <tbody>
                                     <?php foreach ($orders as $order): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($order['Order_ID']) ?></td>
-                                        <td><?= htmlspecialchars($order['Customer_ID']) ?></td>
-                                        <td><?= date('M d, Y', strtotime($order['Order_Date'])) ?></td>
+                                        <!-- Customer Name -->
+                                        <td>
+                                            <?php
+                                            $customerName = '';
+                                            try {
+                                                $customerStmt = $db->opencon()->prepare("SELECT Customer_Name FROM customer WHERE Customer_ID = ?");
+                                                $customerStmt->execute([$order['Customer_ID']]);
+                                                $customerName = $customerStmt->fetchColumn();
+                                            } catch (PDOException $e) {
+                                                $customerName = 'Unknown';
+                                            }
+                                            echo htmlspecialchars($customerName);
+                                            ?>
+                                        </td>
+                                        <!-- Order Date -->
+                                        <td><?= date('F j, Y g:i A', strtotime($order['Order_Date'])) ?></td>
+                                        <!-- Total -->
                                         <td>$<?= number_format($order['Order_Amount'], 2) ?></td>
+                                        <!-- Address and Contact -->
+                                        <td><?= htmlspecialchars($order['Street']) ?></td>
+                                        <td><?= htmlspecialchars($order['Barangay']) ?></td>
+                                        <td><?= htmlspecialchars($order['City']) ?></td>
+                                        <td><?= htmlspecialchars($order['Contact_Number']) ?></td>
+                                        <!-- Order Status -->
                                         <td>
                                             <form method="post" action="orders.php" style="display:inline;">
                                                 <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
@@ -152,20 +176,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 </select>
                                             </form>
                                         </td>
+                                        <!-- Payment Status -->
                                         <td>
-                                            <form method="post" action="orders.php" style="display:inline;">
-                                                <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
-                                                <select name="payment_status" onchange="this.form.submit()">
-                                                    <?php
-                                                    $pstatuses = ['Unpaid', 'Paid'];
-                                                    foreach ($pstatuses as $status) {
-                                                        $selected = ($order['payment_status'] ?? '') === $status ? 'selected' : '';
-                                                        echo "<option value=\"$status\" $selected>$status</option>";
-                                                    }
-                                                    ?>
-                                                </select>
-                                            </form>
+                                            <span class="badge <?= ($order['payment_status'] ?? '') === 'Paid' ? 'bg-success' : 'bg-secondary' ?>">
+                <?= htmlspecialchars($order['payment_status'] ?? 'Unpaid') ?>
+            </span>
                                         </td>
+                                        <!-- Actions -->
                                         <td>
                                             <a href="#" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>">
                                                 <i class="bi bi-eye"></i>
