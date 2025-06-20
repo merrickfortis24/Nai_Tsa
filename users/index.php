@@ -521,7 +521,15 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
       cart
     })
   })
-  .then(res => res.json())
+  .then(async res => {
+    const text = await res.text();
+    console.log('Raw response:', text); // <-- Add this line
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON: ' + text);
+    }
+  })
   .then(data => {
     if (data.success) {
       Swal.fire({
@@ -548,7 +556,7 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
     Swal.fire({
       icon: 'error',
       title: 'Order Failed',
-      text: 'A network or server error occurred.',
+      text: err.message || 'A network or server error occurred.',
       confirmButtonColor: '#FFB27A'
     });
   });

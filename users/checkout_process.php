@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 session_start();
 require_once "classes/database.php";
 $db = new database();
@@ -62,13 +65,12 @@ $order_stmt->bindValue(7, 'Pending');
 $order_success = $order_stmt->execute();
 $order_id = $con->lastInsertId();
 
-$payment_stmt = $con->prepare("INSERT INTO payment (Payment_Method, Payment_Amount, Order_ID, Staff_ID, Admin_ID, payment_status) VALUES (?, ?, ?, ?, ?, ?)");
+$payment_stmt = $con->prepare("INSERT INTO payment (Payment_Method, Payment_Amount, Order_ID, Admin_ID, payment_status) VALUES (?, ?, ?, ?, ?)");
 $payment_success = $payment_stmt->execute([
     $data['paymentMethod'],
     $total,
     $order_id,
-    1,
-    1,
+    1, // Admin_ID
     'Unpaid'
 ]);
 
