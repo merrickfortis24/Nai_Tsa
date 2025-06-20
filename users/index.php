@@ -36,7 +36,7 @@ if ($user_id) {
             $orders_by_status['To Ship'][] = $order;
         } elseif ($order['order_status'] === 'Processing' && $order['payment_status'] === 'Paid') {
             $orders_by_status['To Receive'][] = $order;
-        } elseif ($order['order_status'] === 'Delivered') {
+        } elseif ($order['order_status'] === 'Delivered' && $order['payment_status'] === 'Paid') {
             $orders_by_status['Delivered'][] = $order;
         }
     }
