@@ -149,18 +149,23 @@ Open daily from 10AM to midnight..</p>
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
-      <form>
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <input type="text" class="form-control" placeholder="Your Name" required>
-          </div>
-          <div class="col-md-6 mb-3">
-            <input type="email" class="form-control" placeholder="Your Email" required>
-          </div>
-        </div>
-        <textarea class="form-control mb-3" rows="3" placeholder="Your Message" required></textarea>
-        <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
-      </form>
+      <?php if (isset($_GET['contact']) && $_GET['contact'] === 'success'): ?>
+  <div class="alert alert-success">Thank you! Your message has been sent.</div>
+<?php elseif (isset($_GET['contact']) && $_GET['contact'] === 'error'): ?>
+  <div class="alert alert-danger">Sorry, there was a problem sending your message.</div>
+<?php endif; ?>
+      <form method="POST" action="https://formspree.io/f/xnnvvzvw">
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <input type="text" class="form-control" name="name" placeholder="Your Name" required>
+    </div>
+    <div class="col-md-6 mb-3">
+      <input type="email" class="form-control" name="email" placeholder="Your Email" required>
+    </div>
+  </div>
+  <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" required></textarea>
+  <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
+</form>
     </div>
   </section>
 

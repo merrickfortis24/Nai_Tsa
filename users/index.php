@@ -41,6 +41,16 @@ if ($user_id) {
         }
     }
 }
+
+// Fetch average ratings for all products
+$avg_ratings = [];
+$stmt = $db->opencon()->query("SELECT Product_ID, AVG(Rating) as avg_rating, COUNT(*) as num_reviews FROM reviews GROUP BY Product_ID");
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $avg_ratings[$row['Product_ID']] = [
+        'avg' => round($row['avg_rating'], 2),
+        'count' => $row['num_reviews']
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -114,7 +124,40 @@ if ($user_id) {
           <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
           <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
           <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">Add to Cart</button>
+
+          <!-- Average Rating Display -->
+          <?php
+          $pid = $product['Product_ID'];
+          if (isset($avg_ratings[$pid])) {
+              $avg = $avg_ratings[$pid]['avg'];
+              $count = $avg_ratings[$pid]['count'];
+              echo '<div class="mb-2" style="font-size:1.1em;">
+                  <span style="color:#FFB27A;font-size:1.2em;">&#9733;</span>
+                  <strong>' . $avg . '</strong> / 5';
+              if ($count > 0) echo ' <span style="color:#888;">(' . $count . ' review' . ($count > 1 ? 's' : '') . ')</span>';
+              echo '</div>';
+          } else {
+              echo '<div class="mb-2" style="font-size:1.1em;color:#888;">No ratings yet</div>';
+          }
+          ?>
+
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn">Add to Cart</button>
+          <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+          <div class="star-rating-card" style="display:none; margin-top:1em;">
+            <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
+              <div>
+                <span onclick="gfg(this,1)" class="star">&#9733;</span>
+                <span onclick="gfg(this,2)" class="star">&#9733;</span>
+                <span onclick="gfg(this,3)" class="star">&#9733;</span>
+                <span onclick="gfg(this,4)" class="star">&#9733;</span>
+                <span onclick="gfg(this,5)" class="star">&#9733;</span>
+                <input type="hidden" name="rating" value="0">
+              </div>
+              <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+              <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+              <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
+            </form>
+          </div>
         </div>
       <?php endforeach; ?>
     </div>
@@ -688,6 +731,34 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
     });
   });
 });
+
+function openStarRating(btn) {
+  // Hide all other star-rating-card widgets in this card
+  var card = btn.closest('.menu-card');
+  var widget = card.querySelector('.star-rating-card');
+  widget.style.display = widget.style.display === 'none' ? 'block' : 'none';
+}
+
+// Star rating logic
+function gfg(el, n) {
+  var card = el.closest('.star-rating-card');
+  var stars = card.querySelectorAll('.star');
+  var output = card.querySelector('.output');
+  var input = card.querySelector('input[name="rating"]');
+  // Remove all classes
+  stars.forEach(s => s.className = 'star');
+  // Add color classes
+  for (let i = 0; i < n; i++) {
+    if (n == 1) cls = "one";
+    else if (n == 2) cls = "two";
+    else if (n == 3) cls = "three";
+    else if (n == 4) cls = "four";
+    else if (n == 5) cls = "five";
+    stars[i].className = "star " + cls;
+  }
+  input.value = n;
+  output.innerText = "Rating is: " + n + "/5";
+}
   </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 20, 2025 at 02:42 PM
+-- Generation Time: Jun 20, 2025 at 05:42 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -115,8 +115,10 @@ CREATE TABLE `orders` (
 INSERT INTO `orders` (`Order_ID`, `Order_Date`, `Order_Amount`, `Customer_ID`, `Street`, `Barangay`, `City`, `Contact_Number`, `order_status`) VALUES
 (63, '2025-06-20 17:21:01', 1050.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
 (64, '2025-06-20 19:03:54', 300.00, 1, 'Blk 13, Lot 30, Cedar rd., St. Joseph Homes', 'Inosloban', 'Lipa City', '09940780881', 'Delivered'),
-(65, '2025-06-20 20:09:18', 450.00, 1, NULL, NULL, NULL, NULL, 'Pending'),
-(66, '2025-06-20 20:09:31', 450.00, 1, 'Blk 13, Lot 30, Cedar rd., St. Joseph Homes', 'Inosloban', 'Lipa City', '099940780881', 'Pending');
+(65, '2025-06-20 20:09:18', 450.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
+(66, '2025-06-20 20:09:31', 450.00, 1, 'Blk 13, Lot 30, Cedar rd., St. Joseph Homes', 'Inosloban', 'Lipa City', '099940780881', 'Delivered'),
+(67, '2025-06-20 21:44:29', 450.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
+(68, '2025-06-20 23:20:22', 300.00, 1, NULL, NULL, NULL, NULL, 'Pending');
 
 -- --------------------------------------------------------
 
@@ -141,7 +143,9 @@ INSERT INTO `order_item` (`Order_Item_ID`, `Order_ID`, `Product_ID`, `Quantity`,
 (35, 63, 13, 4, 150.00),
 (36, 64, 5, 2, 150.00),
 (37, 65, 5, 3, 150.00),
-(38, 66, 10, 3, 150.00);
+(38, 66, 10, 3, 150.00),
+(39, 67, 5, 3, 150.00),
+(40, 68, 5, 2, 150.00);
 
 -- --------------------------------------------------------
 
@@ -164,10 +168,12 @@ CREATE TABLE `payment` (
 --
 
 INSERT INTO `payment` (`Payment_ID`, `Payment_Date`, `Payment_Method`, `Payment_Amount`, `Order_ID`, `Admin_ID`, `payment_status`) VALUES
-(58, '2025-06-20 17:21:01', 'COD', 1050.00, 63, 1, 'Unpaid'),
-(59, '2025-06-20 19:03:54', 'GCash', 300.00, 64, 1, 'Unpaid'),
-(60, '2025-06-20 20:09:18', 'COD', 450.00, 65, 1, 'Unpaid'),
-(61, '2025-06-20 20:09:31', 'Credit Card', 450.00, 66, 1, 'Unpaid');
+(58, '2025-06-20 17:21:01', 'COD', 1050.00, 63, 1, 'Paid'),
+(59, '2025-06-20 19:03:54', 'GCash', 300.00, 64, 1, 'Paid'),
+(60, '2025-06-20 20:09:18', 'COD', 450.00, 65, 1, 'Paid'),
+(61, '2025-06-20 20:09:31', 'Credit Card', 450.00, 66, 1, 'Paid'),
+(62, '2025-06-20 21:44:29', 'COD', 450.00, 67, 1, 'Paid'),
+(63, '2025-06-20 23:20:22', 'COD', 300.00, 68, 1, 'Unpaid');
 
 -- --------------------------------------------------------
 
@@ -225,6 +231,32 @@ INSERT INTO `product_price` (`Price_ID`, `Price_Amount`, `Effective_From`, `Effe
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `reviews`
+--
+
+CREATE TABLE `reviews` (
+  `Review_ID` int(11) NOT NULL,
+  `Product_ID` int(11) NOT NULL,
+  `Customer_ID` int(11) NOT NULL,
+  `Rating` int(11) NOT NULL CHECK (`Rating` between 1 and 5),
+  `Review_Text` text DEFAULT NULL,
+  `Review_Date` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`Review_ID`, `Product_ID`, `Customer_ID`, `Rating`, `Review_Text`, `Review_Date`) VALUES
+(1, 5, 1, 5, 'hjgdytfcg', '2025-06-20 22:16:56'),
+(2, 5, 1, 3, '', '2025-06-20 22:32:28'),
+(3, 5, 1, 1, '', '2025-06-20 22:55:09'),
+(4, 10, 1, 1, '', '2025-06-20 22:55:18'),
+(5, 16, 1, 1, '', '2025-06-20 23:09:05');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sales`
 --
 
@@ -245,7 +277,9 @@ CREATE TABLE `sales` (
 INSERT INTO `sales` (`Sale_ID`, `Order_ID`, `Product_ID`, `Quantity`, `Total_Amount`, `Sale_Date`, `Admin_ID`) VALUES
 (1, 63, 5, 3, 1050.00, '2025-06-20 20:08:06', 1),
 (2, 63, 13, 4, 1050.00, '2025-06-20 20:08:06', 1),
-(3, 65, 5, 3, 450.00, '2025-06-20 20:09:59', 1);
+(3, 65, 5, 3, 450.00, '2025-06-20 20:09:59', 1),
+(4, 66, 10, 3, 450.00, '2025-06-20 21:25:46', 1),
+(5, 67, 5, 3, 450.00, '2025-06-20 21:57:07', 1);
 
 --
 -- Indexes for dumped tables
@@ -311,6 +345,14 @@ ALTER TABLE `product_price`
   ADD PRIMARY KEY (`Price_ID`);
 
 --
+-- Indexes for table `reviews`
+--
+ALTER TABLE `reviews`
+  ADD PRIMARY KEY (`Review_ID`),
+  ADD KEY `Product_ID` (`Product_ID`),
+  ADD KEY `Customer_ID` (`Customer_ID`);
+
+--
 -- Indexes for table `sales`
 --
 ALTER TABLE `sales`
@@ -345,19 +387,19 @@ ALTER TABLE `customer`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `Order_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `Order_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `order_item`
 --
 ALTER TABLE `order_item`
-  MODIFY `Order_Item_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `Order_Item_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT for table `payment`
 --
 ALTER TABLE `payment`
-  MODIFY `Payment_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
+  MODIFY `Payment_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
 
 --
 -- AUTO_INCREMENT for table `product`
@@ -372,10 +414,16 @@ ALTER TABLE `product_price`
   MODIFY `Price_ID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `reviews`
+--
+ALTER TABLE `reviews`
+  MODIFY `Review_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `Sale_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `Sale_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- Constraints for dumped tables
@@ -408,6 +456,13 @@ ALTER TABLE `product`
   ADD CONSTRAINT `product_ibfk_1` FOREIGN KEY (`Admin_ID`) REFERENCES `admin` (`Admin_ID`),
   ADD CONSTRAINT `product_ibfk_2` FOREIGN KEY (`Category_ID`) REFERENCES `category` (`Category_ID`),
   ADD CONSTRAINT `product_ibfk_3` FOREIGN KEY (`Price_ID`) REFERENCES `product_price` (`Price_ID`);
+
+--
+-- Constraints for table `reviews`
+--
+ALTER TABLE `reviews`
+  ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`Product_ID`) REFERENCES `product` (`Product_ID`),
+  ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`Customer_ID`) REFERENCES `customer` (`Customer_ID`);
 
 --
 -- Constraints for table `sales`

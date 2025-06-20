@@ -93,8 +93,8 @@
     .menu-cards {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
-      gap: 2.2rem;
+      align-items: flex-start; /* <-- This is important */
+      gap: 1.2rem;
       margin-bottom: 2.9rem;
     }
     .menu-card {
@@ -290,6 +290,19 @@
     .remove-cart-item:hover svg {
       color: #c0392b;
     }
+
+    .star {
+      font-size: 2em;
+      cursor: pointer;
+      color: #ccc;
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .one { color: rgb(255, 0, 0); }
+    .two { color: rgb(255, 106, 0); }
+    .three { color: rgb(251, 255, 120); }
+    .four { color: rgb(255, 255, 0); }
+    .five { color: rgb(24, 159, 14); }
 
     @media (max-width: 991px) {
       .section-content {
