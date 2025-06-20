@@ -42,7 +42,7 @@ $first_name = explode(' ', trim($customer_name))[0];
           </li>
         </ul>
         <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
-          <button class="btn btn-outline-soft-orange me-2" type="button">Logout</button>
+          <a href="logout.php" class="btn btn-outline-soft-orange me-2">Logout</a>
           <a href="#" class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;">
             <span style="font-size:1.2em; margin-right:0.4em;">👤</span> <?php echo htmlspecialchars($first_name); ?>
           </a>
