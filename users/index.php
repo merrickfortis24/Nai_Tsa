@@ -1,5 +1,9 @@
 <?php
 session_start();
+if (!isset($_SESSION['Customer_ID'])) {
+    header('Location: login.php');
+    exit();
+}
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
 $first_name = explode(' ', trim($customer_name))[0];
 require_once "classes/database.php";
