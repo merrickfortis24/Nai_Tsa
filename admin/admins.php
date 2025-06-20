@@ -55,12 +55,6 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="staff.php">
-                                <i class="bi bi-person-badge"></i>
-                                <span>Staff</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
@@ -109,7 +103,7 @@ try {
                                 <option>All Roles</option>
                                 <option>Super Admin</option>
                                 <option>Manager</option>
-                                <option>Staff</option>
+                      
                             </select>
                         </div>
                     </div>

@@ -251,7 +251,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.35s cubic-bezier(.77,0,.18,1), opacity 0.35s cubic-bezier(.77,0,.18,1);
+      transition: background 0.2s, box-shadow 0.2s;
       font-size: 1.7rem;
       border: none;
       outline: none;
@@ -262,26 +262,33 @@
       color: #fff;
       box-shadow: 0 6px 24px rgba(0,0,0,0.18);
     }
-    .cart-fab.hide {
-      transform: scale(0.7) translateY(40px);
-      opacity: 0;
-      pointer-events: none;
+    .cart-fab .badge {
+      min-width: 1.6em;
+      min-height: 1.6em;
+      padding: 0.3em 0.5em;
+      font-weight: 600;
+      border: 2px solid #fff;
     }
-
-    /* Show offcanvas below the navbar */
-    .profile-offcanvas {
-      top: 90px !important;      /* Adjust this value to match your navbar height (e.g., 90px) */
-      height: calc(100% - 90px); /* Same value as above */
-      border-top-left-radius: 24px;
-      border-bottom-left-radius: 24px;
-      box-shadow: 0 4px 24px rgba(255,178,122,0.13);
-      overflow-y: auto;
+    .remove-cart-item {
+      margin-left: 0.7rem;
+      background: none;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s;
+      cursor: pointer;
     }
-    @media (max-width: 991px) {
-      .profile-offcanvas {
-        top: 70px !important;      /* Adjust for mobile navbar height */
-        height: calc(100% - 70px);
-      }
+    .remove-cart-item svg {
+      width: 22px;
+      height: 22px;
+      color: #e74c3c;
+      transition: color 0.15s;
+    }
+    .remove-cart-item:hover svg {
+      color: #c0392b;
     }
 
     @media (max-width: 991px) {

@@ -1,0 +1,19 @@
+Array
+(
+    [orderType] => Pick Up
+    [paymentMethod] => COD
+    [street] => 
+    [barangay] => 
+    [city] => 
+    [contact] => 
+    [cart] => Array
+        (
+            [0] => Array
+                (
+                    [name] => Sopas
+                    [qty] => 2
+                )
+
+        )
+
+)

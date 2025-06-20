@@ -163,12 +163,6 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="staff.php">
-                                <i class="bi bi-person-badge"></i>
-                                <span>Staff</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="orders.php">
                                 <i class="bi bi-cart4"></i>
                                 <span>Orders</span>
@@ -299,7 +293,6 @@ $total_revenue = array_sum(array_column($sales, 'Total_Amount'));
                                 <option>All Roles</option>
                                 <option>Super Admin</option>
                                 <option>Manager</option>
-                                <option>Staff</option>
                             </select>
                         </div>
                     </div>
@@ -424,7 +417,6 @@ $total_revenue = array_sum(array_column($sales, 'Total_Amount'));
                                         <option value="" <?= $admin_role === '' ? 'selected' : '' ?>>Select role</option>
                                         <option value="Super Admin" <?= $admin_role === 'Super Admin' ? 'selected' : '' ?>>Super Admin</option>
                                         <option value="Manager" <?= $admin_role === 'Manager' ? 'selected' : '' ?>>Manager</option>
-                                        <option value="Staff" <?= $admin_role === 'Staff' ? 'selected' : '' ?>>Staff</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -473,7 +465,7 @@ $total_revenue = array_sum(array_column($sales, 'Total_Amount'));
                               <select name="edit_admin_role" id="edit_admin_role" class="form-select" required>
                                 <option value="Super Admin">Super Admin</option>
                                 <option value="Manager">Manager</option>
-                                <option value="Staff">Staff</option>
+               
                               </select>
                             </div>
                             <div class="col-md-6 mb-3">

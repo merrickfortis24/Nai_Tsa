@@ -172,11 +172,14 @@ $products = $db->fetchAllProducts();
 </div>
 
   <!-- Cart Floating Action Button -->
-  <a href="#" id="cartFab" class="cart-fab" title="View Cart" aria-label="Cart" data-bs-toggle="modal" data-bs-target="#cartModal">
-    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16" style="display:block;">
-      <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 14H4a.5.5 0 0 1-.491-.408L1.01 2H.5a.5.5 0 0 1-.5-.5zm3.14 4l1.25 6h7.22l1.25-6H3.14zM5.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm7 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
-    </svg>
-  </a>
+<a href="#" id="cartFab" class="cart-fab position-fixed" title="View Cart" aria-label="Cart" data-bs-toggle="modal" data-bs-target="#cartModal" style="bottom:32px;right:32px;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16" style="display:block;">
+    <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 14H4a.5.5 0 0 1-.491-.408L1.01 2H.5a.5.5 0 0 1-.5-.5zm3.14 4l1.25 6h7.22l1.25-6H3.14zM5.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm7 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
+  </svg>
+  <span id="cart-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.9em;display:none;">
+    0
+  </span>
+</a>
 
   <!-- Cart Modal -->
 <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
@@ -187,13 +190,90 @@ $products = $db->fetchAllProducts();
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" style="background:var(--beige);min-height:180px;">
-        <div class="text-center text-muted" style="font-size:1.1rem;">Your cart is empty.</div>
-        <!-- You can dynamically fill cart items here -->
+        <div id="cart-items-list">
+          <div class="text-center text-muted" style="font-size:1.1rem;">Your cart is empty.</div>
+        </div>
       </div>
       <div class="modal-footer" style="background:var(--beige);border-bottom-left-radius:24px;border-bottom-right-radius:24px;">
         <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-soft-orange" disabled>Checkout</button>
+        <button type="button" class="btn btn-soft-orange" id="checkoutBtn">Checkout</button>
       </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;border-top-left-radius:20px;border-top-right-radius:20px;">
+        <h5 class="modal-title" id="paymentModalLabel">Checkout</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="paymentForm">
+        <div class="modal-body" style="background:var(--beige);">
+          <div class="mb-3">
+            <label class="form-label mb-1">Order Type</label><br>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="orderType" id="pickup" value="Pick Up" checked>
+              <label class="form-check-label" for="pickup">Pick Up</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="orderType" id="delivery" value="Delivery">
+              <label class="form-check-label" for="delivery">Delivery</label>
+            </div>
+          </div>
+          <div id="deliveryFields" style="display:none;">
+            <div class="mb-3">
+              <input type="text" class="form-control" name="street" placeholder="Street">
+            </div>
+            <div class="mb-3">
+              <input type="text" class="form-control" name="barangay" placeholder="Barangay">
+            </div>
+            <div class="mb-3">
+              <input type="text" class="form-control" name="city" placeholder="City">
+            </div>
+            <div class="mb-3">
+              <input type="text" class="form-control" name="contact" placeholder="Contact Number">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label mb-1">Payment Method</label><br>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="paymentMethod" id="cod" value="COD" checked>
+              <label class="form-check-label" for="cod">Cash on Delivery</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="paymentMethod" id="gcash" value="GCash">
+              <label class="form-check-label" for="gcash">GCash</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="paymentMethod" id="credit" value="Credit Card">
+              <label class="form-check-label" for="credit">Credit Card</label>
+            </div>
+          </div>
+          <!-- GCash Info -->
+          <div id="gcashFields" style="display:none;">
+            <div class="alert alert-info mb-3" style="font-size:1.05em;">
+              <strong>GCash:</strong><br>
+              Name: Nai Tsa<br>
+              Number: 09940780881
+            </div>
+          </div>
+          <!-- Credit Card Info -->
+          <div id="creditFields" style="display:none;">
+            <div class="alert alert-info mb-3" style="font-size:1.05em;" id="creditCardInfo">
+              <strong>Credit Card:</strong><br>
+              Name: Nai Tsa<br>
+              Number: <span id="generatedCardNumber"></span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="background:var(--beige);border-bottom-left-radius:20px;border-bottom-right-radius:20px;">
+          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-soft-orange">Confirm</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -204,6 +284,7 @@ $products = $db->fetchAllProducts();
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
@@ -276,24 +357,202 @@ $products = $db->fetchAllProducts();
     setupRotatingBg("about", aboutImages);
     setupRotatingBg("contact", contactImages);
 
-    // Add to Cart functionality (simple alert for demo)
-    document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        const product = this.getAttribute('data-product');
-        alert(product + " added to cart!");
+    // Cart logic
+let cart = [];
+const cartBadge = document.getElementById('cart-badge');
+const cartItemsList = document.getElementById('cart-items-list');
+
+function updateCartBadge() {
+  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  if (totalQty > 0) {
+    cartBadge.textContent = totalQty;
+    cartBadge.style.display = 'inline-block';
+  } else {
+    cartBadge.style.display = 'none';
+  }
+}
+
+function renderCartItems() {
+  if (cart.length === 0) {
+    cartItemsList.innerHTML = '<div class="text-center text-muted" style="font-size:1.1rem;">Your cart is empty.</div>';
+    return;
+  }
+  cartItemsList.innerHTML = cart.map((item, idx) => `
+    <div class="d-flex align-items-center justify-content-between border-bottom py-2">
+      <div>
+        <strong>${item.name}</strong>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-secondary">${item.qty}</span>
+        <button class="remove-cart-item" data-idx="${idx}" title="Remove">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5.5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6zm3 .5a.5.5 0 0 1 .5-.5.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6zm-7-1A1.5 1.5 0 0 1 5.5 4h5A1.5 1.5 0 0 1 12 5.5V6h1.5A.5.5 0 0 1 14 6.5v.5a.5.5 0 0 1-.5.5H2.5a.5.5 0 0 1-.5-.5v-.5A.5.5 0 0 1 2.5 6H4v-.5zM5.5 5a.5.5 0 0 0-.5.5V6h6v-.5a.5.5 0 0 0-.5-.5h-5z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  
+  // Add event listeners for remove buttons
+  document.querySelectorAll('.remove-cart-item').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const idx = parseInt(this.getAttribute('data-idx'));
+      cart.splice(idx, 1);
+      updateCartBadge();
+      renderCartItems();
+    });
+  });
+}
+
+document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    const product = this.getAttribute('data-product');
+    // Check if already in cart
+    const found = cart.find(item => item.name === product);
+    if (found) {
+      found.qty += 1;
+    } else {
+      cart.push({ name: product, qty: 1 });
+    }
+    updateCartBadge();
+    renderCartItems();
+    // Do NOT open the modal here
+  });
+});
+
+// When the cart modal is opened, always render the latest cart items
+const cartFab = document.getElementById('cartFab');
+const cartModalEl = document.getElementById('cartModal');
+cartModalEl.addEventListener('show.bs.modal', function () {
+  cartFab.classList.add('hide');
+  renderCartItems();
+});
+cartModalEl.addEventListener('hidden.bs.modal', function () {
+  cartFab.classList.remove('hide');
+});
+
+document.getElementById('checkoutBtn').addEventListener('click', function() {
+  const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  if (totalQty === 0) {
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Your cart is empty',
+        text: 'Please add items before checking out.',
+        confirmButtonColor: '#FFB27A'
       });
-    });
+    } else {
+      alert('Your cart is empty. Please add items before checking out.');
+    }
+    return;
+  }
+  // Show payment modal
+  const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+  paymentModal.show();
+});
 
-    // Animate cart button when modal opens/closes
-    const cartFab = document.getElementById('cartFab');
-    const cartModal = document.getElementById('cartModal');
+// Payment modal logic
+const paymentModalEl = document.getElementById('paymentModal');
+const paymentForm = document.getElementById('paymentForm');
+const deliveryFields = document.getElementById('deliveryFields');
 
-    cartModal.addEventListener('show.bs.modal', function () {
-      cartFab.classList.add('hide');
+// Show/hide delivery fields based on order type
+document.querySelectorAll('input[name="orderType"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    document.getElementById('deliveryFields').style.display =
+      this.value === 'Delivery' ? 'block' : 'none';
+  });
+});
+
+// Show/hide payment fields based on payment method
+document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    document.getElementById('gcashFields').style.display = this.value === 'GCash' ? 'block' : 'none';
+    document.getElementById('creditFields').style.display = this.value === 'Credit Card' ? 'block' : 'none';
+    if (this.value === 'Credit Card') {
+      document.getElementById('generatedCardNumber').textContent = generateCreditCardNumber();
+    }
+  });
+});
+
+function generateCreditCardNumber() {
+  // Simple random 16-digit number (not a real card, just for display)
+  let num = '';
+  for (let i = 0; i < 16; i++) {
+    num += Math.floor(Math.random() * 10);
+    if ((i + 1) % 4 === 0 && i !== 15) num += ' ';
+  }
+  return num;
+}
+
+// Handle payment form submission
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const orderType = document.querySelector('input[name="orderType"]:checked').value;
+  const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+  let street = '', barangay = '', city = '', contact = '';
+  if (orderType === 'Delivery') {
+    street = this.street.value.trim();
+    barangay = this.barangay.value.trim();
+    city = this.city.value.trim();
+    contact = this.contact.value.trim();
+    if (!street || !barangay || !city || !contact) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Details',
+        text: 'Please provide your street, barangay, city, and contact number.',
+        confirmButtonColor: '#FFB27A'
+      });
+      return;
+    }
+  }
+  // Send data to PHP
+  fetch('checkout_process.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      orderType,
+      paymentMethod,
+      street,
+      barangay,
+      city,
+      contact,
+      cart
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Order Confirmed!',
+        text: 'Your order has been placed successfully.',
+        confirmButtonColor: '#FFB27A'
+      }).then(() => {
+        cart.length = 0;
+        updateCartBadge();
+        renderCartItems();
+        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Order Failed',
+        text: data.message || 'There was a problem processing your order.',
+        confirmButtonColor: '#FFB27A'
+      });
+    }
+  })
+  .catch(err => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Order Failed',
+      text: 'A network or server error occurred.',
+      confirmButtonColor: '#FFB27A'
     });
-    cartModal.addEventListener('hidden.bs.modal', function () {
-      cartFab.classList.remove('hide');
-    });
+  });
+});
   </script>
 </body>
 </html>

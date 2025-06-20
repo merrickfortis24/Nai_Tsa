@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $login_success = true;
         $_SESSION['customer_name'] = $user['Customer_Name'];
         $_SESSION['customer_email'] = $user['Customer_Email'];
+        $_SESSION['customer_id'] = $user['Customer_ID']; // <-- Add this line
         if ($remember) {
             setcookie('remember_email', $email, time() + (86400 * 30), "/"); // 30 days
             setcookie('remember_pass', $password, time() + (86400 * 30), "/"); // 30 days
