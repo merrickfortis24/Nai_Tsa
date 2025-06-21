@@ -318,6 +318,16 @@
       .section-title {
         font-size: 1.6rem;
       }
+      .navbar-nav {
+        align-items: center !important;
+        text-align: center;
+      }
+      .navbar-collapse {
+        background: rgba(255,255,255,0.97);
+        border-radius: 0 0 18px 18px;
+        box-shadow: 0 4px 20px rgba(255, 178, 122, 0.09);
+        padding-bottom: 1rem;
+      }
     }
     @media (max-width: 575px) {
       .navbar {
