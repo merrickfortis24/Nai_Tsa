@@ -221,11 +221,6 @@
         }
         
         @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 15px;
-            }
-            
             .sidebar {
                 width: 0;
                 display: none;
@@ -434,4 +429,25 @@
     width: 100% !important;
     height: auto !important;
     max-width: 100%;
+}
+
+@media (max-width: 991px) {
+  .sidebar {
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 220px;
+    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+    transition: left 0.3s;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+    display: none; /* Let Bootstrap's .collapse handle display */
+  }
+  .sidebar.show {
+    display: block !important; /* Show when .show is added by Bootstrap */
+  }
+  .main-content {
+    margin-left: 0 !important;
+  }
 }

@@ -141,7 +141,7 @@ try {
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
+            <div class="col-md-2 col-lg-2 sidebar collapse d-lg-block" id="sidebarCollapse">
                 <div class="pt-3">
                     <div class="d-flex align-items-center mb-4 px-3">
                         <div class="bg-white p-2 rounded me-2">
@@ -222,6 +222,11 @@ try {
                     </div>
                 </div>
                 
+                <!-- Add this button inside your .header div, preferably at the start or left side -->
+                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="bi bi-list" style="font-size:1.7rem;"></i>
+                </button>
+
                 <!-- Stats Cards -->
                 <div class="row">
                     <div class="col-md-3">
