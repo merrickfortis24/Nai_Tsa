@@ -141,7 +141,10 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
           }
           ?>
 
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn">Add to Cart</button>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+        data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+  Add to Cart
+</button>
           <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
           <div class="star-rating-card" style="display:none; margin-top:1em;">
             <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
