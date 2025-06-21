@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
 </head>
 <body>
@@ -28,11 +29,14 @@
           <input type="email" class="form-control" name="email" placeholder="Email Address" required>
           <div id="email-warning" class="text-danger mt-1" style="display:none;font-size:0.97rem;"></div>
         </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" name="password" placeholder="Password" required minlength="6">
+        <div class="mb-3 position-relative">
+          <input type="password" class="form-control" name="password" id="signupPassword" placeholder="Password" required minlength="6">
+          <span class="toggle-password" onclick="toggleSignupPassword('signupPassword', 'eyeSignup')" style="position:absolute;top:50%;right:1.2rem;transform:translateY(-50%);cursor:pointer;">
+            <i id="eyeSignup" class="bi bi-eye" style="font-size:1.3em;color:gray;"></i>
+          </span>
         </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required minlength="6">
+        <div class="mb-3 position-relative">
+          <input type="password" class="form-control" name="confirm_password" id="signupConfirmPassword" placeholder="Confirm Password" required minlength="6">
           <div id="password-warning" class="text-danger mt-1" style="display:none;font-size:0.97rem;"></div>
         </div>
         <button type="submit" class="btn btn-soft-orange" name="signup">Sign Up</button>
@@ -115,6 +119,22 @@
           }
         });
     });
+
+    function toggleSignupPassword(inputId, eyeId) {
+      const input = document.getElementById(inputId);
+      const eye = document.getElementById(eyeId);
+      if (input.type === "password") {
+        input.type = "text";
+        eye.classList.remove('bi-eye');
+        eye.classList.add('bi-eye-slash');
+        eye.style.color = 'orange';
+      } else {
+        input.type = "password";
+        eye.classList.remove('bi-eye-slash');
+        eye.classList.add('bi-eye');
+        eye.style.color = 'gray';
+      }
+    }
   </script>
 
   <?php
