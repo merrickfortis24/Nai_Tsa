@@ -101,7 +101,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
   </nav>
 
   <!-- Home Section -->
-  <section class="section" id="home" style="background-image: url('https://scontent.fmnl17-5.fna.fbcdn.net/v/t39.30808-6/481348026_632646619530004_740397893899066208_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGjeWCZxoZbHgis-Iy92UoLfJc4_v2UeV98lzj-_ZR5X62vIJ6nZ8AEIKTkEyrTT0-NSz1c1Dnwv6l3ZYCKxOZO&_nc_ohc=IoXR7wyIjLUQ7kNvwHQwm6G&_nc_oc=AdnqvKOCbjlR6zsfT9Xit12YcARhX_I_8H_TIIkZAiqOAfER-36O27n62qJArtAolro&_nc_zt=23&_nc_ht=scontent.fmnl17-5.fna&_nc_gid=7SyQ3ne9y6nkAJJldJavpQ&oh=00_AfPuyO8_RiTXaOfVXlEjzq5g4I4HtOi4MssiFJUHE8K8-Q&oe=68573FCE');">
+  <section class="section" id="home" style="background-image: url('assets/bg7.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
       <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
@@ -113,68 +113,67 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
   </section>
 
   <!-- Menu Section -->
-  <section class="section" id="menu" style="background-image: url('https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/491355857_667464796048186_5563372254686319857_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeE0EMgNYAh3sK2ELezcsoNjzv-0_uK6yJ3O_7T-4rrInUs8ZlmDenP6NZyx0xgnzkzsNGivZydRi5Li6rGMQUB3&_nc_ohc=rAv1shhALVkQ7kNvwE3w9N4&_nc_oc=Adk6Jm3AmYFGOv995P_DfsKAQr-i0f8w53QvRtw5nwXiOvVljmBRX9sq1eTUXTIavbc&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=V2fgOrY4_pomG0SQG-3PXg&oh=00_AfO6pfYqaazFFNvB1wVfZ-BRs5H1FH2ww29kww2eww47Xg&oe=685739AE');
-         min-height: 140vh;">
-  <div class="section-overlay"></div>
-  <div class="section-content" style="max-width: 1200px;">
-    <h2 class="section-title text-center w-100">Our Bestsellers</h2>
-    <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
-      <?php foreach($products as $product): ?>
-        <div class="menu-card">
-          <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-          <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
-          <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
+  <section class="section" id="menu" style="background-image: url('assets/bg2.jpg'); min-height: 140vh;">
+    <div class="section-overlay"></div>
+    <div class="section-content" style="max-width: 1200px;">
+      <h2 class="section-title text-center w-100">Our Bestsellers</h2>
+      <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
+        <?php foreach($products as $product): ?>
+          <div class="menu-card">
+            <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+            <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
+            <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
 
-          <!-- Average Rating Display -->
-          <?php
-          $pid = $product['Product_ID'];
-          if (isset($avg_ratings[$pid])) {
-              $avg = $avg_ratings[$pid]['avg'];
-              $count = $avg_ratings[$pid]['count'];
-              echo '<div class="mb-2" style="font-size:1.1em;">
-                  <span style="color:#FFB27A;font-size:1.2em;">&#9733;</span>
-                  <strong>' . $avg . '</strong> / 5';
-              if ($count > 0) echo ' <span style="color:#888;">(' . $count . ' review' . ($count > 1 ? 's' : '') . ')</span>';
-              echo '</div>';
-          } else {
-              echo '<div class="mb-2" style="font-size:1.1em;color:#888;">No ratings yet</div>';
-          }
-          ?>
+            <!-- Average Rating Display -->
+            <?php
+            $pid = $product['Product_ID'];
+            if (isset($avg_ratings[$pid])) {
+                $avg = $avg_ratings[$pid]['avg'];
+                $count = $avg_ratings[$pid]['count'];
+                echo '<div class="mb-2" style="font-size:1.1em;">
+                    <span style="color:#FFB27A;font-size:1.2em;">&#9733;</span>
+                    <strong>' . $avg . '</strong> / 5';
+                if ($count > 0) echo ' <span style="color:#888;">(' . $count . ' review' . ($count > 1 ? 's' : '') . ')</span>';
+                echo '</div>';
+            } else {
+                echo '<div class="mb-2" style="font-size:1.1em;color:#888;">No ratings yet</div>';
+            }
+            ?>
 
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-        data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-  Add to Cart
-</button>
-          <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-          <div class="star-rating-card" style="display:none; margin-top:1em;">
-            <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
-              <div>
-                <span onclick="gfg(this,1)" class="star">&#9733;</span>
-                <span onclick="gfg(this,2)" class="star">&#9733;</span>
-                <span onclick="gfg(this,3)" class="star">&#9733;</span>
-                <span onclick="gfg(this,4)" class="star">&#9733;</span>
-                <span onclick="gfg(this,5)" class="star">&#9733;</span>
-                <input type="hidden" name="rating" value="0">
-              </div>
-              <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-              <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-              <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-            </form>
+            <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+          data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+      Add to Cart
+    </button>
+            <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+            <div class="star-rating-card" style="display:none; margin-top:1em;">
+              <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
+                <div>
+                  <span onclick="gfg(this,1)" class="star">&#9733;</span>
+                  <span onclick="gfg(this,2)" class="star">&#9733;</span>
+                  <span onclick="gfg(this,3)" class="star">&#9733;</span>
+                  <span onclick="gfg(this,4)" class="star">&#9733;</span>
+                  <span onclick="gfg(this,5)" class="star">&#9733;</span>
+                  <input type="hidden" name="rating" value="0">
+                </div>
+                <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+                <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+                <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
+              </form>
+            </div>
           </div>
-        </div>
-      <?php endforeach; ?>
+        <?php endforeach; ?>
+      </div>
+      <div class="text-center w-100" style="margin-top: 0.2rem;">
+        <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
+          More Products
+        </a>
+      </div>
     </div>
-    <div class="text-center w-100" style="margin-top: 0.2rem;">
-      <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
-        More Products
-      </a>
-    </div>
-  </div>
-</section>
+  </section>
 
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('https://scontent.fmnl17-3.fna.fbcdn.net/v/t39.30808-6/492083848_665920679535931_5251080750071902474_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeFvE24HQYrGCLztoy0q1iVky-O2MrQF4tPL47YytAXi03jyIo9KNZeHG0ySxzVgnkOCZOpwBwkzQGtlkePoY-3b&_nc_ohc=jN5eptfODhcQ7kNvwG4Ef0F&_nc_oc=Adm_4leRZmGBIb2RC3Tfu5AEHz-C9iSf9PKGY2_YQT-Zi44EVk-uOSXgS3vKQGo0fEE&_nc_zt=23&_nc_ht=scontent.fmnl17-3.fna&_nc_gid=FjcLizQYXJk84MJLDTqLrg&oh=00_AfM0pK8aklYOwNXgKzFiUIIh-WYH8xAlLAo0_0sJQZqF5A&oe=6856E490');">
+  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
@@ -215,7 +214,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
   </section>
 
   <!-- Contact Section -->
-  <section class="section" id="contact" style="background-image: url('https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/481449891_632646246196708_7996399925717148248_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=100&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGy0LK87mSeUDECC8Ktj2Ei_65UWvk0DCj_rlRa-TQMKPlBzeHsEm_sMikSxW6slUTTX2Jyl5y7V6rLdhYObEvD&_nc_ohc=T8y8_qVc-1wQ7kNvwEGhA2W&_nc_oc=AdlbqtBntReIPoXt_9bpUrX7ebuEcLoLnY9Ggy3Y5psn48_znQvfNl3S3cdQne3kcoY&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=Zrm2Hk5Ah0HezAuhPSGB9A&oh=00_AfOf-gCXz3vKmMCuFQ6MjPQ2k4A-F-nXNfrD5cqSZZjhpQ&oe=6856E81F');">
+  <section class="section" id="contact" style="background-image: url('assets/bg10.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
@@ -506,25 +505,28 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
       setInterval(changeBg, 3000);
     }
 
-    // Images for each section
+    // Use your downloaded images from assets folder
     const homeImages = [
-      "https://scontent.fmnl17-5.fna.fbcdn.net/v/t39.30808-6/481348026_632646619530004_740397893899066208_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGjeWCZxoZbHgis-Iy92UoLfJc4_v2UeV98lzj-_ZR5X62vIJ6nZ8AEIKTkEyrTT0-NSz1c1Dnwv6l3ZYCKxOZO&_nc_ohc=IoXR7wyIjLUQ7kNvwHQwm6G&_nc_oc=AdnqvKOCbjlR6zsfT9Xit12YcARhX_I_8H_TIIkZAiqOAfER-36O27n62qJArtAolro&_nc_zt=23&_nc_ht=scontent.fmnl17-5.fna&_nc_gid=7SyQ3ne9y6nkAJJldJavpQ&oh=00_AfPuyO8_RiTXaOfVXlEjzq5g4I4HtOi4MssiFJUHE8K8-Q&oe=68573FCE",
-      "https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/500230252_692319856896013_8852028192218548547_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeF-RPA8YMrq0jSRkO2a0609EMOea9UkhbkQw55r1SSFuTfggM7u_KphE4xaukwWnHiAvNIb54Tdug6LylldXazD&_nc_ohc=8WcA0JIr4KIQ7kNvwFY78B0&_nc_oc=AdlTPV6RJW8qhyOfoECtVos5lPInQmWRuboETiLNzFvf83N1xvPdu7pD2Hn9uOOZzWU&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=Gq6LmE5At4ZrlEznx7hrpA&oh=00_AfPJo1WfXQ6mGewsL6MBctLZTzlYWpdf38MhNxyZzLAhew&oe=6856EF07"
+      "assets/bg1.jpg",
+      "assets/bg7.jpg",
+      "assets/bg3.jpg"
     ];
     const menuImages = [
-      "https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/491355857_667464796048186_5563372254686319857_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeE0EMgNYAh3sK2ELezcsoNjzv-0_uK6yJ3O_7T-4rrInUs8ZlmDenP6NZyx0xgnzkzsNGivZydRi5Li6rGMQUB3&_nc_ohc=rAv1shhALVkQ7kNvwE3w9N4&_nc_oc=Adk6Jm3AmYFGOv995P_DfsKAQr-i0f8w53QvRtw5nwXiOvVljmBRX9sq1eTUXTIavbc&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=V2fgOrY4_pomG0SQG-3PXg&oh=00_AfO6pfYqaazFFNvB1wVfZ-BRs5H1FH2ww29kww2eww47Xg&oe=685739AE",
-      "https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/493052023_669980562463276_344743802743648025_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGwj-3y5c4c6RFeK3M8r6uqGjWNEW45BwQaNY0RbjkHBKNFMGyVnsaTCmP1jYD64leH77wr4A5YINiGB7s9YlbZ&_nc_ohc=OrDGRMfc9fEQ7kNvwFilZ3w&_nc_oc=AdnXPNhq_uUsbGVZ7AqplJovZMyR8sl23I19fYpi4ku-ZydHFjsGxgkpAVjUahaYbNI&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=sSGMrA8A6u3A7aKsg0EEcg&oh=00_AfO_u41aZWGJd10VxQS-Vdm_iPd5H9alPfqk4ifE7bxztQ&oe=685733E8"
+      "assets/bg4.jpg",
+       "assets/bg2.jpg",
+      "assets/bg5.jpg"
     ];
     const aboutImages = [
-      "https://scontent.fmnl17-3.fna.fbcdn.net/v/t39.30808-6/492083848_665920679535931_5251080750071902474_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeFvE24HQYrGCLztoy0q1iVky-O2MrQF4tPL47YytAXi03jyIo9KNZeHG0ySxzVgnkOCZOpwBwkzQGtlkePoY-3b&_nc_ohc=jN5eptfODhcQ7kNvwG4Ef0F&_nc_oc=Adm_4leRZmGBIb2RC3Tfu5AEHz-C9iSf9PKGY2_YQT-Zi44EVk-uOSXgS3vKQGo0fEE&_nc_zt=23&_nc_ht=scontent.fmnl17-3.fna&_nc_gid=FjcLizQYXJk84MJLDTqLrg&oh=00_AfM0pK8aklYOwNXgKzFiUIIh-WYH8xAlLAo0_0sJQZqF5A&oe=6856E490",
-      "https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/305017926_123739037082830_6536344361033765846_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeF6gojYSTdWNY4orY0VNUkSmvcRd1ll5jia9xF3WWXmODD-saAHrmXgUQmKemzloGzWiKXvFLnLMDOAGKdxzyD6&_nc_ohc=7iBKmMdkBywQ7kNvwFRDQYs&_nc_oc=AdlY_BYvScrT1IflonpxA1Qvq5KxK43IM6csPvtUSzdETsmOm1huAnaj3u8V2bhL94M&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=zr_iO0JmrhCwDGAHOAqdbQ&oh=00_AfP71h0Bxwo_zXF6XA1C60idZzXqlq6yMUdhgIvHHgnRbA&oe=6855DFB1"
+      "assets/bg8.jpg",
+       "assets/bg11.jpg",
+      "assets/bg9.jpg"
     ];
     const contactImages = [
-      "https://scontent.fmnl17-1.fna.fbcdn.net/v/t39.30808-6/481449891_632646246196708_7996399925717148248_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=100&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeGy0LK87mSeUDECC8Ktj2Ei_65UWvk0DCj_rlRa-TQMKPlBzeHsEm_sMikSxW6slUTTX2Jyl5y7V6rLdhYObEvD&_nc_ohc=T8y8_qVc-1wQ7kNvwEGhA2W&_nc_oc=AdlbqtBntReIPoXt_9bpUrX7ebuEcLoLnY9Ggy3Y5psn48_znQvfNl3S3cdQne3kcoY&_nc_zt=23&_nc_ht=scontent.fmnl17-1.fna&_nc_gid=Zrm2Hk5Ah0HezAuhPSGB9A&oh=00_AfOf-gCXz3vKmMCuFQ6MjPQ2k4A-F-nXNfrD5cqSZZjhpQ&oe=6856E81F",
-      "https://scontent.fmnl17-2.fna.fbcdn.net/v/t39.30808-6/500230252_692319856896013_8852028192218548547_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_eui2=AeF-RPA8YMrq0jSRkO2a0609EMOea9UkhbkQw55r1SSFuTfggM7u_KphE4xaukwWnHiAvNIb54Tdug6LylldXazD&_nc_ohc=8WcA0JIr4KIQ7kNvwFY78B0&_nc_oc=AdlTPV6RJW8qhyOfoECtVos5lPInQmWRuboETiLNzFvf83N1xvPdu7pD2Hn9uOOZzWU&_nc_zt=23&_nc_ht=scontent.fmnl17-2.fna&_nc_gid=Gq6LmE5At4ZrlEznx7hrpA&oh=00_AfPJo1WfXQ6mGewsL6MBctLZTzlYWpdf38MhNxyZzLAhew&oe=6856EF07"
+      "assets/bg12.jpg",
+       "assets/bg10.jpg",
+      "assets/naitsalogo.jpg"
     ];
 
-    // Setup rotating backgrounds
     setupRotatingBg("home", homeImages);
     setupRotatingBg("menu", menuImages);
     setupRotatingBg("about", aboutImages);
