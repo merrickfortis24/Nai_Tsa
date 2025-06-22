@@ -7,30 +7,49 @@ $wrong_password = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
+    $account_type = $_POST['account_type'] ?? 'customer';
     $remember = isset($_POST['remember']);
 
     require_once("database/database.php");
     $db = new database();
     $con = $db->opencon();
-    $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_Email = ?");
+
+    if ($account_type === 'admin') {
+        $stmt = $con->prepare("SELECT * FROM admin WHERE Admin_Email = ?");
+    } else {
+        $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_Email = ?");
+    }
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
         $email_not_found = true;
-    } elseif (!password_verify($password, $user['Customer_Password'])) {
-        $wrong_password = true;
     } else {
-        $login_success = true;
-        $_SESSION['customer_name'] = $user['Customer_Name'];
-        $_SESSION['customer_email'] = $user['Customer_Email'];
-        $_SESSION['customer_id'] = $user['Customer_ID'];
-        if ($remember) {
-            setcookie('remember_email', $email, time() + (86400 * 30), "/");
-            setcookie('remember_pass', $password, time() + (86400 * 30), "/");
+        $hashed = $account_type === 'admin' ? $user['Admin_Password'] : $user['Customer_Password'];
+        if (!password_verify($password, $hashed)) {
+            $wrong_password = true;
         } else {
-            setcookie('remember_email', '', time() - 3600, "/");
-            setcookie('remember_pass', '', time() - 3600, "/");
+            $login_success = true;
+            if ($account_type === 'admin') {
+                $_SESSION['admin_id'] = $user['Admin_ID'];
+                $_SESSION['admin_name'] = $user['Admin_Name'];
+                $_SESSION['admin_role'] = $user['Admin_Role'];
+                header("Location: admin/index.php");
+                exit;
+            } else {
+                $_SESSION['customer_name'] = $user['Customer_Name'];
+                $_SESSION['customer_email'] = $user['Customer_Email'];
+                $_SESSION['customer_id'] = $user['Customer_ID'];
+                if ($remember) {
+                    setcookie('remember_email', $email, time() + (86400 * 30), "/");
+                    setcookie('remember_pass', $password, time() + (86400 * 30), "/");
+                } else {
+                    setcookie('remember_email', '', time() - 3600, "/");
+                    setcookie('remember_pass', '', time() - 3600, "/");
+                }
+                header("Location: users/index.php");
+                exit;
+            }
         }
     }
 }
@@ -60,6 +79,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="login-title">Welcome Back</div>
       <div class="login-desc">Log in to your Nai Tsa account to continue.</div>
       <form method="post" action="login.php">
+        <div class="mb-3">
+          <select name="account_type" class="form-select" required>
+            <option value="customer">Customer</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
         <div class="mb-3">
           <input type="email" name="email" class="form-control" placeholder="Email Address" required
             value="<?php if(isset($_COOKIE['remember_email'])) echo htmlspecialchars($_COOKIE['remember_email']); ?>">
