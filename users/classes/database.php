@@ -8,7 +8,7 @@ class database {
         );
     }
 
-    public function fetchAllProducts() {
+    function fetchAllProducts() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT * FROM product");
         $stmt->execute();
@@ -16,7 +16,7 @@ class database {
     }
 
     // Insert order and return the new order ID
-    public function insertOrder($data) {
+    function insertOrder($data) {
         $con = $this->opencon();
         $stmt = $con->prepare("INSERT INTO orders (Customer_ID, Order_Amount, Street, Barangay, City, Contact_Number, order_status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')");
         $stmt->execute([
@@ -31,7 +31,7 @@ class database {
     }
 
     // Insert order item
-    public function insertOrderItem($data) {
+    function insertOrderItem($data) {
         $con = $this->opencon();
         $stmt = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
         return $stmt->execute([
@@ -43,7 +43,7 @@ class database {
     }
 
     // Fetch product by name
-    public function fetchProductByName($name) {
+    function fetchProductByName($name) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT * FROM product WHERE Product_Name = ?");
         $stmt->execute([$name]);
@@ -51,7 +51,7 @@ class database {
     }
 
     // Fetch product price by product_id
-    public function fetchProductPrice($product_id) {
+    function fetchProductPrice($product_id) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID = (SELECT Price_ID FROM product WHERE Product_ID = ?)");
         $stmt->execute([$product_id]);
