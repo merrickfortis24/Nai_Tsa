@@ -262,6 +262,14 @@ try {
                 <?php foreach ($prices_list as $price): ?>
                   <option value="<?= htmlspecialchars($price['Price_ID']) ?>">
                     <?= htmlspecialchars($price['Price_Amount']) ?>
+                    (
+                      <?= date('F d, Y', strtotime($price['Effective_From'])) ?>
+                      <?php if ($price['Effective_To']): ?>
+                        to <?= date('F d, Y', strtotime($price['Effective_To'])) ?>
+                      <?php else: ?>
+                        and onwards
+                      <?php endif; ?>
+                    )
                   </option>
                 <?php endforeach; ?>
               </select>

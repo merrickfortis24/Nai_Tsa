@@ -59,10 +59,22 @@ class database{
     }
 
     // Fetch all prices
-    function getAllPrices() {
+    function getAllPrices($onlyCurrent = false) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
-        $stmt->execute();
+        if ($onlyCurrent) {
+            $today = date('Y-m-d');
+            $stmt = $con->prepare("
+                SELECT Price_ID, Price_Amount, Effective_From, Effective_To
+                FROM product_price
+                WHERE Effective_From <= :today
+                  AND (Effective_To IS NULL OR Effective_To >= :today)
+                ORDER BY Price_ID ASC
+            ");
+            $stmt->execute([':today' => $today]);
+        } else {
+            $stmt = $con->prepare("SELECT Price_ID, Price_Amount, Effective_From, Effective_To FROM product_price ORDER BY Price_ID ASC");
+            $stmt->execute();
+        }
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
