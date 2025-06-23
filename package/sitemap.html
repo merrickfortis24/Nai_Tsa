@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nai Tsa Website Sitemap</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body {
+      background: #d6f3f2;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      text-align: center;
+      color: #034d4d;
+      margin: 30px 0 40px 0;
+      font-size: 2.2rem;
+      letter-spacing: 2px;
+    }
+    .site-map-main {
+      display: flex;
+      justify-content: center;
+      gap: 80px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .site-map-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      min-width: 350px;
+      max-width: 420px;
+    }
+    .node {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+      padding: 18px 24px 18px 60px;
+      margin: 18px 0;
+      min-width: 260px;
+      min-height: 54px;
+      font-size: 1.13rem;
+      color: #034d4d;
+      position: relative;
+      display: flex;
+      align-items: center;
+      transition: box-shadow 0.2s;
+    }
+    .node .bi {
+      position: absolute;
+      left: 22px;
+      font-size: 1.7em;
+      color: #008080;
+    }
+    .children {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-left: 60px;
+      border-left: 2px solid #b2e0df;
+      padding-left: 24px;
+      margin-top: -10px;
+      position: relative;
+    }
+    .node.small {
+      min-width: 200px;
+      padding-left: 50px;
+      font-size: 1rem;
+      margin: 12px 0;
+    }
+    /* Horizontal connectors for children */
+    .children .node:before {
+      content: '';
+      position: absolute;
+      left: -24px;
+      top: 50%;
+      width: 24px;
+      height: 2px;
+      background: #b2e0df;
+      z-index: 0;
+    }
+    /* Vertical connector from parent to children */
+    .node.has-children:after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      width: 2px;
+      height: 24px;
+      background: #b2e0df;
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+    /* Responsive */
+    @media (max-width: 900px) {
+      .site-map-main {
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+      .site-map-col {
+        margin-bottom: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Nai Tsa Website Sitemap</h1>
+  <div class="site-map-main">
+    <!-- Customer Column -->
+    <div class="site-map-col">
+      <div class="node has-children"><i class="bi bi-person-circle"></i> LOGIN CUSTOMER</div>
+      <div class="children">
+        <div class="node small"><i class="bi bi-key"></i> Forgot Password Customer</div>
+        <div class="node small"><i class="bi bi-info-circle"></i> About Us</div>
+        <div class="node small"><i class="bi bi-geo-alt"></i> Location</div>
+        <div class="node small"><i class="bi bi-file-earmark-text"></i> Terms & Agreement</div>
+        <div class="node small"><i class="bi bi-envelope"></i> Contact Us</div>
+      </div>
+      <div class="node has-children"><i class="bi bi-house-door"></i> Home Customer</div>
+      <div class="children">
+        <div class="node small"><i class="bi bi-clock-history"></i> Recent Order</div>
+        <div class="node small"><i class="bi bi-card-checklist"></i> Order List</div>
+        <div class="node small"><i class="bi bi-gear"></i> Services</div>
+      </div>
+    </div>
+    <!-- Admin Column -->
+    <div class="site-map-col">
+      <div class="node has-children"><i class="bi bi-person-circle"></i> LOGIN ADMIN</div>
+      <div class="children">
+        <div class="node small"><i class="bi bi-key"></i> Forgot Password Admin</div>
+        <div class="node small"><i class="bi bi-list-check"></i> Customer List</div>
+        <div class="node small"><i class="bi bi-bar-chart"></i> Sales</div>
+        <div class="node small"><i class="bi bi-info-circle"></i> About Us</div>
+        <div class="node small"><i class="bi bi-geo-alt"></i> Location</div>
+        <div class="node small"><i class="bi bi-file-earmark-text"></i> Terms and Agreements</div>
+        <div class="node small"><i class="bi bi-envelope"></i> Contact Us</div>
+        <div class="node small"><i class="bi bi-person-plus"></i> Create Customer Account</div>
+        <div class="node small"><i class="bi bi-person-plus-fill"></i> Create Admin Account</div>
+      </div>
+      <div class="node has-children"><i class="bi bi-house-door"></i> Home Page Admin</div>
+      <div class="children">
+        <div class="node small"><i class="bi bi-clock-history"></i> Recent Order</div>
+        <div class="node small"><i class="bi bi-flower1"></i> New Orders</div>
+        <div class="node small"><i class="bi bi-card-checklist"></i> Order List</div>
+        <div class="node small"><i class="bi bi-arrow-repeat"></i> Update Order Status</div>
+        <div class="node small"><i class="bi bi-gear"></i> Services</div>
+        <div class="node small"><i class="bi bi-pencil-square"></i> Edit Services</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

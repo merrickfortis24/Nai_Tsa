@@ -58,4 +58,11 @@ class database {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result ? $result['Price_Amount'] : 0;
     }
+
+  
+function setResetToken($email, $token) {
+    $con = $this->opencon();
+    $stmt = $con->prepare("UPDATE customer SET reset_token = ? WHERE Customer_Email = ?");
+    return $stmt->execute([$token, $email]);
+}
 }
