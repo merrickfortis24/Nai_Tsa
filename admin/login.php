@@ -19,7 +19,7 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
-    
+
     // Validate inputs
     if (empty($email) || empty($password)) {
         $sweetAlertConfig = "<script>
@@ -33,61 +33,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Create database connection
             $db = new database();
-            $conn = $db->opencon();
-            
-            // Prepare SQL statement
-            $stmt = $conn->prepare("SELECT Admin_ID, Admin_Name, Admin_Password, Admin_Role, Status FROM Admin WHERE Admin_Email = :email");
-            $stmt->bindParam(':email', $email);
-            $stmt->execute();
-            
-            // Check if user exists
-            if ($stmt->rowCount() === 1) {
-                $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+            $result = $db->adminLogin($email, $password);
+
+            // Check login result
+            if ($result['success']) {
+                $admin = $result['admin'];
                 
-                // Verify password
-                if (password_verify($password, $admin['Admin_Password'])) {
-                    // Check account status
-                    if ($admin['Status'] === 'Active') {
-                        // Set session variables
-                        $_SESSION['admin_id'] = $admin['Admin_ID'];
-                        $_SESSION['admin_name'] = $admin['Admin_Name'];
-                        $_SESSION['admin_role'] = $admin['Admin_Role'];
-                        
-                        // SweetAlert success and redirect
-                        $sweetAlertConfig = "<script>
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Login Successful',
-                                text: 'Welcome, " . addslashes(htmlspecialchars($admin['Admin_Name'])) . "!',
-                                confirmButtonText: 'Continue'
-                            }).then(() => {
-                                window.location.href = 'index.php';
-                            });
-                        </script>";
-                    } else {
-                        $sweetAlertConfig = "<script>
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Account Inactive',
-                                text: 'Your account is inactive. Please contact the system administrator.'
-                            });
-                        </script>";
-                    }
-                } else {
-                    $sweetAlertConfig = "<script>
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Login Failed',
-                            text: 'Invalid email or password!'
-                        });
-                    </script>";
-                }
+                // Set session variables
+                $_SESSION['admin_id'] = $admin['Admin_ID'];
+                $_SESSION['admin_name'] = $admin['Admin_Name'];
+                $_SESSION['admin_role'] = $admin['Admin_Role'];
+
+                // SweetAlert success and redirect
+                $sweetAlertConfig = "<script>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Login Successful',
+                        text: 'Welcome, " . addslashes(htmlspecialchars($admin['Admin_Name'])) . "!',
+                        confirmButtonText: 'Continue'
+                    }).then(() => {
+                        window.location.href = 'index.php';
+                    });
+                </script>";
             } else {
                 $sweetAlertConfig = "<script>
                     Swal.fire({
                         icon: 'error',
                         title: 'Login Failed',
-                        text: 'Invalid email or password!'
+                        text: '" . addslashes($result['message']) . "'
                     });
                 </script>";
             }

@@ -6,28 +6,20 @@ $showForm = false;
 if (isset($_GET['token'])) {
     $token = $_GET['token'];
     $db = new database();
-    $con = $db->opencon();
-    $stmt = $con->prepare("SELECT Admin_ID, Reset_Expires FROM Admin WHERE Reset_Token = ?");
-    $stmt->execute([$token]);
-    $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($admin && strtotime($admin['Reset_Expires']) > time()) {
-        $showForm = true;
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $password = $_POST['password'] ?? '';
-            $confirm = $_POST['confirm_password'] ?? '';
-            if ($password && $password === $confirm) {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $update = $con->prepare("UPDATE Admin SET Admin_Password = ?, Reset_Token = NULL, Reset_Expires = NULL WHERE Admin_ID = ?");
-                $update->execute([$hash, $admin['Admin_ID']]);
-                $message = "Password reset successful! <a href='login.php'>Login here</a>.";
-                $showForm = false;
-            } else {
-                $message = "Passwords do not match.";
-            }
-        }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $password = $_POST['password'] ?? '';
+        $confirm = $_POST['confirm_password'] ?? '';
+        $result = $db->resetAdminPasswordByToken($token, $password, $confirm);
+        $message = $result['message'];
+        $showForm = !$result['success'];
     } else {
-        $message = "Invalid or expired token.";
+        // Use OOP method for token validation
+        if ($db->isValidAdminResetToken($token)) {
+            $showForm = true;
+        } else {
+            $message = "Invalid or expired token.";
+        }
     }
 } else {
     $message = "Invalid reset link.";

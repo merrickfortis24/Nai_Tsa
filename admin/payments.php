@@ -7,59 +7,35 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
+$db = new database();
+
 // Update payment status
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['payment_status'], $_POST['payment_id'])) {
-    $db = new database();
-    $con = $db->opencon();
-    $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Payment_ID=?");
-    $stmt->execute([$_POST['payment_status'], $_POST['payment_id']]);
+    $db->updatePaymentStatus($_POST['payment_id'], $_POST['payment_status']);
     header("Location: payments.php");
     exit;
 }
 
-// Update order status (from suggested code change)
+// Update order status
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['order_status'], $_POST['order_id'])) {
-    $db = new database();
-    $con = $db->opencon();
-    $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
-    $stmt->execute([$_POST['order_status'], $_POST['order_id']]);
+    $db->updateOrderStatus($_POST['order_id'], $_POST['order_status']);
     header("Location: orders.php");
     exit;
 }
 
 // Fetch all payments
-$payments = [];
 $error = '';
 try {
-    $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM payment ORDER BY Payment_Date DESC");
-    $stmt->execute();
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $payments = $db->getAllPayments();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
 
 // Count unpaid payments
-$unpaidPayments = 0;
-foreach ($payments as $payment) {
-    if (($payment['payment_status'] ?? '') === 'Unpaid') {
-        $unpaidPayments++;
-    }
-}
+$unpaidPayments = $db->countUnpaidPayments();
 
-$db = new database();
-$con = $db->opencon();
-$stmt = $con->prepare("SELECT order_status FROM orders");
-$stmt->execute();
-$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$pendingOrders = 0;
-foreach ($orders as $order) {
-    if ($order['order_status'] === 'Pending' || $order['order_status'] === 'Processing') {
-        $pendingOrders++;
-    }
-}
+// Count pending/processing orders
+$pendingOrders = $db->countPendingOrProcessingOrders();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -169,18 +145,9 @@ foreach ($orders as $order) {
                                     <tr>
                                         <td>
                                             <?php
-                                            $customerName = '';
-                                            try {
-                                                $db2 = new database();
-                                                $con2 = $db2->opencon();
-                                                $stmt2 = $con2->prepare("SELECT c.Customer_Name FROM orders o JOIN customer c ON o.Customer_ID = c.Customer_ID WHERE o.Order_ID = ?");
-                                                $stmt2->execute([$payment['Order_ID']]);
-                                                $customerName = $stmt2->fetchColumn();
-                                            } catch (PDOException $e) {
-                                                $customerName = 'Unknown';
-                                            }
-                                            echo htmlspecialchars($customerName);
-                                            ?>
+$customerName = $db->getCustomerNameByOrderId($payment['Order_ID']);
+echo htmlspecialchars($customerName);
+?>
                                         </td>
                                         <td>$<?= number_format($payment['Payment_Amount'], 2) ?></td>
                                         <td><?= htmlspecialchars($payment['Payment_Method']) ?></td>

@@ -6,16 +6,13 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 require_once('classes/database.php');
-include 'sidebar_counts.php'; // <-- Add this line
+include 'sidebar_counts.php';
 
-// Fetch all admins
-$admins = [];
+$db = new database();
+
+$error = '';
 try {
-    $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
-    $stmt->execute();
-    $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $admins = $db->getAllAdmins();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }

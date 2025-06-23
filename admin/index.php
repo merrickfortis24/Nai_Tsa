@@ -37,84 +37,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_admin'])) {
     } elseif ($admin_password !== $confirm_password) {
         $error = "Passwords do not match!";
     } else {
-        try {
-            // Hash password
-            $hashed_password = password_hash($admin_password, PASSWORD_DEFAULT);
-
-            // Create database connection
-            $db = new database();
-            $conn = $db->opencon();
-
-            // Check if email already exists
-            $stmt = $conn->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
-            $stmt->execute([$admin_email]);
-            if ($stmt->fetchColumn() > 0) {
-                $error = "This email is already taken!";
-            } else {
-                // Prepare SQL statement
-                $stmt = $conn->prepare("INSERT INTO Admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
-                                       VALUES (:name, :password, :email, :role, NOW(), :status)");
-
-                // Bind parameters
-                $stmt->bindParam(':name', $admin_name);
-                $stmt->bindParam(':password', $hashed_password);
-                $stmt->bindParam(':email', $admin_email);
-                $stmt->bindParam(':role', $admin_role);
-                $stmt->bindParam(':status', $status);
-
-                // Execute the query
-                if ($stmt->execute()) {
-                    $_SESSION['success'] = "Admin added successfully!";
-                    // Reset form fields
-                    header("Location: index.php");
-                    exit();
-                } else {
-                    $error = "Error adding admin: " . implode(" ", $stmt->errorInfo());
-                }
-            }
-        } catch (PDOException $e) {
-            $error = "Database Error: " . $e->getMessage();
+        $db = new database();
+        $result = $db->addAdmin($admin_name, $admin_email, $admin_password, $admin_role, $status);
+        if ($result['success']) {
+            $_SESSION['success'] = "Admin added successfully!";
+            header("Location: index.php");
+            exit();
+        } else {
+            $error = $result['message'];
         }
     }
 }
 
 // After processing the form submission, before the HTML
-$admins = [];
-$total_admins = 0;
-$active_admins = 0;
-$inactive_admins = 0;
-$super_admins = 0;
+$db = new database();
+$admins = $db->getAllAdmins();
+$stats = $db->getAdminStats();
+$total_admins = $stats['total'];
+$active_admins = $stats['active'];
+$inactive_admins = $stats['inactive'];
+$super_admins = $stats['super'];
 
-try {
-    $db = new database();
-    $conn = $db->opencon();
-
-    // Get all admins
-    $stmt = $conn->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
-    $stmt->execute();
-    $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Get total admins
-    $stmt_total = $conn->query("SELECT COUNT(*) FROM Admin");
-    $total_admins = $stmt_total->fetchColumn();
-
-    // Get active admins
-    $stmt_active = $conn->query("SELECT COUNT(*) FROM Admin WHERE Status = 'Active'");
-    $active_admins = $stmt_active->fetchColumn();
-
-    // Get inactive admins
-    $stmt_inactive = $conn->query("SELECT COUNT(*) FROM Admin WHERE Status = 'Inactive'");
-    $inactive_admins = $stmt_inactive->fetchColumn();
-
-    // Get super admins
-    $stmt_super = $conn->query("SELECT COUNT(*) FROM Admin WHERE Admin_Role = 'Super Admin'");
-    $super_admins = $stmt_super->fetchColumn();
-
-} catch (PDOException $e) {
-    $error = "Database Error: " . $e->getMessage();
-}
-
-// Fetch sales data
 $sales = [];
 try {
     $db = new database();

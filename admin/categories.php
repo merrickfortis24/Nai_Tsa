@@ -7,15 +7,11 @@ if (!isset($_SESSION['admin_id'])) {
 require_once('classes/database.php');
 include 'sidebar_counts.php'; // This makes $pendingProcessingCount and $unpaidPayments available
 
-// Fetch all categories
-$categories = [];
+$db = new database();
+
 $error = '';
 try {
-    $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("SELECT * FROM category ORDER BY Category_ID DESC");
-    $stmt->execute();
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $categories = $db->getAllCategories();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }

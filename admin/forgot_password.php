@@ -13,19 +13,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     if ($email) {
         $db = new database();
-        $con = $db->opencon();
-        $stmt = $con->prepare("SELECT Admin_ID FROM Admin WHERE Admin_Email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->rowCount() === 1) {
-            $token = bin2hex(random_bytes(32));
-            $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
-            $update = $con->prepare("UPDATE Admin SET Reset_Token = ?, Reset_Expires = ? WHERE Admin_Email = ?");
-            $update->execute([$token, $expires, $email]);
-            // In production, send an email. For demo, just show the link:
+        $result = $db->createPasswordResetToken($email);
+        if ($result['success']) {
+            $token = $result['token'];
             $resetLink = "http://localhost/Nai_Tsa/admin/reset_password.php?token=$token";
 
             $mail = new PHPMailer(true);
-
             try {
                 //Server settings
                 $mail->isSMTP();

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 20, 2025 at 05:42 PM
+-- Generation Time: Jun 23, 2025 at 07:37 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -67,6 +67,7 @@ INSERT INTO `category` (`Category_ID`, `Category_Name`) VALUES
 (2, 'Coffee'),
 (3, 'Dessert'),
 (4, 'Juice'),
+(8, 'Sharpe'),
 (1, 'Snacks');
 
 -- --------------------------------------------------------
@@ -79,16 +80,26 @@ CREATE TABLE `customer` (
   `Customer_ID` int(11) NOT NULL,
   `Customer_Name` varchar(100) NOT NULL,
   `Customer_Email` varchar(100) NOT NULL,
-  `Customer_Password` varchar(255) NOT NULL
+  `Customer_Password` varchar(255) NOT NULL,
+  `reset_token` varchar(255) DEFAULT NULL,
+  `reset_expires` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `customer`
 --
 
-INSERT INTO `customer` (`Customer_ID`, `Customer_Name`, `Customer_Email`, `Customer_Password`) VALUES
-(1, 'qwe', 'fortismerrick@gmail.com', '$2y$10$/0edxS/Tfi2tVl6hl2/RkOeNr917uogepMkwz6lqjXJEkIadQDV82'),
-(2, 'Guest', '', '');
+INSERT INTO `customer` (`Customer_ID`, `Customer_Name`, `Customer_Email`, `Customer_Password`, `reset_token`, `reset_expires`) VALUES
+(1, 'qwe', 'fortismerrick@gmail.com', '$2y$10$/0edxS/Tfi2tVl6hl2/RkOeNr917uogepMkwz6lqjXJEkIadQDV82', 'bf946b48cc9b08b6dffe8fae5bcc805e4987b151a1a345474242eea4aa3d5073', '2025-06-22 20:29:21'),
+(2, 'Guest', '', '', NULL, NULL),
+(3, 'hihi', 'alc@gmail.com', '$2y$10$mNIO1dDkd355QCpetMSLEOn/hH1Z/F.RWqfN80GIZ.xGIqF7BPlFq', NULL, NULL),
+(4, 'qwe', 'alc899@gmail.com', '$2y$10$HWtAV8wmScZkhXBBPldrAemSuwGcZBEYJDFmEG4HxI3/.Se/fgXZ6', NULL, NULL),
+(5, 'qwe', 'fortismerrick24@gmail.com', '$2y$10$w2nSVetp50h7kSAvy9raF.TSJ4ExdRYcdLF1gyKjuRuWsZYvIHaL6', NULL, NULL),
+(6, 'rgerbetnjhvhv', 'jamesona@gmail.com', '$2y$10$nwmJnir6lvw.jDRhvqQn3.V0cwqacjUCv6qkezn8MYW371k3eEm6S', NULL, NULL),
+(7, 'Wigs', 'fortismerrick123@gmail.com', '$2y$10$AfGTqKiLk359SbgxiS2rGO0lRMmlAvCFI/O1QlUQSage3neeVzS86', NULL, NULL),
+(8, 'Wigs', 'fortismerrick12345@gmail.com', '$2y$10$urd30ROvyux9YO6znBz67ebrGCg571qj72pYh.B9v09QIi3dlI7FS', NULL, NULL),
+(9, 'Ona', 'ona@gmail.com', '$2y$10$gxlGQC7B5ChfhpNo.gDWCuPdNzaiiecTshKlRe10XxwcOKhdICkGq', NULL, NULL),
+(10, 'Queen', 'fortis@gmail.com', '$2y$10$MOFipycND3GhgNKND2vfQOV0cTY0XuD4dBbc9J1JOJYEKvg1WBJce', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -113,12 +124,11 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`Order_ID`, `Order_Date`, `Order_Amount`, `Customer_ID`, `Street`, `Barangay`, `City`, `Contact_Number`, `order_status`) VALUES
-(63, '2025-06-20 17:21:01', 1050.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
-(64, '2025-06-20 19:03:54', 300.00, 1, 'Blk 13, Lot 30, Cedar rd., St. Joseph Homes', 'Inosloban', 'Lipa City', '09940780881', 'Delivered'),
-(65, '2025-06-20 20:09:18', 450.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
-(66, '2025-06-20 20:09:31', 450.00, 1, 'Blk 13, Lot 30, Cedar rd., St. Joseph Homes', 'Inosloban', 'Lipa City', '099940780881', 'Delivered'),
-(67, '2025-06-20 21:44:29', 450.00, 1, NULL, NULL, NULL, NULL, 'Delivered'),
-(68, '2025-06-20 23:20:22', 300.00, 1, NULL, NULL, NULL, NULL, 'Pending');
+(70, '2025-06-22 11:31:42', 300.00, 7, NULL, NULL, NULL, NULL, 'Delivered'),
+(71, '2025-06-22 13:17:25', 1050.00, 1, NULL, NULL, NULL, NULL, 'Pending'),
+(72, '2025-06-23 08:38:05', 450.00, 1, NULL, NULL, NULL, NULL, 'Pending'),
+(73, '2025-06-23 09:15:05', 450.00, 9, 'St Joseph Homes, St Joseph, Lipa, Batangas, Philippines', 'Inosloban', 'Lipa', '34564567568', 'Delivered'),
+(74, '2025-06-23 12:41:56', 150.00, 9, NULL, NULL, NULL, NULL, 'Pending');
 
 -- --------------------------------------------------------
 
@@ -139,13 +149,16 @@ CREATE TABLE `order_item` (
 --
 
 INSERT INTO `order_item` (`Order_Item_ID`, `Order_ID`, `Product_ID`, `Quantity`, `Price`) VALUES
-(34, 63, 5, 3, 150.00),
-(35, 63, 13, 4, 150.00),
-(36, 64, 5, 2, 150.00),
-(37, 65, 5, 3, 150.00),
-(38, 66, 10, 3, 150.00),
-(39, 67, 5, 3, 150.00),
-(40, 68, 5, 2, 150.00);
+(42, 70, 5, 2, 150.00),
+(43, 71, 5, 2, 150.00),
+(44, 71, 10, 1, 150.00),
+(45, 71, 11, 1, 150.00),
+(46, 71, 12, 1, 150.00),
+(47, 71, 13, 1, 150.00),
+(48, 71, 16, 1, 150.00),
+(49, 72, 11, 3, 150.00),
+(50, 73, 11, 3, 150.00),
+(51, 74, 10, 1, 150.00);
 
 -- --------------------------------------------------------
 
@@ -168,12 +181,11 @@ CREATE TABLE `payment` (
 --
 
 INSERT INTO `payment` (`Payment_ID`, `Payment_Date`, `Payment_Method`, `Payment_Amount`, `Order_ID`, `Admin_ID`, `payment_status`) VALUES
-(58, '2025-06-20 17:21:01', 'COD', 1050.00, 63, 1, 'Paid'),
-(59, '2025-06-20 19:03:54', 'GCash', 300.00, 64, 1, 'Paid'),
-(60, '2025-06-20 20:09:18', 'COD', 450.00, 65, 1, 'Paid'),
-(61, '2025-06-20 20:09:31', 'Credit Card', 450.00, 66, 1, 'Paid'),
-(62, '2025-06-20 21:44:29', 'COD', 450.00, 67, 1, 'Paid'),
-(63, '2025-06-20 23:20:22', 'COD', 300.00, 68, 1, 'Unpaid');
+(65, '2025-06-22 11:31:42', 'COD', 300.00, 70, 1, 'Paid'),
+(66, '2025-06-22 13:17:25', 'GCash', 1050.00, 71, 1, 'Unpaid'),
+(67, '2025-06-23 08:38:05', 'COD', 450.00, 72, 1, 'Unpaid'),
+(68, '2025-06-23 09:15:05', 'GCash', 450.00, 73, 1, 'Paid'),
+(69, '2025-06-23 12:41:56', 'COD', 150.00, 74, 1, 'Unpaid');
 
 -- --------------------------------------------------------
 
@@ -202,8 +214,8 @@ INSERT INTO `product` (`Product_ID`, `Product_Name`, `Product_desc`, `Product_Im
 (10, 'Cake', 'Matamis', 'prod_6850e8dc40c311.17112224.jpg', '2025-06-17 12:02:36', '2025-06-17 12:02:36', 1, 2, 2),
 (11, 'Sopas', 'Masabaw', 'prod_6850f0d2b41952.03284208.png', '2025-06-17 12:36:34', '2025-06-17 12:36:34', 1, 4, 2),
 (12, 'Pizza', 'Creamy Pizza', 'prod_6850f1c8eddb47.39331295.jpg', '2025-06-17 12:40:40', '2025-06-17 12:40:40', 1, 1, 2),
-(13, 'Ice Creams', 'Cold', 'prod_6850f2f3e164f2.47345723.jpg', '2025-06-17 12:45:39', '2025-06-17 23:20:06', 1, 3, 2),
-(16, 'yuiop', 'sdvfsb', 'prod_685500e73e9f23.71753775.png', '2025-06-20 14:34:15', '2025-06-20 14:34:15', 1, 2, 2);
+(13, 'Ice Creams', 'Cold', 'prod_6850f2f3e164f2.47345723.jpg', '2025-06-17 12:45:39', '2025-06-23 09:36:08', 1, 3, 3),
+(16, 'yuiop', 'sdvfsb', 'prod_685500e73e9f23.71753775.png', '2025-06-20 14:34:15', '2025-06-23 09:36:01', 1, 2, 2);
 
 -- --------------------------------------------------------
 
@@ -226,7 +238,8 @@ INSERT INTO `product_price` (`Price_ID`, `Price_Amount`, `Effective_From`, `Effe
 (1, 199.99, '2024-06-01', NULL),
 (2, 150.00, '2025-06-17', '2025-07-17'),
 (3, 120.00, '2025-06-17', '2025-09-17'),
-(4, 34.00, '2025-06-17', '2025-07-08');
+(4, 34.00, '2025-06-17', '2025-07-08'),
+(5, 90.00, '2025-06-24', '2025-07-24');
 
 -- --------------------------------------------------------
 
@@ -240,7 +253,7 @@ CREATE TABLE `reviews` (
   `Customer_ID` int(11) NOT NULL,
   `Rating` int(11) NOT NULL CHECK (`Rating` between 1 and 5),
   `Review_Text` text DEFAULT NULL,
-  `Review_Date` datetime DEFAULT current_timestamp()
+  `Review_Date` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -248,11 +261,7 @@ CREATE TABLE `reviews` (
 --
 
 INSERT INTO `reviews` (`Review_ID`, `Product_ID`, `Customer_ID`, `Rating`, `Review_Text`, `Review_Date`) VALUES
-(1, 5, 1, 5, 'hjgdytfcg', '2025-06-20 22:16:56'),
-(2, 5, 1, 3, '', '2025-06-20 22:32:28'),
-(3, 5, 1, 1, '', '2025-06-20 22:55:09'),
-(4, 10, 1, 1, '', '2025-06-20 22:55:18'),
-(5, 16, 1, 1, '', '2025-06-20 23:09:05');
+(6, 5, 9, 5, 'jhohoiho', '2025-06-23 12:24:05');
 
 -- --------------------------------------------------------
 
@@ -275,11 +284,8 @@ CREATE TABLE `sales` (
 --
 
 INSERT INTO `sales` (`Sale_ID`, `Order_ID`, `Product_ID`, `Quantity`, `Total_Amount`, `Sale_Date`, `Admin_ID`) VALUES
-(1, 63, 5, 3, 1050.00, '2025-06-20 20:08:06', 1),
-(2, 63, 13, 4, 1050.00, '2025-06-20 20:08:06', 1),
-(3, 65, 5, 3, 450.00, '2025-06-20 20:09:59', 1),
-(4, 66, 10, 3, 450.00, '2025-06-20 21:25:46', 1),
-(5, 67, 5, 3, 450.00, '2025-06-20 21:57:07', 1);
+(6, 70, 5, 2, 300.00, '2025-06-22 11:33:57', 1),
+(7, 73, 11, 3, 450.00, '2025-06-23 09:16:21', 1);
 
 --
 -- Indexes for dumped tables
@@ -375,37 +381,37 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `category`
 --
 ALTER TABLE `category`
-  MODIFY `Category_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `Category_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `customer`
 --
 ALTER TABLE `customer`
-  MODIFY `Customer_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `Customer_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `Order_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `Order_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
 
 --
 -- AUTO_INCREMENT for table `order_item`
 --
 ALTER TABLE `order_item`
-  MODIFY `Order_Item_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `Order_Item_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `payment`
 --
 ALTER TABLE `payment`
-  MODIFY `Payment_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `Payment_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT for table `product`
 --
 ALTER TABLE `product`
-  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `Product_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `product_price`
@@ -417,13 +423,13 @@ ALTER TABLE `product_price`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `Review_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `Review_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `Sale_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `Sale_ID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables

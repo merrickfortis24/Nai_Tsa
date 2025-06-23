@@ -7,29 +7,23 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
+$db = new database();
+
 // Fetch all orders
-$orders = [];
 $error = '';
 try {
-    $db = new database();
     $orders = $db->fetchOrders();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once('classes/database.php');
-    $db = new database();
-    $con = $db->opencon();
-
     if (isset($_POST['order_status'], $_POST['order_id'])) {
-        $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
-        $stmt->execute([$_POST['order_status'], $_POST['order_id']]);
+        $db->updateOrderStatus($_POST['order_id'], $_POST['order_status']);
     }
 
     if (isset($_POST['payment_status'], $_POST['order_id'])) {
-        $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Order_ID=?");
-        $stmt->execute([$_POST['payment_status'], $_POST['order_id']]);
+        $db->updatePaymentStatusByOrder($_POST['order_id'], $_POST['payment_status']);
     }
 
     // After updating, check if both Delivered and Paid, then insert into sales
@@ -37,65 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         (isset($_POST['order_status']) || isset($_POST['payment_status'])) &&
         isset($_POST['order_id'])
     ) {
-        // Fetch current order and payment status
-        $stmt = $con->prepare("SELECT o.*, p.payment_status FROM orders o LEFT JOIN payment p ON o.Order_ID = p.Order_ID WHERE o.Order_ID = ?");
-        $stmt->execute([$_POST['order_id']]);
-        $order = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (
-            isset($order['order_status'], $order['payment_status']) &&
-            $order['order_status'] === 'Delivered' &&
-            $order['payment_status'] === 'Paid'
-        ) {
-            // Check if already in sales to avoid duplicates
-            $check = $con->prepare("SELECT COUNT(*) FROM sales WHERE Order_ID = ?");
-            $check->execute([$_POST['order_id']]);
-            if ($check->fetchColumn() == 0) {
-                // Insert each item in the order into sales
-                $items = $db->fetchOrderItems($_POST['order_id']);
-                foreach ($items as $item) {
-                    $stmt = $con->prepare("INSERT INTO sales (Order_ID, Product_ID, Quantity, Total_Amount, Sale_Date, Admin_ID)
-                        VALUES (?, ?, ?, ?, NOW(), ?)");
-                    if (!$stmt->execute([
-                        $_POST['order_id'],
-                        $item['Product_ID'],
-                        $item['Quantity'],
-                        $order['Order_Amount'],
-                        $_SESSION['admin_id']
-                    ])) {
-                        error_log("Sales insert error: " . implode(" | ", $stmt->errorInfo()));
-                    }
-                }
-            }
-        }
+        $db->insertSalesIfDeliveredAndPaid($_POST['order_id'], $_SESSION['admin_id']);
     }
     header("Location: orders.php");
     exit;
 }
-$pendingProcessingCount = 0;
-foreach ($orders as $order) {
-    if ($order['order_status'] === 'Pending' || $order['order_status'] === 'Processing') {
-        $pendingProcessingCount++;
-    }
-}
 
-// Fetch all payments
-$payments = [];
-try {
-    $con = $db->opencon();
-    $stmt = $con->prepare("SELECT payment_status FROM payment");
-    $stmt->execute();
-    $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // handle error if needed
-}
-
-$unpaidPayments = 0;
-foreach ($payments as $payment) {
-    if (($payment['payment_status'] ?? '') === 'Unpaid') {
-        $unpaidPayments++;
-    }
-}
+$pendingProcessingCount = $db->countPendingOrProcessingOrders();
+$unpaidPayments = $db->countUnpaidPayments();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,17 +152,7 @@ foreach ($payments as $payment) {
                                     <tr>
                                         <!-- Customer Name -->
                                         <td>
-                                            <?php
-                                            $customerName = '';
-                                            try {
-                                                $customerStmt = $db->opencon()->prepare("SELECT Customer_Name FROM customer WHERE Customer_ID = ?");
-                                                $customerStmt->execute([$order['Customer_ID']]);
-                                                $customerName = $customerStmt->fetchColumn();
-                                            } catch (PDOException $e) {
-                                                $customerName = 'Unknown';
-                                            }
-                                            echo htmlspecialchars($customerName);
-                                            ?>
+                                            <?= htmlspecialchars($db->getCustomerNameById($order['Customer_ID'])) ?>
                                         </td>
                                         <!-- Order Date -->
                                         <td><?= date('F j, Y g:i A', strtotime($order['Order_Date'])) ?></td>

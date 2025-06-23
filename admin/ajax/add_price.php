@@ -11,23 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($price_amount) || empty($effective_from)) {
         $response['message'] = 'Price amount and effective from date are required.';
-        echo json_encode($response);
-        exit;
-    }
-
-    try {
+    } else {
         $db = new database();
-        $conn = $db->opencon();
-        $stmt = $conn->prepare("INSERT INTO product_price (Price_Amount, Effective_From, Effective_To) VALUES (:amount, :from, :to)");
-        $stmt->execute([
-            ':amount' => $price_amount,
-            ':from' => $effective_from,
-            ':to' => $effective_to ?: null
-        ]);
-        $response['success'] = true;
-        $response['message'] = 'Price added successfully!';
-    } catch (PDOException $e) {
-        $response['message'] = 'Database Error: ' . $e->getMessage();
+        $response = $db->addPrice($price_amount, $effective_from, $effective_to);
     }
 } else {
     $response['message'] = 'Invalid request method.';

@@ -7,48 +7,25 @@ if (!isset($_SESSION['admin_id'])) {
 require_once('classes/database.php');
 include 'sidebar_counts.php'; // This makes $pendingProcessingCount and $unpaidPayments available
 
-// Fetch all products
-$products = [];
+$db = new database();
+
 $error = '';
 try {
-    $db = new database();
-    $conn = $db->opencon();
-    $stmt = $conn->prepare("
-        SELECT 
-            p.*, 
-            pp.Price_Amount, 
-            c.Category_Name, 
-            a.Admin_Name
-        FROM product p
-        LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
-        LEFT JOIN category c ON p.Category_ID = c.Category_ID
-        LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
-        ORDER BY p.Created_at DESC
-    ");
-    $stmt->execute();
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $products = $db->getAllProducts();
 } catch (PDOException $e) {
     $error = "Database Error: " . $e->getMessage();
 }
 
-// Fetch all categories for the dropdown
-$categories_list = [];
 try {
-    $stmt = $conn->prepare("SELECT Category_ID, Category_Name FROM category ORDER BY Category_Name ASC");
-    $stmt->execute();
-    $categories_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $categories_list = $db->getAllCategories();
 } catch (PDOException $e) {
-    // Optionally handle error
+    $categories_list = [];
 }
 
-// Fetch all prices for the dropdown
-$prices_list = [];
 try {
-    $stmt = $conn->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
-    $stmt->execute();
-    $prices_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $prices_list = $db->getAllPrices();
 } catch (PDOException $e) {
-    // Optionally handle error
+    $prices_list = [];
 }
 ?>
 <!DOCTYPE html>
