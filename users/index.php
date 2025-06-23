@@ -22,35 +22,11 @@ $orders_by_status = [
     'Delivered' => []
 ];
 if ($user_id) {
-    $stmt = $db->opencon()->prepare("
-        SELECT o.*, p.payment_status 
-        FROM orders o
-        LEFT JOIN payment p ON o.Order_ID = p.Order_ID
-        WHERE o.Customer_ID = ?
-        ORDER BY o.Order_Date DESC
-    ");
-    $stmt->execute([$user_id]);
-    $all_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($all_orders as $order) {
-        if ($order['order_status'] === 'Pending' && $order['payment_status'] === 'Unpaid') {
-            $orders_by_status['To Ship'][] = $order;
-        } elseif ($order['order_status'] === 'Processing' && $order['payment_status'] === 'Paid') {
-            $orders_by_status['To Receive'][] = $order;
-        } elseif ($order['order_status'] === 'Delivered' && $order['payment_status'] === 'Paid') {
-            $orders_by_status['Delivered'][] = $order;
-        }
-    }
+    $orders_by_status = $db->getOrdersByStatus($user_id);
 }
 
 // Fetch average ratings for all products
-$avg_ratings = [];
-$stmt = $db->opencon()->query("SELECT Product_ID, AVG(Rating) as avg_rating, COUNT(*) as num_reviews FROM reviews GROUP BY Product_ID");
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $avg_ratings[$row['Product_ID']] = [
-        'avg' => round($row['avg_rating'], 2),
-        'count' => $row['num_reviews']
-    ];
-}
+$avg_ratings = $db->getAverageRatings();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -764,6 +740,54 @@ function gfg(el, n) {
   input.value = n;
   output.innerText = "Rating is: " + n + "/5";
 }
+
+// Handle review form submission via AJAX
+document.querySelectorAll('.review-form').forEach(form => {
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const product_id = this.getAttribute('data-product-id');
+    const rating = this.querySelector('input[name="rating"]').value;
+    const review_text = this.querySelector('textarea[name="review_text"]').value;
+
+    fetch('submit_review.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        product_id,
+        rating,
+        review_text
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Thank you!',
+          text: 'Your review has been submitted.',
+          confirmButtonColor: '#FFB27A'
+        }).then(() => {
+          window.location.reload();
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.message || 'Could not submit review.',
+          confirmButtonColor: '#FFB27A'
+        });
+      }
+    })
+    .catch(err => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.message || 'A network error occurred.',
+        confirmButtonColor: '#FFB27A'
+      });
+    });
+  });
+});
   </script>
 </body>
 </html>

@@ -13,14 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     if ($email) {
         $db = new database();
-        $con = $db->opencon();
-        $stmt = $con->prepare("SELECT Customer_ID FROM customer WHERE Customer_Email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->rowCount() === 1) {
-            $token = bin2hex(random_bytes(32));
-            $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
-            $update = $con->prepare("UPDATE customer SET reset_token = ?, reset_expires = ? WHERE Customer_Email = ?");
-            $update->execute([$token, $expires, $email]);
+        $result = $db->createPasswordResetToken($email);
+
+        if ($result['success']) {
+            $token = $result['token'];
             $resetLink = "http://localhost/Nai_Tsa/users/reset_password.php?token=$token";
 
             $mail = new PHPMailer(true);

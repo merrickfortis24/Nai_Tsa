@@ -1,6 +1,7 @@
 <?php
 require_once("database/database.php");
 $message = "";
+$sweetAlertConfig = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
     $name = trim($_POST['fullname']);
@@ -10,22 +11,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
 
     if ($password !== $confirm) {
         $message = "Passwords do not match!";
+        $sweetAlertConfig = "
+        <script>
+        Swal.fire({
+          icon: 'error',
+          title: 'Registration Failed',
+          text: 'Passwords do not match!',
+          confirmButtonText: 'OK'
+        });
+        </script>
+        ";
     } else {
         $db = new database();
-        // Check if email already exists
-        $con = $db->opencon();
-        $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_Email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) {
-            $message = "Email already registered!";
+        $result = $db->registerCustomer($name, $email, $password);
+        if ($result === true) {
+            $sweetAlertConfig = "
+            <script>
+            Swal.fire({
+              icon: 'success',
+              title: 'Registration Successful',
+              text: 'You have successfully registered!',
+              confirmButtonText: 'OK'
+            }).then(()=>{
+              window.location.href = 'login.php?signup=success';
+            });
+            </script>
+            ";
         } else {
-            $success = $db->addCustomer($name, $email, $password);
-            if ($success) {
-                header("Location: login.php?signup=success");
-                exit;
-            } else {
-                $message = "Sign up failed. Please try again.";
-            }
+            $message = $result;
         }
     }
 }
@@ -131,6 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         e.preventDefault();
         warning.textContent = 'Passwords do not match. Please try again.';
         warning.style.display = 'block';
+      } else if (!passwordRegex.test(pass)) {
+        e.preventDefault();
+        warning.textContent = 'Password must be at least 6 characters, include one uppercase letter, one number, and one special character.';
+        warning.style.display = 'block';
       } else {
         warning.textContent = '';
         warning.style.display = 'none';
@@ -178,7 +195,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         eye.style.color = 'gray';
       }
     }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
   </script>
+
+  <?= $sweetAlertConfig ?>
 
   <?php if (!empty($message) && $message !== "Email already registered!"): ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -4,7 +4,7 @@ if (!isset($_SESSION['customer_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not logged in']);
     exit();
 }
-require_once "../admin/classes/database.php";
+require_once "classes/database.php";
 $db = new database();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -18,12 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    $stmt = $db->opencon()->prepare("INSERT INTO reviews (Product_ID, Customer_ID, Rating, Review_Text) VALUES (?, ?, ?, ?)");
-    $success = $stmt->execute([$product_id, $customer_id, $rating, $review_text]);
+    $success = $db->addReview($product_id, $customer_id, $rating, $review_text);
     if ($success) {
         echo json_encode(['success' => true]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Database error']);
+        $errorInfo = $stmt->errorInfo();
+        echo json_encode(['success' => false, 'message' => 'Database error', 'error' => $errorInfo]);
     }
     exit();
 }

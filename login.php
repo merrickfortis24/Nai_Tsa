@@ -12,15 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     require_once("database/database.php");
     $db = new database();
-    $con = $db->opencon();
 
-    if ($account_type === 'admin') {
-        $stmt = $con->prepare("SELECT * FROM admin WHERE Admin_Email = ?");
-    } else {
-        $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_Email = ?");
-    }
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    $user = $db->getUserByEmail($email, $account_type);
 
     if (!$user) {
         $email_not_found = true;
@@ -34,8 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['admin_id'] = $user['Admin_ID'];
                 $_SESSION['admin_name'] = $user['Admin_Name'];
                 $_SESSION['admin_role'] = $user['Admin_Role'];
-                header("Location: admin/index.php");
-                exit;
             } else {
                 $_SESSION['customer_name'] = $user['Customer_Name'];
                 $_SESSION['customer_email'] = $user['Customer_Email'];
@@ -47,8 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setcookie('remember_email', '', time() - 3600, "/");
                     setcookie('remember_pass', '', time() - 3600, "/");
                 }
-                header("Location: users/index.php");
-                exit;
             }
         }
     }
@@ -128,7 +117,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     setInterval(changeBg, 3500);
 
     // SweetAlert for successful login
-    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && $login_success): ?>
+    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && $login_success && $account_type === 'admin'): ?>
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Successful!',
+        text: 'Redirecting to admin dashboard...',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.href = 'admin/index.php';
+      });
+    <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $login_success): ?>
       Swal.fire({
         icon: 'success',
         title: 'Login Successful!',

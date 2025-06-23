@@ -6,12 +6,12 @@ class Order {
     protected $db;
     protected $con;
 
-    public function __construct() {
+    function __construct() {
         $this->db = new database();
         $this->con = $this->db->opencon();
     }
 
-    public function createOrder($data) {
+    function createOrder($data) {
         // Calculate total amount
         $total = $this->calculateTotal($data['cart']);
 
@@ -117,7 +117,7 @@ class Order {
         ]);
     }
 
-    public function getOrderItems($order_id) {
+    function getOrderItems($order_id) {
         $stmt = $this->con->prepare("
             SELECT oi.*, p.Product_Name 
             FROM order_item oi
