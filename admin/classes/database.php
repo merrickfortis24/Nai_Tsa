@@ -32,7 +32,7 @@ class database{
     }
 
     // Fetch all products with joins
-    public function getAllProducts() {
+    function getAllProducts() {
         $con = $this->opencon();
         $stmt = $con->prepare("
             SELECT 
@@ -51,7 +51,7 @@ class database{
     }
 
     // Fetch all categories
-    public function getAllCategories() {
+    function getAllCategories() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT * FROM category ORDER BY Category_ID DESC");
         $stmt->execute();
@@ -59,7 +59,7 @@ class database{
     }
 
     // Fetch all prices
-    public function getAllPrices() {
+    function getAllPrices() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Price_ID, Price_Amount FROM product_price ORDER BY Price_ID ASC");
         $stmt->execute();
@@ -234,7 +234,7 @@ class database{
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function updateAdmin($admin_id, $admin_name, $admin_email, $admin_role, $status, $new_password = '', $confirm_password = '') {
+    function updateAdmin($admin_id, $admin_name, $admin_email, $admin_role, $status, $new_password = '', $confirm_password = '') {
         if (empty($admin_id)) {
             throw new Exception("Admin ID is missing");
         }
@@ -291,46 +291,46 @@ class database{
 
 
 
-    public function updatePaymentStatus($payment_id, $payment_status) {
+    function updatePaymentStatus($payment_id, $payment_status) {
         $con = $this->opencon();
         $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Payment_ID=?");
         return $stmt->execute([$payment_status, $payment_id]);
     }
 
-    public function updateOrderStatus($order_id, $order_status) {
+    function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
         $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
         return $stmt->execute([$order_status, $order_id]);
     }
 
-    public function updatePaymentStatusByOrder($order_id, $payment_status) {
+    function updatePaymentStatusByOrder($order_id, $payment_status) {
         $con = $this->opencon();
         $stmt = $con->prepare("UPDATE payment SET payment_status=? WHERE Order_ID=?");
         return $stmt->execute([$payment_status, $order_id]);
     }
 
-    public function getAllPayments() {
+    function getAllPayments() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT * FROM payment ORDER BY Payment_Date DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function countUnpaidPayments() {
+    function countUnpaidPayments() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT COUNT(*) FROM payment WHERE payment_status = 'Unpaid'");
         $stmt->execute();
         return (int)$stmt->fetchColumn();
     }
 
-    public function getAllOrdersStatus() {
+    function getAllOrdersStatus() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT order_status FROM orders");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function countPendingOrProcessingOrders() {
+    function countPendingOrProcessingOrders() {
         $orders = $this->fetchOrders();
         $count = 0;
         foreach ($orders as $order) {
@@ -341,7 +341,7 @@ class database{
         return $count;
     }
 
-    public function resetAdminPasswordByToken($token, $password, $confirm) {
+    function resetAdminPasswordByToken($token, $password, $confirm) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Admin_ID, Reset_Expires FROM Admin WHERE Reset_Token = ?");
         $stmt->execute([$token]);
@@ -366,7 +366,7 @@ class database{
         }
     }
 
-    public function isValidAdminResetToken($token) {
+    function isValidAdminResetToken($token) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Reset_Expires FROM Admin WHERE Reset_Token = ?");
         $stmt->execute([$token]);
@@ -377,7 +377,7 @@ class database{
         return false;
     }
 
-public function getCustomerNameById($customer_id) {
+function getCustomerNameById($customer_id) {
     $con = $this->opencon();
     $stmt = $con->prepare("SELECT Customer_Name FROM customer WHERE Customer_ID = ?");
     $stmt->execute([$customer_id]);
@@ -385,7 +385,7 @@ public function getCustomerNameById($customer_id) {
     return $name ?: 'Unknown';
 }
 
-    public function getCustomerNameByOrderId($order_id) {
+    function getCustomerNameByOrderId($order_id) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT c.Customer_Name FROM orders o JOIN customer c ON o.Customer_ID = c.Customer_ID WHERE o.Order_ID = ?");
         $stmt->execute([$order_id]);
@@ -393,7 +393,7 @@ public function getCustomerNameById($customer_id) {
         return $name ?: 'Unknown';
     }
 
-    public function insertSalesIfDeliveredAndPaid($order_id, $admin_id) {
+    function insertSalesIfDeliveredAndPaid($order_id, $admin_id) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT o.*, p.payment_status FROM orders o LEFT JOIN payment p ON o.Order_ID = p.Order_ID WHERE o.Order_ID = ?");
         $stmt->execute([$order_id]);
@@ -425,7 +425,7 @@ public function getCustomerNameById($customer_id) {
         }
     }
 
-    public function adminLogin($email, $password) {
+    function adminLogin($email, $password) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Admin_ID, Admin_Name, Admin_Password, Admin_Role, Status FROM Admin WHERE Admin_Email = :email");
         $stmt->bindParam(':email', $email);
@@ -454,7 +454,7 @@ public function getCustomerNameById($customer_id) {
         ];
     }
 
-    public function addAdmin($name, $email, $password, $role, $status) {
+    function addAdmin($name, $email, $password, $role, $status) {
         $con = $this->opencon();
         // Check if email exists
         $stmt = $con->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
@@ -478,14 +478,14 @@ public function getCustomerNameById($customer_id) {
         }
     }
 
-    public function getAllAdmins() {
+    function getAllAdmins() {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getAdminStats() {
+    function getAdminStats() {
         $con = $this->opencon();
         return [
             'total' => (int)$con->query("SELECT COUNT(*) FROM Admin")->fetchColumn(),
@@ -495,7 +495,7 @@ public function getCustomerNameById($customer_id) {
         ];
     }
 
-    public function createPasswordResetToken($email) {
+    function createPasswordResetToken($email) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT Admin_ID FROM Admin WHERE Admin_Email = ?");
         $stmt->execute([$email]);
@@ -513,14 +513,14 @@ public function getCustomerNameById($customer_id) {
         return ['success' => false];
     }
 
-    public function adminEmailExists($email) {
+    function adminEmailExists($email) {
         $con = $this->opencon();
         $stmt = $con->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
         $stmt->execute([trim($email)]);
         return $stmt->fetchColumn() > 0;
     }
 
-public function addPrice($price_amount, $effective_from, $effective_to = null) {
+function addPrice($price_amount, $effective_from, $effective_to = null) {
     $con = $this->opencon();
     try {
         $stmt = $con->prepare("INSERT INTO product_price (Price_Amount, Effective_From, Effective_To) VALUES (:amount, :from, :to)");
@@ -535,7 +535,7 @@ public function addPrice($price_amount, $effective_from, $effective_to = null) {
     }
 }
 
-public function saveCategory($category_name, $category_id = null) {
+function saveCategory($category_name, $category_id = null) {
     $con = $this->opencon();
     try {
         if (!empty($category_id)) {
