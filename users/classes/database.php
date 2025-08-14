@@ -266,4 +266,36 @@ function processCheckout($data, $customer_name) {
 
     return ['success' => true];
 }
+
+public function getRecommendedProducts($customer_id, $limit = 4) {
+    $con = $this->opencon();
+    $limit = (int)$limit;
+    // Recommend products the user ordered most, fallback to top sellers
+    $stmt = $con->prepare("
+        SELECT p.*
+        FROM product p
+        JOIN order_item oi ON p.Product_ID = oi.Product_ID
+        JOIN orders o ON oi.Order_ID = o.Order_ID
+        WHERE o.Customer_ID = ?
+        GROUP BY p.Product_ID
+        ORDER BY COUNT(*) DESC
+        LIMIT $limit
+    ");
+    $stmt->execute([$customer_id]);
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$products) {
+        // Fallback: top sellers
+        $stmt = $con->prepare("
+            SELECT p.*
+            FROM product p
+            JOIN order_item oi ON p.Product_ID = oi.Product_ID
+            GROUP BY p.Product_ID
+            ORDER BY COUNT(*) DESC
+            LIMIT $limit
+        ");
+        $stmt->execute();
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    return $products;
+}
 }

@@ -27,6 +27,9 @@ if ($user_id) {
 
 // Fetch average ratings for all products
 $avg_ratings = $db->getAverageRatings();
+
+// Fetch recommended products for the user
+$recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -365,13 +368,9 @@ $avg_ratings = $db->getAverageRatings();
                   <div class="card-body">
                     <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
                     <div>Status: 
-                      <?php if ($order['order_status'] === 'Delivered'): ?>
-                        <span class="badge bg-success"><?= htmlspecialchars($order['order_status']) ?></span>
-                      <?php elseif ($order['order_status'] === 'Processing'): ?>
-                        <span class="badge bg-info text-dark"><?= htmlspecialchars($order['order_status']) ?></span>
-                      <?php else: ?>
-                        <span class="badge bg-warning text-dark"><?= htmlspecialchars($order['order_status']) ?></span>
-                      <?php endif; ?>
+                      <span id="order-status-<?= $order['Order_ID'] ?>">
+    <?= htmlspecialchars($order['order_status']) ?>
+  </span>
                     </div>
                     <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
                     <div class="mt-2" style="font-size:0.97em;">
@@ -425,6 +424,40 @@ $avg_ratings = $db->getAverageRatings();
     </div>
   </div>
 </div>
+
+  <!-- Recommended Products Section -->
+  <div class="recommended-section" style="margin-top:2.5rem;">
+    <h2 class="section-title text-center w-100">Recommended for you</h2>
+    <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
+      <?php foreach($recommended as $product): ?>
+        <div class="menu-card">
+          <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+          <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
+          <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
+          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+            data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+            Add to Cart
+          </button>
+          <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+          <div class="star-rating-card" style="display:none; margin-top:1em;">
+            <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
+              <div>
+                <span onclick="gfg(this,1)" class="star">&#9733;</span>
+                <span onclick="gfg(this,2)" class="star">&#9733;</span>
+                <span onclick="gfg(this,3)" class="star">&#9733;</span>
+                <span onclick="gfg(this,4)" class="star">&#9733;</span>
+                <span onclick="gfg(this,5)" class="star">&#9733;</span>
+                <input type="hidden" name="rating" value="0">
+              </div>
+              <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+              <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+              <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
+            </form>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">
@@ -568,7 +601,15 @@ document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
     }
     updateCartBadge();
     renderCartItems();
-    // Do NOT open the modal here
+    // Show success message
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Added to cart!',
+      showConfirmButton: false,
+      timer: 1200
+    });
   });
 });
 
@@ -788,6 +829,50 @@ document.querySelectorAll('.review-form').forEach(form => {
     });
   });
 });
+
+function pollOrderStatus() {
+  fetch('order_status.php')
+    .then(res => res.json())
+    .then(data => {
+      if (data.orders) {
+        data.orders.forEach(order => {
+          const el = document.querySelector(`#order-status-${order.Order_ID}`);
+          if (el) el.textContent = order.order_status;
+        });
+      }
+    });
+}
+setInterval(pollOrderStatus, 5000); // Poll every 5 seconds
+
+function pollDeliveryTracking(orderId) {
+  fetch('delivery_tracking.php?order_id=' + orderId)
+    .then(res => res.json())
+    .then(data => {
+      // Update delivery status
+      const statusEl = document.getElementById('delivery-status-' + orderId);
+      if (statusEl) statusEl.textContent = data.status || 'Unknown';
+
+      // Update map marker if using a map API
+      if (data.lat && data.lng) {
+        // Example with Leaflet.js (make sure to include Leaflet library)
+        if (!window['map_' + orderId]) {
+          window['map_' + orderId] = L.map('delivery-map-' + orderId).setView([data.lat, data.lng], 15);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+          }).addTo(window['map_' + orderId]);
+          window['marker_' + orderId] = L.marker([data.lat, data.lng]).addTo(window['map_' + orderId]);
+        } else {
+          window['marker_' + orderId].setLatLng([data.lat, data.lng]);
+          window['map_' + orderId].setView([data.lat, data.lng]);
+        }
+      }
+    });
+}
+
+// For each order you want to track, call this:
+<?php foreach ($orders_by_status['To Receive'] as $order): ?>
+  setInterval(function() { pollDeliveryTracking(<?= $order['Order_ID'] ?>); }, 5000);
+<?php endforeach; ?>
   </script>
 </body>
 </html>
