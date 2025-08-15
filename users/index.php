@@ -101,6 +101,9 @@ $all_products = $db->fetchAllProducts();
 
 
   <!-- Menu Section -->
+
+
+   <!-- Kumakain ako -->
   <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 1200px;">
