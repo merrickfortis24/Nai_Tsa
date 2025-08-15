@@ -67,19 +67,8 @@ $all_products = $db->fetchAllProducts();
           <li class="nav-item">
             <a class="nav-link" href="#home">Home</a>
           </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#menu" id="menuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Menu
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="menuDropdown">
-              <?php if (!empty($categories)): ?>
-                <?php foreach ($categories as $cat): ?>
-                  <li><a class="dropdown-item category-link" href="#menu" data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>"><?php echo htmlspecialchars($cat['Category_Name']); ?></a></li>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <li><span class="dropdown-item text-muted">No categories</span></li>
-              <?php endif; ?>
-            </ul>
+          <li class="nav-item">
+            <a class="nav-link" href="#menu">Menu</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="#about">About</a>
@@ -110,61 +99,27 @@ $all_products = $db->fetchAllProducts();
     </div>
   </section>
 
+
   <!-- Menu Section -->
-  <section class="section" id="menu" style="background-image: url('assets/bg2.jpg'); min-height: 140vh;">
+  <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 1200px;">
-      <h2 class="section-title text-center w-100">Our Bestsellers</h2>
-      <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;" id="menuCards">
-        <?php foreach($bestsellers as $product): ?>
-          <div class="menu-card">
-            <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-            <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
-            <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
-
-            <!-- Average Rating Display -->
-            <?php
-            $pid = $product['Product_ID'];
-            if (isset($avg_ratings[$pid])) {
-                $avg = $avg_ratings[$pid]['avg'];
-                $count = $avg_ratings[$pid]['count'];
-                echo '<div class="mb-2" style="font-size:1.1em;">
-                    <span style="color:#FFB27A;font-size:1.2em;">&#9733;</span>
-                    <strong>' . $avg . '</strong> / 5';
-                if ($count > 0) echo ' <span style="color:#888;">(' . $count . ' review' . ($count > 1 ? 's' : '') . ')</span>';
-                echo '</div>';
-            } else {
-                echo '<div class="mb-2" style="font-size:1.1em;color:#888;">No ratings yet</div>';
-            }
-            ?>
-
-            <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-          data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-      Add to Cart
-    </button>
-            <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-            <div class="star-rating-card" style="display:none; margin-top:1em;">
-              <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
-                <div>
-                  <span onclick="gfg(this,1)" class="star">&#9733;</span>
-                  <span onclick="gfg(this,2)" class="star">&#9733;</span>
-                  <span onclick="gfg(this,3)" class="star">&#9733;</span>
-                  <span onclick="gfg(this,4)" class="star">&#9733;</span>
-                  <span onclick="gfg(this,5)" class="star">&#9733;</span>
-                  <input type="hidden" name="rating" value="0">
-                </div>
-                <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-                <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-                <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-              </form>
-            </div>
-          </div>
-        <?php endforeach; ?>
+      <h2 class="section-title text-center w-100">Menu</h2>
+      <div class="d-flex justify-content-center mb-3 w-100">
+        <div class="btn-group">
+          <button class="btn btn-outline-soft-orange" id="showBestsellersBtn" style="font-weight:600;">
+            Bestsellers
+          </button>
+          <?php foreach ($categories as $cat): ?>
+            <button class="btn btn-outline-soft-orange category-link" 
+                    data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>">
+              <?php echo htmlspecialchars($cat['Category_Name']); ?>
+            </button>
+          <?php endforeach; ?>
+        </div>
       </div>
-      <div class="text-center w-100" style="margin-top: 0.2rem;">
-        <a href="#" class="btn btn-outline-soft-orange" id="showAllProductsBtn" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
-          More Products
-        </a>
+      <div class="menu-cards w-100 justify-content-center" id="menuCards">
+        <!-- Render menu products here -->
       </div>
     </div>
   </section>
@@ -776,33 +731,9 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
 
 const allProducts = <?php echo json_encode($all_products); ?>;
 const bestsellers = <?php echo json_encode($bestsellers); ?>;
-const avgRatings = <?php echo json_encode($avg_ratings); ?>;
+const avgRatings = <?php echo json_encode($avg_ratings); ?>; // <-- Add this line
 const menuCardsDiv = document.getElementById('menuCards');
-const showAllBtn = document.getElementById('showAllProductsBtn');
-let showingAll = false;
-
-// Filter menu products by category when a category is clicked in the dropdown
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.category-link').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      e.preventDefault();
-      const cat = this.getAttribute('data-category');
-      // Filter products by category
-      const filtered = allProducts.filter(p => p.Category_Name === cat);
-      renderMenuCards(filtered);
-      showAllBtn.textContent = 'Less';
-      showingAll = true;
-      // Scroll to menu section
-      const menuSection = document.getElementById('menu');
-      if (menuSection) {
-        window.scrollTo({
-          top: menuSection.offsetTop - document.querySelector('.navbar').offsetHeight,
-          behavior: 'smooth'
-        });
-      }
-    });
-  });
-});
+const showBestsellersBtn = document.getElementById('showBestsellersBtn');
 
 function renderMenuCards(productsArr) {
   menuCardsDiv.innerHTML = productsArr.map(product => {
@@ -875,21 +806,25 @@ function renderMenuCards(productsArr) {
   });
 }
 
-showAllBtn.addEventListener('click', function(e) {
+// Show bestsellers when "Bestsellers" is clicked
+showBestsellersBtn.addEventListener('click', function(e) {
   e.preventDefault();
-  if (!showingAll) {
-    renderMenuCards(allProducts);
-    showAllBtn.textContent = 'Less';
-    showingAll = true;
-  } else {
-    renderMenuCards(bestsellers);
-    showAllBtn.textContent = 'More Products';
-    showingAll = false;
-  }
+  renderMenuCards(bestsellers);
 });
 
-// On page load, render bestsellers (in case of dynamic reload)
+// Show products by category
+document.querySelectorAll('.category-link').forEach(function(link) {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const cat = this.getAttribute('data-category');
+    const filtered = allProducts.filter(p => p.Category_Name === cat);
+    renderMenuCards(filtered);
+  });
+});
+
+// On page load, show bestsellers
 renderMenuCards(bestsellers);
   </script>
+
 </body>
 </html>

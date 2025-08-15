@@ -237,6 +237,19 @@
       background-color: var(--soft-orange);
       color: #fff;
     }
+    .btn-outline-soft-orange,
+    .btn-outline-soft-orange:focus,
+    .btn-outline-soft-orange:active {
+      color: var(--text-dark) !important; /* Match the Menu section title color */
+      border-color: #ffb27a;
+      background-color: transparent;
+    }
+
+    .btn-outline-soft-orange:hover {
+      color: #fff !important;
+      background-color: #ffb27a;
+      border-color: #ffb27a;
+    }
     .cart-fab {
       position: fixed;
       bottom: 32px;

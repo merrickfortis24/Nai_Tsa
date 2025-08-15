@@ -8,9 +8,13 @@ class database {
         );
     }
 
-    function fetchAllProducts() {
+    public function fetchAllProducts() {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT * FROM product");
+        $stmt = $con->prepare("
+            SELECT p.*, c.Category_Name
+            FROM product p
+            JOIN category c ON p.Category_ID = c.Category_ID
+        ");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -310,6 +314,13 @@ public function getBestsellerProducts($limit = 4) {
         ORDER BY order_count DESC
         LIMIT $limit
     ");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+public function fetchAllCategories() {
+    $con = $this->opencon();
+    $stmt = $con->prepare("SELECT * FROM category ORDER BY Category_Name ASC");
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
