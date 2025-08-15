@@ -298,4 +298,19 @@ public function getRecommendedProducts($customer_id, $limit = 4) {
     }
     return $products;
 }
+
+public function getBestsellerProducts($limit = 4) {
+    $con = $this->opencon();
+    $limit = (int)$limit;
+    $stmt = $con->prepare("
+        SELECT p.*, COUNT(oi.Product_ID) as order_count
+        FROM product p
+        JOIN order_item oi ON p.Product_ID = oi.Product_ID
+        GROUP BY p.Product_ID
+        ORDER BY order_count DESC
+        LIMIT $limit
+    ");
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 }

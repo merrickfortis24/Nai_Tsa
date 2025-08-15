@@ -30,6 +30,10 @@ $avg_ratings = $db->getAverageRatings();
 
 // Fetch recommended products for the user
 $recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
+
+// Fetch bestsellers (e.g., top 4 by order count)
+$bestsellers = $db->getBestsellerProducts(4); // You need to implement this method
+$all_products = $db->fetchAllProducts();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,8 +100,8 @@ $recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 1200px;">
       <h2 class="section-title text-center w-100">Our Bestsellers</h2>
-      <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
-        <?php foreach($products as $product): ?>
+      <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;" id="menuCards">
+        <?php foreach($bestsellers as $product): ?>
           <div class="menu-card">
             <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
             <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
@@ -143,7 +147,7 @@ $recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
         <?php endforeach; ?>
       </div>
       <div class="text-center w-100" style="margin-top: 0.2rem;">
-        <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
+        <a href="#" class="btn btn-outline-soft-orange" id="showAllProductsBtn" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
           More Products
         </a>
       </div>
@@ -754,125 +758,99 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
   });
 });
 
-function openStarRating(btn) {
-  // Hide all other star-rating-card widgets in this card
-  var card = btn.closest('.menu-card');
-  var widget = card.querySelector('.star-rating-card');
-  widget.style.display = widget.style.display === 'none' ? 'block' : 'none';
-}
+const allProducts = <?php echo json_encode($all_products); ?>;
+const bestsellers = <?php echo json_encode($bestsellers); ?>;
+const avgRatings = <?php echo json_encode($avg_ratings); ?>;
+const menuCardsDiv = document.getElementById('menuCards');
+const showAllBtn = document.getElementById('showAllProductsBtn');
+let showingAll = false;
 
-// Star rating logic
-function gfg(el, n) {
-  var card = el.closest('.star-rating-card');
-  var stars = card.querySelectorAll('.star');
-  var output = card.querySelector('.output');
-  var input = card.querySelector('input[name="rating"]');
-  // Remove all classes
-  stars.forEach(s => s.className = 'star');
-  // Add color classes
-  for (let i = 0; i < n; i++) {
-    if (n == 1) cls = "one";
-    else if (n == 2) cls = "two";
-    else if (n == 3) cls = "three";
-    else if (n == 4) cls = "four";
-    else if (n == 5) cls = "five";
-    stars[i].className = "star " + cls;
-  }
-  input.value = n;
-  output.innerText = "Rating is: " + n + "/5";
-}
+function renderMenuCards(productsArr) {
+  menuCardsDiv.innerHTML = productsArr.map(product => {
+    // Average rating
+    let ratingHtml = '';
+    const pid = product.Product_ID;
+    if (avgRatings[pid]) {
+      const avg = avgRatings[pid]['avg'];
+      const count = avgRatings[pid]['count'];
+      ratingHtml = `<div class=\"mb-2\" style=\"font-size:1.1em;\">
+        <span style=\"color:#FFB27A;font-size:1.2em;\">&#9733;</span>
+        <strong>${avg}</strong> / 5` +
+        (count > 0 ? ` <span style=\"color:#888;\">(${count} review${count > 1 ? 's' : ''})</span>` : '') +
+        `</div>`;
+    } else {
+      ratingHtml = '<div class=\"mb-2\" style=\"font-size:1.1em;color:#888;\">No ratings yet</div>';
+    }
+    return `
+      <div class=\"menu-card\">
+        <img src=\"../admin/uploads/products/${product.Product_Image}\" alt=\"${product.Product_Name}\">
+        <div class=\"menu-card-title\">${product.Product_Name}</div>
+        <div class=\"menu-card-desc\">${product.Product_desc}</div>
+        ${ratingHtml}
+        <button class=\"btn btn-soft-orange w-100 mt-2 add-to-cart-btn\"
+          data-product=\"${product.Product_Name}\">
+          Add to Cart
+        </button>
+        <button class=\"btn btn-outline-soft-orange w-100 mt-2\" onclick=\"openStarRating(this)\">Rate & Review</button>
+        <div class=\"star-rating-card\" style=\"display:none; margin-top:1em;\">
+          <form class=\"review-form\" data-product-id=\"${product.Product_ID}\">
+            <div>
+              <span onclick=\"gfg(this,1)\" class=\"star\">&#9733;</span>
+              <span onclick=\"gfg(this,2)\" class=\"star\">&#9733;</span>
+              <span onclick=\"gfg(this,3)\" class=\"star\">&#9733;</span>
+              <span onclick=\"gfg(this,4)\" class=\"star\">&#9733;</span>
+              <span onclick=\"gfg(this,5)\" class=\"star\">&#9733;</span>
+              <input type=\"hidden\" name=\"rating\" value=\"0\">
+            </div>
+            <div class=\"output\" style=\"margin-top:8px;\">Rating is: 0/5</div>
+            <textarea name=\"review_text\" class=\"form-control mt-2\" rows=\"2\" placeholder=\"Write your review...\" required></textarea>
+            <button type=\"submit\" class=\"btn btn-soft-orange btn-sm mt-2\">Submit Review</button>
+          </form>
+        </div>
+      </div>
+    `;
+  }).join('');
 
-// Handle review form submission via AJAX
-document.querySelectorAll('.review-form').forEach(form => {
-  form.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const product_id = this.getAttribute('data-product-id');
-    const rating = this.querySelector('input[name="rating"]').value;
-    const review_text = this.querySelector('textarea[name="review_text"]').value;
-
-    fetch('submit_review.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({
-        product_id,
-        rating,
-        review_text
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Thank you!',
-          text: 'Your review has been submitted.',
-          confirmButtonColor: '#FFB27A'
-        }).then(() => {
-          window.location.reload();
-        });
+  // Re-attach add-to-cart event listeners
+  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const product = this.getAttribute('data-product');
+      const found = cart.find(item => item.name === product);
+      if (found) {
+        found.qty += 1;
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: data.message || 'Could not submit review.',
-          confirmButtonColor: '#FFB27A'
-        });
+        cart.push({ name: product, qty: 1 });
       }
-    })
-    .catch(err => {
+      updateCartBadge();
+      renderCartItems();
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: err.message || 'A network error occurred.',
-        confirmButtonColor: '#FFB27A'
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Added to cart!',
+        showConfirmButton: false,
+        timer: 1200
       });
     });
   });
+}
+
+showAllBtn.addEventListener('click', function(e) {
+  e.preventDefault();
+  if (!showingAll) {
+    renderMenuCards(allProducts);
+    showAllBtn.textContent = 'Less';
+    showingAll = true;
+  } else {
+    renderMenuCards(bestsellers);
+    showAllBtn.textContent = 'More Products';
+    showingAll = false;
+  }
 });
 
-function pollOrderStatus() {
-  fetch('order_status.php')
-    .then(res => res.json())
-    .then(data => {
-      if (data.orders) {
-        data.orders.forEach(order => {
-          const el = document.querySelector(`#order-status-${order.Order_ID}`);
-          if (el) el.textContent = order.order_status;
-        });
-      }
-    });
-}
-setInterval(pollOrderStatus, 5000); // Poll every 5 seconds
-
-function pollDeliveryTracking(orderId) {
-  fetch('delivery_tracking.php?order_id=' + orderId)
-    .then(res => res.json())
-    .then(data => {
-      // Update delivery status
-      const statusEl = document.getElementById('delivery-status-' + orderId);
-      if (statusEl) statusEl.textContent = data.status || 'Unknown';
-
-      // Update map marker if using a map API
-      if (data.lat && data.lng) {
-        // Example with Leaflet.js (make sure to include Leaflet library)
-        if (!window['map_' + orderId]) {
-          window['map_' + orderId] = L.map('delivery-map-' + orderId).setView([data.lat, data.lng], 15);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-          }).addTo(window['map_' + orderId]);
-          window['marker_' + orderId] = L.marker([data.lat, data.lng]).addTo(window['map_' + orderId]);
-        } else {
-          window['marker_' + orderId].setLatLng([data.lat, data.lng]);
-          window['map_' + orderId].setView([data.lat, data.lng]);
-        }
-      }
-    });
-}
-
-// For each order you want to track, call this:
-<?php foreach ($orders_by_status['To Receive'] as $order): ?>
-  setInterval(function() { pollDeliveryTracking(<?= $order['Order_ID'] ?>); }, 5000);
-<?php endforeach; ?>
+// On page load, render bestsellers (in case of dynamic reload)
+renderMenuCards(bestsellers);
   </script>
 </body>
 </html>
