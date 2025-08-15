@@ -8,11 +8,15 @@ $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] 
 $first_name = explode(' ', trim($customer_name))[0];
 require_once "classes/database.php";
 require_once "classes/order.php"; // Include the Order class
+
 $db = new database();
 $orderObj = new Order(); // Create an instance of the Order class
 $products = $db->fetchAllProducts();
 $order_id = 123; // The order you want to view
 $items = $orderObj->getOrderItems($order_id); // Get the order items
+
+// Fetch categories for menu dropdown
+$categories = method_exists($db, 'fetchAllCategories') ? $db->fetchAllCategories() : [];
 
 // Fetch user's orders grouped by status
 $user_id = $_SESSION['customer_id'] ?? null;
@@ -63,8 +67,19 @@ $all_products = $db->fetchAllProducts();
           <li class="nav-item">
             <a class="nav-link" href="#home">Home</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#menu">Menu</a>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#menu" id="menuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Menu
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="menuDropdown">
+              <?php if (!empty($categories)): ?>
+                <?php foreach ($categories as $cat): ?>
+                  <li><a class="dropdown-item category-link" href="#menu" data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>"><?php echo htmlspecialchars($cat['Category_Name']); ?></a></li>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <li><span class="dropdown-item text-muted">No categories</span></li>
+              <?php endif; ?>
+            </ul>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="#about">About</a>
@@ -758,12 +773,36 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
   });
 });
 
+
 const allProducts = <?php echo json_encode($all_products); ?>;
 const bestsellers = <?php echo json_encode($bestsellers); ?>;
 const avgRatings = <?php echo json_encode($avg_ratings); ?>;
 const menuCardsDiv = document.getElementById('menuCards');
 const showAllBtn = document.getElementById('showAllProductsBtn');
 let showingAll = false;
+
+// Filter menu products by category when a category is clicked in the dropdown
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.category-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const cat = this.getAttribute('data-category');
+      // Filter products by category
+      const filtered = allProducts.filter(p => p.Category_Name === cat);
+      renderMenuCards(filtered);
+      showAllBtn.textContent = 'Less';
+      showingAll = true;
+      // Scroll to menu section
+      const menuSection = document.getElementById('menu');
+      if (menuSection) {
+        window.scrollTo({
+          top: menuSection.offsetTop - document.querySelector('.navbar').offsetHeight,
+          behavior: 'smooth'
+        });
+      }
+    });
+  });
+});
 
 function renderMenuCards(productsArr) {
   menuCardsDiv.innerHTML = productsArr.map(product => {
