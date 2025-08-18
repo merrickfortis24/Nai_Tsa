@@ -35,6 +35,11 @@ try {
         }
     }
 
+    $product_allergens = '';
+    if (isset($_POST['product_allergens']) && is_array($_POST['product_allergens'])) {
+        $product_allergens = implode(',', $_POST['product_allergens']);
+    }
+
     $result = $db->saveProduct(
         trim($_POST['product_name']),
         trim($_POST['product_desc'] ?? ''),
@@ -42,7 +47,8 @@ try {
         $_POST['price_id'],
         $_SESSION['admin_id'],
         $image_name,
-        $_POST['product_id'] ?? null
+        $_POST['product_id'] ?? null,
+        $product_allergens
     );
 
     echo json_encode($result);

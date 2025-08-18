@@ -274,6 +274,21 @@ try {
                 <?php endforeach; ?>
               </select>
             </div>
+            <div class="mb-3">
+              <label for="product_allergens" class="form-label">Allergen Content</label>
+              <select class="form-select" id="product_allergens" name="product_allergens[]" multiple>
+                <option value="Milk">Milk</option>
+                <option value="Eggs">Eggs</option>
+                <option value="Peanuts">Peanuts</option>
+                <option value="Soy">Soy</option>
+                <option value="Wheat">Wheat</option>
+                <option value="Tree nuts">Tree nuts</option>
+                <option value="Fish">Fish</option>
+                <option value="Shellfish">Shellfish</option>
+                <!-- Add more as needed -->
+              </select>
+              <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>
+            </div>
 
             <input type="hidden" id="product_id" name="product_id" value="">
           </div>
