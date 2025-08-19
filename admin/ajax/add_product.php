@@ -40,15 +40,15 @@ try {
         $product_allergens = implode(',', $_POST['product_allergens']);
     }
 
-    $result = $db->saveProduct(
-        trim($_POST['product_name']),
-        trim($_POST['product_desc'] ?? ''),
+    // Then pass $product_allergens to addProduct:
+    $result = $db->addProduct(
+        $_POST['product_name'],
+        $_POST['product_desc'],
         $_POST['category_id'],
         $_POST['price_id'],
         $_SESSION['admin_id'],
         $image_name,
-        $_POST['product_id'] ?? null,
-        $product_allergens
+        $product_allergens // <-- make sure this is passed!
     );
 
     echo json_encode($result);
