@@ -152,6 +152,7 @@ try {
                                         <th>Image</th>
                                         <th>Product Name</th>
                                         <th>Description</th>
+                                        <th><strong>Allergens</strong></th> <!-- Add this line -->
                                         <th>Created At</th>
                                         <th>Updated At</th>
                                         <th>Admin Name</th>
@@ -172,6 +173,7 @@ try {
                                         </td>
                                         <td><?= htmlspecialchars($product['Product_Name']) ?></td>
                                         <td><?= htmlspecialchars($product['Product_desc']) ?></td>
+                                        <td><?= htmlspecialchars($product['Product_allergens'] ?? ''); ?></td>
                                         <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
                                         <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
                                         <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
@@ -275,8 +277,8 @@ try {
               </select>
             </div>
             <div class="mb-3">
-              <label for="product_allergens" class="form-label">Allergen Content</label>
-              <select class="form-select" id="product_allergens" name="product_allergens[]" multiple>
+              <label for="Product_Allergens" class="form-label">Allergen Content</label>
+              <select class="form-select" id="Product_Allergens" name="Product_Allergens[]" multiple>
                 <option value="Milk">Milk</option>
                 <option value="Eggs">Eggs</option>
                 <option value="Peanuts">Peanuts</option>

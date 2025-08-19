@@ -11,15 +11,16 @@ class database{
         );
     }
 
-    function addProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '') {
+    function addProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '', $product_Allergens = '') {
         $con = $this->opencon();
         try {
             $stmt = $con->prepare("INSERT INTO product 
-                (Product_Name, Product_desc, Product_Image, Category_ID, Price_ID, Created_at, Updated_at, Admin_ID)
-                VALUES (:name, :desc, :image, :category, :price, NOW(), NOW(), :admin)");
+                (Product_Name, Product_desc, Product_allergens, Product_Image, Category_ID, Price_ID, Created_at, Updated_at, Admin_ID)
+                VALUES (:name, :desc, :allergens, :image, :category, :price, NOW(), NOW(), :admin)");
             $stmt->execute([
                 ':name' => $product_name,
                 ':desc' => $product_desc,
+                ':allergens' => $product_Allergens,
                 ':image' => $image_name,
                 ':category' => $category_id,
                 ':price' => $price_id,
@@ -78,66 +79,22 @@ class database{
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    function saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '', $product_id = null) {
-        $con = $this->opencon();
-
-        // Validate foreign keys
-        if (!$this->isValidId($con, 'category', $category_id)) {
-            return ['success' => false, 'message' => 'Invalid Category ID'];
-        }
-        if (!$this->isValidId($con, 'product_price', $price_id)) {
-            return ['success' => false, 'message' => 'Invalid Price ID'];
-        }
-        if (!$this->isValidId($con, 'admin', $admin_id)) {
-            return ['success' => false, 'message' => 'Invalid Admin ID'];
-        }
-
-        try {
-            if (!empty($product_id)) {
-                // UPDATE existing product
-                $sql = "UPDATE product SET 
-                            Product_Name = :name, 
-                            Product_desc = :desc, 
-                            Category_ID = :category, 
-                            Price_ID = :price, 
-                            Updated_at = NOW()";
-                if ($image_name) {
-                    $sql .= ", Product_Image = :image";
-                }
-                $sql .= " WHERE Product_ID = :id";
-                $stmt = $con->prepare($sql);
-                $params = [
-                    ':name' => $product_name,
-                    ':desc' => $product_desc,
-                    ':category' => $category_id,
-                    ':price' => $price_id,
-                    ':id' => $product_id
-                ];
-                if ($image_name) {
-                    $params[':image'] = $image_name;
-                }
-                $stmt->execute($params);
-                return ['success' => true, 'message' => 'Product updated successfully!'];
-            } else {
-                // INSERT new product
-                $stmt = $con->prepare("INSERT INTO product 
-                    (Product_Name, Product_desc, Product_Image, Category_ID, Price_ID, Created_at, Updated_at, Admin_ID)
-                    VALUES (:name, :desc, :image, :category, :price, NOW(), NOW(), :admin)");
-                $stmt->execute([
-                    ':name' => $product_name,
-                    ':desc' => $product_desc,
-                    ':image' => $image_name,
-                    ':category' => $category_id,
-                    ':price' => $price_id,
-                    ':admin' => $admin_id
-                ]);
-                return ['success' => true, 'message' => 'Product added successfully!'];
-            }
-        } catch (PDOException $e) {
-            error_log("Product Save Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Database Error: ' . $e->getMessage()];
-        }
+    function saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id = null, $product_allergens = '')
+{
+    $con = $this->opencon();
+    if ($product_id) {
+        // Update
+        $sql = "UPDATE product SET Product_Name=?, Product_desc=?, Product_allergens=?, Category_ID=?, Price_ID=?, Admin_ID=?, Product_Image=? WHERE Product_ID=?";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([$product_name, $product_desc, $product_Allergens, $category_id, $price_id, $admin_id, $image_name, $product_id]);
+    } else {
+        // Insert
+        $sql = "INSERT INTO product (Product_Name, Product_desc, Product_allergens, Category_ID, Price_ID, Admin_ID, Product_Image) VALUES (?, ?, ?, ?, ?, ?, ?,?)";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([$product_name, $product_desc, $product_allergens, $category_id, $price_id, $admin_id, $image_name]);
     }
+    return ['success' => true, 'message' => 'Product saved successfully'];
+}
 
     // Helper function to validate foreign keys
     private function isValidId($con, $table, $id) {
