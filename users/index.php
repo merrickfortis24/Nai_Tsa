@@ -510,7 +510,7 @@ $all_products = $db->fetchAllProducts();
     const contactImages = [
       "assets/bg12.jpg",
        "assets/bg10.jpg",
-      "assets/bg13.jpg"
+      
     ];
 
     setupRotatingBg("home", homeImages);
