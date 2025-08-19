@@ -91,7 +91,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="home" style="background-image: url('assets/bg7.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
-      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
+      <h1 class="section-title" style="font-size:4.2rem; text-align:left;">
         Welcome, <?php echo htmlspecialchars($first_name); ?>
       </h1>
       <p class="section-desc" style="text-align:left;">Welcome to Nai Tsa - Take a pause. You deserve this moment of calm and your favorite drink!</p>
@@ -107,7 +107,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 1200px;">
-      <h2 class="section-title text-center w-100">Menu</h2>
+      <h2 class="section-title text-center w-100" style="font-size:3.2rem;">Menu</h2>
       <div class="d-flex justify-content-center mb-3 w-100">
         <div class="btn-group">
           <button class="btn btn-outline-soft-orange" id="showBestsellersBtn" style="font-weight:600;">
@@ -132,7 +132,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title">About Nai Tsa</h2>
+      <h2 class="section-title"style="font-size:3.2rem;" >About Nai Tsa</h2>
       <p class="section-desc">
         Your next cup is waiting at NaiTsa
       </p>
@@ -173,7 +173,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="contact" style="background-image: url('assets/bg10.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title">Contact Us</h2>
+      <h2 class="section-title"style="font-size:3.2rem;" >Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
       <form>
         <div class="row">
@@ -404,7 +404,7 @@ $all_products = $db->fetchAllProducts();
 
   <!-- Recommended Products Section -->
   <div class="recommended-section" style="margin-top:2.5rem;">
-    <h2 class="section-title text-center w-100">Recommended for you</h2>
+    <h2 class="section-title text-center w-100" >Recommended for you</h2>
     <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
       <?php foreach($recommended as $product): ?>
         <div class="menu-card">
@@ -510,7 +510,7 @@ $all_products = $db->fetchAllProducts();
     const contactImages = [
       "assets/bg12.jpg",
        "assets/bg10.jpg",
-      "assets/naitsalogo.jpg"
+      "assets/bg13.jpg"
     ];
 
     setupRotatingBg("home", homeImages);

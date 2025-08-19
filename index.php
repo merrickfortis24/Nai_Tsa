@@ -49,7 +49,7 @@
   <section class="section" id="home">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h1 class="section-title" style="font-size:4.0rem;">Take a Sip. Take a Break.</h1>
+      <h1 class="section-title" style="font-size:4.5rem;">Take a Sip. Take a Break.</h1>
       <p class="section-desc">Welcome to NaiTsa your cozy escape for calm and comfort. Sip fresh coffee or vibrant milk tea in a space made to help you breathe and feel better.
 Open daily from 10AM to midnight..</p>
       <!-- <a href="#menu" class="btn btn-section">ORDER NOW</a> -->
@@ -60,7 +60,7 @@ Open daily from 10AM to midnight..</p>
   <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title">About Nai Tsa</h2>
+      <h2 class="section-title" style="font-size:3.2rem;">About Nai Tsa</h2>
       <p class="section-desc">
         At Nai Tsa, we blend premium milk tea and coffee with creativity in every cup. From classics to signature blends, enjoy great flavors in a cozy space with friendly baristas. Come for the taste, stay for the vibe.
       <!-- Location Card with Map and Address -->
@@ -102,7 +102,7 @@ Open daily from 10AM to midnight..</p>
   <section class="section" id="menu">
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 950px;">
-      <h2 class="section-title text-center w-100">Menu</h2>
+      <h2 class="section-title text-center w-100" style="font-size:3.2rem;">Menu</h2>
       <div class="menu-cards w-100 justify-content-center">
         <div class="menu-card">
           <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80" alt="Classic Milk Tea">
@@ -147,7 +147,7 @@ Open daily from 10AM to midnight..</p>
   <section class="section" id="contact">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title">Contact Us</h2>
+      <h2 class="section-title" style="font-size:3.2rem;">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
       <?php if (isset($_GET['contact']) && $_GET['contact'] === 'success'): ?>
   <div class="alert alert-success">Thank you! Your message has been sent.</div>
@@ -242,7 +242,7 @@ Open daily from 10AM to midnight..</p>
       "assets/bg5.jpg"
     ];
     const contactImages = [
-      "assets/bg1.jpg",
+      "assets/bg14.jpg",
       "assets/bg8.jpg",
       "assets/bg10.jpg"
     ];
