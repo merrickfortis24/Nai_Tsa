@@ -20,36 +20,39 @@ try {
 
     $db = new database();
 
-    // Handle image if uploaded
-    $image_name = '';
-    if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
-        $ext = pathinfo($_FILES['product_image']['name'], PATHINFO_EXTENSION);
-        $image_name = uniqid('prod_', true) . '.' . $ext;
-        $upload_dir = '../uploads/products/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-        }
-        $target_path = $upload_dir . $image_name;
-        if (!move_uploaded_file($_FILES['product_image']['tmp_name'], $target_path)) {
-            throw new Exception('Failed to upload image.');
-        }
-    }
+    $product_name = $_POST['product_name'];
+    $product_desc = $_POST['product_desc'];
+    $category_id = $_POST['category_id'];
+    $price_id = $_POST['price_id'];
+    $admin_id = $_SESSION['admin_id'];
+    $product_id = !empty($_POST['product_id']) ? $_POST['product_id'] : null;
 
+    // Handle allergens (array to comma-separated string)
     $product_allergens = '';
-    if (isset($_POST['product_allergens']) && is_array($_POST['product_allergens'])) {
-        $product_allergens = implode(',', $_POST['product_allergens']);
+    if (isset($_POST['Product_Allergens'])) {
+        if (is_array($_POST['Product_Allergens'])) {
+            $product_allergens = implode(',', $_POST['Product_Allergens']);
+        } else {
+            $product_allergens = $_POST['Product_Allergens'];
+        }
     }
 
-    // Then pass $product_allergens to addProduct:
-    $result = $db->addProduct(
-        $_POST['product_name'],
-        $_POST['product_desc'],
-        $_POST['category_id'],
-        $_POST['price_id'],
-        $_SESSION['admin_id'],
-        $image_name,
-        $product_allergens // <-- make sure this is passed!
-    );
+    // Handle image upload if needed
+    $image_name = '';
+    if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] == UPLOAD_ERR_OK) {
+        $image_name = uniqid() . '_' . basename($_FILES['product_image']['name']);
+        move_uploaded_file($_FILES['product_image']['tmp_name'], '../uploads/products/' . $image_name);
+    } else if (!empty($_POST['product_image_existing'])) {
+        $image_name = $_POST['product_image_existing'];
+    }
+
+    if ($product_id) {
+        // Update
+        $result = $db->saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id, $product_allergens);
+    } else {
+        // Add
+        $result = $db->saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, null, $product_allergens);
+    }
 
     echo json_encode($result);
 } catch (Exception $e) {

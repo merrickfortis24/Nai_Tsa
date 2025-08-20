@@ -11,9 +11,10 @@ class database {
     public function fetchAllProducts() {
         $con = $this->opencon();
         $stmt = $con->prepare("
-            SELECT p.*, c.Category_Name
+            SELECT p.*, c.Category_Name, pp.Price_Amount
             FROM product p
             JOIN category c ON p.Category_ID = c.Category_ID
+            JOIN product_price pp ON p.Price_ID = pp.Price_ID
         ");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

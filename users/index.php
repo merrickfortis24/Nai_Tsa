@@ -91,7 +91,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="home" style="background-image: url('assets/bg7.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
-      <h1 class="section-title" style="font-size:4.2rem; text-align:left;">
+      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
         Welcome, <?php echo htmlspecialchars($first_name); ?>
       </h1>
       <p class="section-desc" style="text-align:left;">Welcome to Nai Tsa - Take a pause. You deserve this moment of calm and your favorite drink!</p>
@@ -107,7 +107,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content" style="max-width: 1200px;">
-      <h2 class="section-title text-center w-100" style="font-size:3.2rem;">Menu</h2>
+      <h2 class="section-title text-center w-100">Menu</h2>
       <div class="d-flex justify-content-center mb-3 w-100">
         <div class="btn-group">
           <button class="btn btn-outline-soft-orange" id="showBestsellersBtn" style="font-weight:600;">
@@ -132,7 +132,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title"style="font-size:3.2rem;" >About Nai Tsa</h2>
+      <h2 class="section-title">About Nai Tsa</h2>
       <p class="section-desc">
         Your next cup is waiting at NaiTsa
       </p>
@@ -173,7 +173,7 @@ $all_products = $db->fetchAllProducts();
   <section class="section" id="contact" style="background-image: url('assets/bg10.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title"style="font-size:3.2rem;" >Contact Us</h2>
+      <h2 class="section-title">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
       <form>
         <div class="row">
@@ -404,34 +404,52 @@ $all_products = $db->fetchAllProducts();
 
   <!-- Recommended Products Section -->
   <div class="recommended-section" style="margin-top:2.5rem;">
-    <h2 class="section-title text-center w-100" >Recommended for you</h2>
+    <h2 class="section-title text-center w-100">Recommended for you</h2>
     <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
       <?php foreach($recommended as $product): ?>
-        <div class="menu-card">
-          <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-          <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
-          <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-            data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-            Add to Cart
-          </button>
-          <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-          <div class="star-rating-card" style="display:none; margin-top:1em;">
-            <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
-              <div>
-                <span onclick="gfg(this,1)" class="star">&#9733;</span>
-                <span onclick="gfg(this,2)" class="star">&#9733;</span>
-                <span onclick="gfg(this,3)" class="star">&#9733;</span>
-                <span onclick="gfg(this,4)" class="star">&#9733;</span>
-                <span onclick="gfg(this,5)" class="star">&#9733;</span>
-                <input type="hidden" name="rating" value="0">
-              </div>
-              <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-              <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-              <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-            </form>
-          </div>
+        <div class="menu-card" style="position:relative;">
+    <div class="allergen-icon-group">
+      <?php
+        if (!empty($product['Product_allergens'])) {
+          $allergens = array_map('trim', explode(',', $product['Product_allergens']));
+          foreach ($allergens as $allergen) {
+            $iconFile = '';
+            if ($allergen === 'Milk') $iconFile = 'assets/milk.png';
+            if ($allergen === 'Eggs') $iconFile = 'assets/egg.png';
+            if ($allergen === 'Peanuts') $iconFile = 'assets/peanut.png';
+            if ($allergen === 'Soy') $iconFile = 'assets/soy-sauce.png';
+            // Add more as needed
+            if ($iconFile) {
+              echo '<img src="'.$iconFile.'" class="allergen-icon" title="'.htmlspecialchars($allergen).'" alt="'.htmlspecialchars($allergen).'">';
+            }
+          }
+        }
+      ?>
+    </div>
+    <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+    <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
+    <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
+    <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+      data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
+      Add to Cart
+    </button>
+    <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+    <div class="star-rating-card" style="display:none; margin-top:1em;">
+      <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
+        <div>
+          <span onclick="gfg(this,1)" class="star">&#9733;</span>
+          <span onclick="gfg(this,2)" class="star">&#9733;</span>
+          <span onclick="gfg(this,3)" class="star">&#9733;</span>
+          <span onclick="gfg(this,4)" class="star">&#9733;</span>
+          <span onclick="gfg(this,5)" class="star">&#9733;</span>
+          <input type="hidden" name="rating" value="0">
         </div>
+        <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+        <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+        <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
+      </form>
+    </div>
+  </div>
       <?php endforeach; ?>
     </div>
   </div>
@@ -440,6 +458,27 @@ $all_products = $db->fetchAllProducts();
   <footer class="footer">
     &copy; 2025 Nai Tsa &mdash; Coffee & Milk Tea. Designed with <span style="color: var(--soft-orange);">&#10084;</span>
   </footer>
+
+  <!-- Product Details Modal -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+        <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="background:var(--beige);">
+        <div id="productDetailsContent">
+          <!-- Content will be injected by JS -->
+        </div>
+      </div>
+      <div class="modal-footer" style="background:var(--beige);">
+        <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -510,7 +549,7 @@ $all_products = $db->fetchAllProducts();
     const contactImages = [
       "assets/bg12.jpg",
        "assets/bg10.jpg",
-      "assets/bg13.jpg"
+      "assets/naitsalogo.jpg"
     ];
 
     setupRotatingBg("home", homeImages);
@@ -740,6 +779,19 @@ const showBestsellersBtn = document.getElementById('showBestsellersBtn');
 
 function renderMenuCards(productsArr) {
   menuCardsDiv.innerHTML = productsArr.map(product => {
+    // Allergen icons
+    let allergenIconsHtml = '';
+    if (product.Product_allergens) {
+      const allergens = product.Product_allergens.split(',').map(a => a.trim());
+      allergenIconsHtml = allergens.map(allergen => {
+        const icon = allergenIcons[allergen];
+        if (icon) {
+          return `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">`;
+        }
+        return '';
+      }).join('');
+    }
+
     // Average rating
     let ratingHtml = '';
     const pid = product.Product_ID;
@@ -755,29 +807,29 @@ function renderMenuCards(productsArr) {
       ratingHtml = '<div class=\"mb-2\" style=\"font-size:1.1em;color:#888;\">No ratings yet</div>';
     }
     return `
-      <div class=\"menu-card\">
-        <img src=\"../admin/uploads/products/${product.Product_Image}\" alt=\"${product.Product_Name}\">
-        <div class=\"menu-card-title\">${product.Product_Name}</div>
-        <div class=\"menu-card-desc\">${product.Product_desc}</div>
+      <div class="menu-card" data-product-id="${product.Product_ID}" style="position:relative;">
+        <div class="allergen-icon-group">${allergenIconsHtml}</div>
+        <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+        <div class="menu-card-title">${product.Product_Name}</div>
         ${ratingHtml}
-        <button class=\"btn btn-soft-orange w-100 mt-2 add-to-cart-btn\"
-          data-product=\"${product.Product_Name}\">
+        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+          data-product="${product.Product_Name}">
           Add to Cart
         </button>
-        <button class=\"btn btn-outline-soft-orange w-100 mt-2\" onclick=\"openStarRating(this)\">Rate & Review</button>
-        <div class=\"star-rating-card\" style=\"display:none; margin-top:1em;\">
-          <form class=\"review-form\" data-product-id=\"${product.Product_ID}\">
+        <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+        <div class="star-rating-card" style="display:none; margin-top:1em;">
+          <form class="review-form" data-product-id="${product.Product_ID}">
             <div>
-              <span onclick=\"gfg(this,1)\" class=\"star\">&#9733;</span>
-              <span onclick=\"gfg(this,2)\" class=\"star\">&#9733;</span>
-              <span onclick=\"gfg(this,3)\" class=\"star\">&#9733;</span>
-              <span onclick=\"gfg(this,4)\" class=\"star\">&#9733;</span>
-              <span onclick=\"gfg(this,5)\" class=\"star\">&#9733;</span>
-              <input type=\"hidden\" name=\"rating\" value=\"0\">
+              <span onclick="gfg(this,1)" class="star">&#9733;</span>
+              <span onclick="gfg(this,2)" class="star">&#9733;</span>
+              <span onclick="gfg(this,3)" class="star">&#9733;</span>
+              <span onclick="gfg(this,4)" class="star">&#9733;</span>
+              <span onclick="gfg(this,5)" class="star">&#9733;</span>
+              <input type="hidden" name="rating" value="0">
             </div>
-            <div class=\"output\" style=\"margin-top:8px;\">Rating is: 0/5</div>
-            <textarea name=\"review_text\" class=\"form-control mt-2\" rows=\"2\" placeholder=\"Write your review...\" required></textarea>
-            <button type=\"submit\" class=\"btn btn-soft-orange btn-sm mt-2\">Submit Review</button>
+            <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+            <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+            <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
           </form>
         </div>
       </div>
@@ -807,26 +859,306 @@ function renderMenuCards(productsArr) {
       });
     });
   });
-}
 
-// Show bestsellers when "Bestsellers" is clicked
-showBestsellersBtn.addEventListener('click', function(e) {
-  e.preventDefault();
-  renderMenuCards(bestsellers);
-});
+  // Attach product details modal events
+  document.querySelectorAll('.menu-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      // Prevent modal if Add to Cart or Rate button is clicked
+      if (e.target.classList.contains('add-to-cart-btn') || e.target.classList.contains('btn-outline-soft-orange') || e.target.closest('.star-rating-card')) {
+        return;
+      }
+      const pid = card.getAttribute('data-product-id');
+      const product = allProducts.find(p => p.Product_ID == pid);
+      if (product) {
+        const allergens = product.Product_allergens || 'None';
+        const price = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : 'N/A';
+        const html = `
+          <div class="text-center mb-3">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
+          </div>
+          <h4 class="mb-2">${product.Product_Name}</h4>
+          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc}</div>
+          <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
+          <div class="mb-2"><strong>Price:</strong> ${price}</div>
+        `;
+        document.getElementById('productDetailsContent').innerHTML = html;
+        var modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+        modal.show();
 
-// Show products by category
-document.querySelectorAll('.category-link').forEach(function(link) {
-  link.addEventListener('click', function(e) {
-    e.preventDefault();
-    const cat = this.getAttribute('data-category');
-    const filtered = allProducts.filter(p => p.Category_Name === cat);
-    renderMenuCards(filtered);
+        // Set Add to Cart button handler in modal footer
+        const addToCartBtn = document.getElementById('modalAddToCartBtn');
+        addToCartBtn.onclick = function() {
+          const productName = product.Product_Name;
+          const found = cart.find(item => item.name === productName);
+          if (found) {
+            found.qty += 1;
+          } else {
+            cart.push({ name: productName, qty: 1 });
+          }
+          updateCartBadge();
+          renderCartItems();
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Added to cart!',
+            showConfirmButton: false,
+            timer: 1200
+          });
+          modal.hide();
+        };
+      }
+    });
   });
-});
+}
 
 // On page load, show bestsellers
 renderMenuCards(bestsellers);
+attachReviewFormHandlers();
+attachStarHandlers && attachStarHandlers(); // If you have star handlers
+
+    // Handle category button clicks
+    document.querySelectorAll('.category-link').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const cat = this.getAttribute('data-category');
+    const filtered = allProducts.filter(p => p.Category_Name === cat);
+    renderMenuCards(filtered);
+    attachReviewFormHandlers();
+    attachStarHandlers && attachStarHandlers();
+  });
+});
+
+    // Handle Bestsellers button
+    showBestsellersBtn.addEventListener('click', function() {
+  renderMenuCards(bestsellers);
+  attachReviewFormHandlers();
+  attachStarHandlers && attachStarHandlers();
+});
+
+const allergenIcons = {
+  Milk: "assets/milk.png",
+  Eggs: "assets/boiled-egg.png",
+  Peanuts: "assets/peanut.png",
+  Soy: "assets/soy-sauce.png"
+  // Add more as needed
+};
+
+function openStarRating(btn) {
+  // Find the nearest .menu-card or parent container
+  var card = btn.closest('.menu-card');
+  if (!card) return;
+  // Find the star-rating-card inside this card
+  var ratingCard = card.querySelector('.star-rating-card');
+  if (ratingCard) {
+    ratingCard.style.display = (ratingCard.style.display === 'none' || ratingCard.style.display === '') ? 'block' : 'none';
+  }
+}
+
+function attachStarHandlers() {
+  document.querySelectorAll('.review-form').forEach(function(form) {
+    const stars = form.querySelectorAll('.star');
+    const ratingInput = form.querySelector('input[name="rating"]');
+    const output = form.querySelector('.output');
+    stars.forEach((star, idx) => {
+      star.addEventListener('click', function() {
+        ratingInput.value = idx + 1;
+        stars.forEach((s, i) => {
+          s.classList.toggle('selected', i <= idx);
+        });
+        if (output) output.textContent = `Rating is: ${idx + 1}/5`;
+      });
+    });
+  });
+}
+
+// Attach review form submit handler (call after rendering cards)
+function attachReviewFormHandlers() {
+  document.querySelectorAll('.review-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const product_id = form.getAttribute('data-product-id');
+      const rating = form.querySelector('input[name="rating"]').value;
+      const review_text = form.querySelector('textarea[name="review_text"]').value.trim();
+
+      if (rating < 1 || rating > 5) {
+        Swal.fire({icon: 'warning', title: 'Please select a rating.'});
+        return;
+      }
+      if (!review_text) {
+        Swal.fire({icon: 'warning', title: 'Please write a review.'});
+        return;
+      }
+
+      fetch('submit_review.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `product_id=${encodeURIComponent(product_id)}&rating=${encodeURIComponent(rating)}&review_text=${encodeURIComponent(review_text)}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({icon: 'success', title: 'Thank you for your review!'});
+          // Hide the form after submit
+          form.closest('.star-rating-card').style.display = 'none';
+        } else {
+          Swal.fire({icon: 'error', title: 'Error', text: data.message || 'Could not submit review.'});
+        }
+      })
+      .catch(() => {
+        Swal.fire({icon: 'error', title: 'Error', text: 'Could not submit review.'});
+      });
+    });
+  });
+}
+
+// Call this function after renderMenuCards in renderMenuCards function
+function afterRenderMenuCards() {
+  attachReviewFormHandlers();
+}
+
+// Modify renderMenuCards to call afterRenderMenuCards
+function renderMenuCards(productsArr) {
+  menuCardsDiv.innerHTML = productsArr.map(product => {
+    // Allergen icons
+    let allergenIconsHtml = '';
+    if (product.Product_allergens) {
+      const allergens = product.Product_allergens.split(',').map(a => a.trim());
+      allergenIconsHtml = allergens.map(allergen => {
+        const icon = allergenIcons[allergen];
+        if (icon) {
+          return `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">`;
+        }
+        return '';
+      }).join('');
+    }
+
+    // Average rating
+    let ratingHtml = '';
+    const pid = product.Product_ID;
+    if (avgRatings[pid]) {
+      const avg = avgRatings[pid]['avg'];
+      const count = avgRatings[pid]['count'];
+      ratingHtml = `<div class=\"mb-2\" style=\"font-size:1.1em;\">
+        <span style=\"color:#FFB27A;font-size:1.2em;\">&#9733;</span>
+        <strong>${avg}</strong> / 5` +
+        (count > 0 ? ` <span style=\"color:#888;\">(${count} review${count > 1 ? 's' : ''})</span>` : '') +
+        `</div>`;
+    } else {
+      ratingHtml = '<div class=\"mb-2\" style=\"font-size:1.1em;color:#888;\">No ratings yet</div>';
+    }
+    return `
+      <div class="menu-card" data-product-id="${product.Product_ID}" style="position:relative;">
+        <div class="allergen-icon-group">${allergenIconsHtml}</div>
+        <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+        <div class="menu-card-title">${product.Product_Name}</div>
+        ${ratingHtml}
+        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
+          data-product="${product.Product_Name}">
+          Add to Cart
+        </button>
+        <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
+        <div class="star-rating-card" style="display:none; margin-top:1em;">
+          <form class="review-form" data-product-id="${product.Product_ID}">
+            <div>
+              <span onclick="gfg(this,1)" class="star">&#9733;</span>
+              <span onclick="gfg(this,2)" class="star">&#9733;</span>
+              <span onclick="gfg(this,3)" class="star">&#9733;</span>
+              <span onclick="gfg(this,4)" class="star">&#9733;</span>
+              <span onclick="gfg(this,5)" class="star">&#9733;</span>
+              <input type="hidden" name="rating" value="0">
+            </div>
+            <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
+            <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
+            <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
+          </form>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Re-attach add-to-cart event listeners
+  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const product = this.getAttribute('data-product');
+      const found = cart.find(item => item.name === product);
+      if (found) {
+        found.qty += 1;
+      } else {
+        cart.push({ name: product, qty: 1 });
+      }
+      updateCartBadge();
+      renderCartItems();
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Added to cart!',
+        showConfirmButton: false,
+        timer: 1200
+      });
+    });
+  });
+
+  // Attach product details modal events
+  document.querySelectorAll('.menu-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      // Prevent modal if Add to Cart or Rate button is clicked
+      if (e.target.classList.contains('add-to-cart-btn') || e.target.classList.contains('btn-outline-soft-orange') || e.target.closest('.star-rating-card')) {
+        return;
+      }
+      const pid = card.getAttribute('data-product-id');
+      const product = allProducts.find(p => p.Product_ID == pid);
+      if (product) {
+        const allergens = product.Product_allergens || 'None';
+        const price = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : 'N/A';
+        const html = `
+          <div class="text-center mb-3">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
+          </div>
+          <h4 class="mb-2">${product.Product_Name}</h4>
+          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc}</div>
+          <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
+          <div class="mb-2"><strong>Price:</strong> ${price}</div>
+        `;
+        document.getElementById('productDetailsContent').innerHTML = html;
+        var modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+        modal.show();
+
+        // Set Add to Cart button handler in modal footer
+        const addToCartBtn = document.getElementById('modalAddToCartBtn');
+        addToCartBtn.onclick = function() {
+          const productName = product.Product_Name;
+          const found = cart.find(item => item.name === productName);
+          if (found) {
+            found.qty += 1;
+          } else {
+            cart.push({ name: productName, qty: 1 });
+          }
+          updateCartBadge();
+          renderCartItems();
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Added to cart!',
+            showConfirmButton: false,
+            timer: 1200
+          });
+          modal.hide();
+        };
+      }
+    });
+  });
+
+  // Attach review form submit handler
+  attachReviewFormHandlers();
+}
+
+// On page load, show bestsellers
+renderMenuCards(bestsellers);
+attachReviewFormHandlers();
+attachStarHandlers && attachStarHandlers(); // If you have star handlers
   </script>
 
 </body>

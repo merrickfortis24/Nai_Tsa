@@ -32,10 +32,12 @@ class database{
         }
     }
 
-    // Fetch all products with joins
-    function getAllProducts() {
+
+    function getAllProducts($limit = 10, $offset = 0, $category_id = null) {
         $con = $this->opencon();
-        $stmt = $con->prepare("
+        $limit = (int)$limit;
+        $offset = (int)$offset;
+        $sql = "
             SELECT 
                 p.*, 
                 pp.Price_Amount, 
@@ -45,9 +47,20 @@ class database{
             LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
             LEFT JOIN category c ON p.Category_ID = c.Category_ID
             LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
-            ORDER BY p.Created_at DESC
-        ");
-        $stmt->execute();
+        ";
+        $params = [];
+        if ($category_id) {
+            $sql .= " WHERE p.Category_ID = ?";
+            $params[] = $category_id;
+        }
+        $sql .= " ORDER BY p.Created_at DESC LIMIT $limit OFFSET $offset";
+
+        $stmt = $con->prepare($sql);
+        if ($category_id) {
+            $stmt->execute($params);
+        } else {
+            $stmt->execute();
+        }
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -86,10 +99,10 @@ class database{
         // Update
         $sql = "UPDATE product SET Product_Name=?, Product_desc=?, Product_allergens=?, Category_ID=?, Price_ID=?, Admin_ID=?, Product_Image=? WHERE Product_ID=?";
         $stmt = $con->prepare($sql);
-        $stmt->execute([$product_name, $product_desc, $product_Allergens, $category_id, $price_id, $admin_id, $image_name, $product_id]);
+        $stmt->execute([$product_name, $product_desc, $product_allergens, $category_id, $price_id, $admin_id, $image_name, $product_id]);
     } else {
         // Insert
-        $sql = "INSERT INTO product (Product_Name, Product_desc, Product_allergens, Category_ID, Price_ID, Admin_ID, Product_Image) VALUES (?, ?, ?, ?, ?, ?, ?,?)";
+        $sql = "INSERT INTO product (Product_Name, Product_desc, Product_allergens, Category_ID, Price_ID, Admin_ID, Product_Image) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $con->prepare($sql);
         $stmt->execute([$product_name, $product_desc, $product_allergens, $category_id, $price_id, $admin_id, $image_name]);
     }
@@ -521,5 +534,16 @@ function saveCategory($category_name, $category_id = null) {
     } catch (PDOException $e) {
         return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
     }
+}
+
+public function getProductsCount($category_id = null) {
+    $con = $this->opencon();
+    if ($category_id) {
+        $stmt = $con->prepare("SELECT COUNT(*) FROM product WHERE Category_ID = ?");
+        $stmt->execute([$category_id]);
+    } else {
+        $stmt = $con->query("SELECT COUNT(*) FROM product");
+    }
+    return $stmt->fetchColumn();
 }
 }

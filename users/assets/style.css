@@ -311,6 +311,9 @@
       transition: color 0.2s;
       user-select: none;
     }
+    .star.selected {
+      color: #FFB27A !important;
+    }
     .one { color: rgb(255, 0, 0); }
     .two { color: rgb(255, 106, 0); }
     .three { color: rgb(251, 255, 120); }
@@ -365,3 +368,38 @@
         width: 38px;
       }
     }
+
+    .allergen-icon-group {
+      position: absolute;
+      top: 8px;         /* closer to top */
+      right: 8px;       /* closer to right edge */
+      display: flex;
+      gap: 3px;         /* small gap between icons */
+      z-index: 2;
+    }
+    .allergen-icon {
+      width: 22px !important;
+      height: 22px !important;
+      border-radius: 50%;
+      background: #fff !important;
+      border: 1px solid #eee;
+      object-fit: contain;
+      box-shadow: 0 0 2px #aaa !important;
+      padding: 2px;
+      display: inline-block;
+      margin-bottom: 0 !important;
+    }
+    .menu-card .allergen-icon {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50%;
+  background: #fff !important;
+  border: 1px solid #eee;
+  object-fit: contain;
+  box-shadow: 0 0 2px #aaa !important;
+  padding: 2px;
+  display: inline-block;
+  margin-bottom: 0 !important;
+  box-shadow: 0 0 2px #aaa !important;
+  background: #fff !important;
+}

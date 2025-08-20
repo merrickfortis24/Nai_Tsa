@@ -27,6 +27,17 @@ try {
 } catch (PDOException $e) {
     $prices_list = [];
 }
+
+// Pagination logic
+$currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$itemsPerPage = 10; // Adjust as needed
+$categoryFilter = isset($_GET['category']) && $_GET['category'] !== '' ? $_GET['category'] : null;
+
+$totalProducts = $db->getProductsCount($categoryFilter);
+$totalPages = ceil($totalProducts / $itemsPerPage);
+$offset = ($currentPage - 1) * $itemsPerPage;
+
+$products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -131,13 +142,19 @@ try {
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>Products List</span>
                         <div>
-                            <select class="form-select form-select-sm">
-                                <option>All Categories</option>
-                                <!-- You can populate categories here if needed -->
+                            <form method="get" class="d-inline">
+                              <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
+                                <option value="">All Categories</option>
                                 <?php foreach ($categories_list as $category): ?>
-                                    <option value="<?= htmlspecialchars($category['Category_ID']) ?>"><?= htmlspecialchars($category['Category_Name']) ?></option>
+                                  <option value="<?= htmlspecialchars($category['Category_ID']) ?>" <?= (isset($_GET['category']) && $_GET['category'] == $category['Category_ID']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($category['Category_Name']) ?>
+                                  </option>
                                 <?php endforeach; ?>
-                            </select>
+                              </select>
+                              <?php if (isset($_GET['page'])): ?>
+                                <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
+                              <?php endif; ?>
+                            </form>
                         </div>
                     </div>
                     <div class="card-body">
@@ -206,17 +223,19 @@ try {
                         </div>
                         <!-- Pagination -->
                         <nav>
-                            <ul class="pagination justify-content-end">
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" tabindex="-1">Previous</a>
-                                </li>
-                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                <li class="page-item">
-                                    <a class="page-link" href="#">Next</a>
-                                </li>
-                            </ul>
+                          <ul class="pagination justify-content-end">
+                            <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
+                              <a class="page-link" href="?page=<?= $currentPage - 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Previous</a>
+                            </li>
+                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                              <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
+                                <a class="page-link" href="?page=<?= $i ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>"><?= $i ?></a>
+                              </li>
+                            <?php endfor; ?>
+                            <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
+                              <a class="page-link" href="?page=<?= $currentPage + 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Next</a>
+                            </li>
+                          </ul>
                         </nav>
                     </div>
                 </div>
