@@ -1039,7 +1039,7 @@ function renderMenuCards(productsArr) {
       const avg = avgRatings[pid]['avg'];
       const count = avgRatings[pid]['count'];
       ratingHtml = `<div class=\"mb-2\" style=\"font-size:1.1em;\">
-        <span style=\"color:#FFB27A;font-size:1.2em;\">&#9733;</span>
+        <span style=\"color:#FFB27A;font-size:0.50em;\">&#9733;</span>
         <strong>${avg}</strong> / 5` +
         (count > 0 ? ` <span style=\"color:#888;\">(${count} review${count > 1 ? 's' : ''})</span>` : '') +
         `</div>`;
