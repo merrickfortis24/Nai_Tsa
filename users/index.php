@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['customer_id'])) {
-    header('Location: login.php');
+    header('Location: ../login.php'); // was login.php
     exit();
 }
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
@@ -77,12 +77,16 @@ $all_products = $db->fetchAllProducts();
             <a class="nav-link" href="#contact">Contact</a>
           </li>
         </ul>
-        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0"></div>
-          <!-- Profile Button -->
-          <button class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;" type="button" data-bs-toggle="offcanvas" data-bs-target="#profileOffcanvas" aria-controls="profileOffcanvas">
-            <span style="font-size:1.2em; margin-right:0.4em;">👤</span> <?php echo htmlspecialchars($first_name); ?>
-          </button>
-        </div>
+        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
+  <!-- Search Bar -->
+  <form id="menuSearchForm" class="d-flex align-items-center me-2" role="search" autocomplete="off" style="min-width:180px;">
+    <input class="form-control form-control-sm" type="search" placeholder="Search menu..." aria-label="Search" id="menuSearchInput" style="min-width:140px;">
+  </form>
+  <!-- Profile Button -->
+  <button class="btn btn-soft-orange d-flex align-items-center" style="font-weight:600;" type="button" data-bs-toggle="offcanvas" data-bs-target="#profileOffcanvas" aria-controls="profileOffcanvas">
+    <span style="font-size:1.2em; margin-right:0.4em;">👤</span> <?php echo htmlspecialchars($first_name); ?>
+  </button>
+</div>
       </div>
     </div>
   </nav>
@@ -106,20 +110,23 @@ $all_products = $db->fetchAllProducts();
    <!-- Kumakain ako -->
   <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
     <div class="section-overlay"></div>
-    <div class="section-content" style="max-width: 1200px;">
+    <div class="section-content section-content--wide">  <!-- changed: removed inline max-width -->
       <h2 class="section-title text-center w-100">Menu</h2>
-      <div class="d-flex justify-content-center mb-3 w-100">
-        <div class="btn-group">
-          <button class="btn btn-outline-soft-orange" id="showBestsellersBtn" style="font-weight:600;">
-            Bestsellers
+      <!-- Recommended Section -->
+      <div id="recommendedWrap" class="w-100 mb-3">
+        <h3 class="text-center" style="font-weight:700;color:var(--text-dark);">Recommended for you</h3>
+        <div class="menu-cards w-100 justify-content-center" id="recommendedCards"></div>
+      </div>
+      <div class="d-flex flex-wrap justify-content-center mb-3 w-100 gap-2">
+        <button class="menu-category-btn" id="showBestsellersBtn">
+          Bestsellers
+        </button>
+        <?php foreach ($categories as $cat): ?>
+          <button class="menu-category-btn category-link"
+                  data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>">
+            <?php echo htmlspecialchars($cat['Category_Name']); ?>
           </button>
-          <?php foreach ($categories as $cat): ?>
-            <button class="btn btn-outline-soft-orange category-link" 
-                    data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>">
-              <?php echo htmlspecialchars($cat['Category_Name']); ?>
-            </button>
-          <?php endforeach; ?>
-        </div>
+        <?php endforeach; ?>
       </div>
       <div class="menu-cards w-100 justify-content-center" id="menuCards">
         <!-- Render menu products here -->
@@ -203,7 +210,7 @@ $all_products = $db->fetchAllProducts();
     <h4 style="font-weight:700; color:var(--text-dark); margin-bottom:0.5rem;"><?php echo htmlspecialchars($_SESSION['customer_name']); ?></h4>
     <div style="color:#825e3a; font-size:1.08rem; margin-bottom:1.7rem;"><?php echo htmlspecialchars($_SESSION['customer_email']); ?></div>
     <hr style="width:80%;margin:1.2rem 0;">
-        <a href="#" class="btn btn-soft-orange w-100 mb-2" data-bs-toggle="modal" data-bs-target="#myOrdersModal">My Orders</a>
+  <a href="#" id="openMyOrdersBtn" class="btn btn-soft-orange w-100 mb-2" data-bs-toggle="modal" data-bs-target="#myOrdersModal">My Orders</a>
     <hr style="width:80%;margin:1.2rem 0;">
     <a href="logout.php" class="btn btn-outline-soft-orange w-100 mb-2">Logout</a>
     <button type="button" class="btn btn-soft-orange w-100" data-bs-dismiss="offcanvas">Close</button>
@@ -236,6 +243,25 @@ $all_products = $db->fetchAllProducts();
       <div class="modal-footer" style="background:var(--beige);border-bottom-left-radius:24px;border-bottom-right-radius:24px;">
         <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-soft-orange" id="checkoutBtn">Checkout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Add-ons Modal -->
+<div class="modal fade" id="addonsModal" tabindex="-1" aria-labelledby="addonsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:20px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;border-top-left-radius:20px;border-top-right-radius:20px;">
+        <h5 class="modal-title" id="addonsModalLabel">Choose Add-ons</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="background:var(--beige);">
+        <div id="addonsList" class="vstack gap-2"></div>
+      </div>
+      <div class="modal-footer" style="background:var(--beige);border-bottom-left-radius:20px;border-bottom-right-radius:20px;">
+        <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Skip</button>
+        <button type="button" class="btn btn-soft-orange" id="confirmAddonsBtn">Add to Cart</button>
       </div>
     </div>
   </div>
@@ -318,167 +344,75 @@ $all_products = $db->fetchAllProducts();
 </div>
 
   <!-- My Orders Modal -->
-<div class="modal fade" id="myOrdersModal" tabindex="-1" aria-labelledby="myOrdersModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content" style="border-radius:20px;">
-      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
-        <h5 class="modal-title" id="myOrdersModalLabel">My Orders</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" style="background:var(--beige);">
-        <ul class="nav nav-tabs mb-3" id="ordersTab" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="to-ship-tab" data-bs-toggle="tab" data-bs-target="#to-ship" type="button" role="tab">To Ship</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="to-receive-tab" data-bs-toggle="tab" data-bs-target="#to-receive" type="button" role="tab">To Receive</button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="delivered-tab" data-bs-toggle="tab" data-bs-target="#delivered" type="button" role="tab">Delivered</button>
-          </li>
-        </ul>
-        <div class="tab-content" id="ordersTabContent">
-          <div class="tab-pane fade show active" id="to-ship" role="tabpanel">
-            <?php if (count($orders_by_status['To Ship'])): ?>
-              <?php foreach ($orders_by_status['To Ship'] as $order): ?>
-                <div class="card mb-2">
-                  <div class="card-body">
-                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
-                    <div>Status: 
-                      <span id="order-status-<?= $order['Order_ID'] ?>">
-    <?= htmlspecialchars($order['order_status']) ?>
-  </span>
-                    </div>
-                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
-                    <div class="mt-2" style="font-size:0.97em;">
-                      <strong>Items:</strong><br>
-                      <?php
-                        $items = $orderObj->getOrderItems($order['Order_ID']); // Use $orderObj or $order as your Order class instance
-                        foreach ($items as $item) {
-                          echo htmlspecialchars($item['Product_Name']) . " x " . $item['Quantity'] . "<br>";
-                        }
-                      ?>
-                    </div>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <div class="text-muted">No orders to ship.</div>
-            <?php endif; ?>
+  <div class="modal fade" id="myOrdersModal" tabindex="-1" aria-labelledby="myOrdersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content" style="border-radius:20px;">
+        <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+          <h5 class="modal-title" id="myOrdersModalLabel">My Orders</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="background:var(--beige);">
+          <div id="orderStatusChips" class="order-status-filter d-flex flex-wrap gap-2 mb-3">
+            <!-- Chips injected by JS -->
           </div>
-          <div class="tab-pane fade" id="to-receive" role="tabpanel">
-            <?php if (count($orders_by_status['To Receive'])): ?>
-              <?php foreach ($orders_by_status['To Receive'] as $order): ?>
-                <div class="card mb-2">
-                  <div class="card-body">
-                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
-                    <div>Status: <span class="badge bg-info text-dark"><?= htmlspecialchars($order['order_status']) ?></span></div>
-                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <div class="text-muted">No orders to receive.</div>
-            <?php endif; ?>
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <input id="ordersSearch" type="text" class="form-control form-control-sm" placeholder="Search orders/products..." style="max-width:260px;">
+            <select id="ordersFilter" class="form-select form-select-sm" style="max-width:160px;">
+              <option value="">Any Date</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+              <option value="365">Last Year</option>
+            </select>
           </div>
-          <div class="tab-pane fade" id="delivered" role="tabpanel">
-            <?php if (count($orders_by_status['Delivered'])): ?>
-              <?php foreach ($orders_by_status['Delivered'] as $order): ?>
-                <div class="card mb-2">
-                  <div class="card-body">
-                    <div><strong>Order #<?= $order['Order_ID'] ?></strong> | <?= htmlspecialchars($order['Order_Date']) ?></div>
-                    <div>Status: <span class="badge bg-success"><?= htmlspecialchars($order['order_status']) ?></span></div>
-                    <div>Total: ₱<?= number_format($order['Order_Amount'], 2) ?></div>
-                  </div>
-                </div>
-              <?php endforeach; ?>
-            <?php else: ?>
-              <div class="text-muted">No delivered orders.</div>
-            <?php endif; ?>
-          </div>
+          <div id="ordersSummaryLine" class="small mb-2 text-muted"></div>
+          <div id="ordersList"></div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-  <!-- Recommended Products Section -->
-  <div class="recommended-section" style="margin-top:2.5rem;">
-    <h2 class="section-title text-center w-100">Recommended for you</h2>
-    <div class="menu-cards w-100 justify-content-center" style="margin-bottom: 1.2rem;">
-      <?php foreach($recommended as $product): ?>
-        <div class="menu-card" style="position:relative;">
-    <div class="allergen-icon-group">
-      <?php
-        if (!empty($product['Product_allergens'])) {
-          $allergens = array_map('trim', explode(',', $product['Product_allergens']));
-          foreach ($allergens as $allergen) {
-            $iconFile = '';
-            if ($allergen === 'Milk') $iconFile = 'assets/milk.png';
-            if ($allergen === 'Eggs') $iconFile = 'assets/egg.png';
-            if ($allergen === 'Peanuts') $iconFile = 'assets/peanut.png';
-            if ($allergen === 'Soy') $iconFile = 'assets/soy-sauce.png';
-            // Add more as needed
-            if ($iconFile) {
-              echo '<img src="'.$iconFile.'" class="allergen-icon" title="'.htmlspecialchars($allergen).'" alt="'.htmlspecialchars($allergen).'">';
-            }
-          }
-        }
-      ?>
-    </div>
-    <img src="../admin/uploads/products/<?php echo htmlspecialchars($product['Product_Image']); ?>" alt="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-    <div class="menu-card-title"><?php echo htmlspecialchars($product['Product_Name']); ?></div>
-    <div class="menu-card-desc"><?php echo htmlspecialchars($product['Product_desc']); ?></div>
-    <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-      data-product="<?php echo htmlspecialchars($product['Product_Name']); ?>">
-      Add to Cart
-    </button>
-    <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-    <div class="star-rating-card" style="display:none; margin-top:1em;">
-      <form class="review-form" data-product-id="<?php echo $product['Product_ID']; ?>">
-        <div>
-          <span onclick="gfg(this,1)" class="star">&#9733;</span>
-          <span onclick="gfg(this,2)" class="star">&#9733;</span>
-          <span onclick="gfg(this,3)" class="star">&#9733;</span>
-          <span onclick="gfg(this,4)" class="star">&#9733;</span>
-          <span onclick="gfg(this,5)" class="star">&#9733;</span>
-          <input type="hidden" name="rating" value="0">
+  <!-- Review Items Modal -->
+  <div class="modal fade review-modal" id="reviewModal" tabindex="-1"
+       aria-labelledby="reviewModalLabel" aria-hidden="true"
+       data-bs-backdrop="static" data-bs-keyboard="false">  <!-- prevent behind-clicks -->
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content" style="border-radius:20px;">
+        <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+          <h5 class="modal-title" id="reviewModalLabel">Rate your items</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-        <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-        <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-      </form>
+        <div class="modal-body" style="background:var(--beige);">
+          <div id="reviewOrderHeader" class="mb-2 small text-muted"></div>
+          <div id="reviewItemsContainer"></div>
+        </div>
+        <div class="modal-footer" style="background:var(--beige);">
+          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-soft-orange" id="submitReviewsBtn">Submit Reviews</button>
+        </div>
+      </div>
     </div>
   </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="footer">
-    &copy; 2025 Nai Tsa &mdash; Coffee & Milk Tea. Designed with <span style="color: var(--soft-orange);">&#10084;</span>
-  </footer>
 
   <!-- Product Details Modal -->
-<div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius:20px;">
-      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
-        <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" style="background:var(--beige);">
-        <div id="productDetailsContent">
-          <!-- Content will be injected by JS -->
+  <div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius:20px;">
+        <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+          <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-      </div>
-      <div class="modal-footer" style="background:var(--beige);">
-        <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
+        <div class="modal-body" style="background:var(--beige);">
+          <div id="productDetailsContent">
+            <!-- Content will be injected by JS -->
+          </div>
+        </div>
+        <div class="modal-footer" style="background:var(--beige);">
+          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -559,6 +493,7 @@ $all_products = $db->fetchAllProducts();
 
     // Cart logic
 let cart = [];
+let PENDING_ADD_TO_CART = null; // { productId, productName }
 const cartBadge = document.getElementById('cart-badge');
 const cartItemsList = document.getElementById('cart-items-list');
 
@@ -572,15 +507,22 @@ function updateCartBadge() {
   }
 }
 
+function money(n){ return Number(n||0).toFixed(2); }
+
 function renderCartItems() {
   if (cart.length === 0) {
     cartItemsList.innerHTML = '<div class="text-center text-muted" style="font-size:1.1rem;">Your cart is empty.</div>';
     return;
   }
-  cartItemsList.innerHTML = cart.map((item, idx) => `
+  cartItemsList.innerHTML = cart.map((item, idx) => {
+    const addonsHtml = (item.addons && item.addons.length)
+      ? `<div class="ms-2 small text-muted">${item.addons.map(a=>`${a.name} (+₱${money(a.price)})`).join(', ')}</div>`
+      : '';
+    return `
     <div class="d-flex align-items-center justify-content-between border-bottom py-2">
       <div>
         <strong>${item.name}</strong>
+        ${addonsHtml}
       </div>
       <div class="d-flex align-items-center gap-2">
         <span class="badge bg-secondary">${item.qty}</span>
@@ -590,8 +532,8 @@ function renderCartItems() {
           </svg>
         </button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   
   // Add event listeners for remove buttons
   document.querySelectorAll('.remove-cart-item').forEach(btn => {
@@ -605,27 +547,13 @@ function renderCartItems() {
 }
 
 document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-  btn.addEventListener('click', function(e) {
+  btn.addEventListener('click', async function(e) {
     e.preventDefault();
-    const product = this.getAttribute('data-product');
-    // Check if already in cart
-    const found = cart.find(item => item.name === product);
-    if (found) {
-      found.qty += 1;
-    } else {
-      cart.push({ name: product, qty: 1 });
-    }
-    updateCartBadge();
-    renderCartItems();
-    // Show success message
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: 'Added to cart!',
-      showConfirmButton: false,
-      timer: 1200
-    });
+    const productName = this.getAttribute('data-product');
+    const allProducts = <?php echo json_encode($all_products); ?>;
+    const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+    if (!prod) return;
+    await openAddonsModal(prod.Product_ID, prod.Product_Name);
   });
 });
 
@@ -770,395 +698,785 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
   });
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+  const allProducts = <?php echo json_encode($all_products); ?>;
+  const recommended = <?php echo json_encode($recommended); ?>;
+  const bestsellers = <?php echo json_encode($bestsellers); ?>;
+  const avgRatings = <?php echo json_encode($avg_ratings); ?>;
+  const menuCardsDiv = document.getElementById('menuCards');
+  const recommendedWrap = document.getElementById('recommendedWrap');
+  const recommendedCardsDiv = document.getElementById('recommendedCards');
+  const showBestsellersBtn = document.getElementById('showBestsellersBtn');
+  const menuSearchInput = document.getElementById('menuSearchInput');
 
-const allProducts = <?php echo json_encode($all_products); ?>;
-const bestsellers = <?php echo json_encode($bestsellers); ?>;
-const avgRatings = <?php echo json_encode($avg_ratings); ?>; // <-- Add this line
-const menuCardsDiv = document.getElementById('menuCards');
-const showBestsellersBtn = document.getElementById('showBestsellersBtn');
+  // Allergen icons (ensure only one definition)
+  const allergenIcons = {
+    Milk: "assets/milk.png",
+    Eggs: "assets/boiled-egg.png",
+    Peanuts: "assets/peanut.png",
+    Soy: "assets/soy-sauce.png"
+  };
+  console.log('allergenIcons initialized', allergenIcons);
 
-function renderMenuCards(productsArr) {
-  menuCardsDiv.innerHTML = productsArr.map(product => {
-    // Allergen icons
-    let allergenIconsHtml = '';
-    if (product.Product_allergens) {
-      const allergens = product.Product_allergens.split(',').map(a => a.trim());
-      allergenIconsHtml = allergens.map(allergen => {
-        const icon = allergenIcons[allergen];
-        if (icon) {
-          return `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">`;
-        }
-        return '';
-      }).join('');
+  function renderRecommendedCards(productsArr) {
+    if (!recommendedCardsDiv) return;
+    if (!Array.isArray(productsArr) || productsArr.length === 0) {
+      recommendedWrap && recommendedWrap.classList.add('d-none');
+      return;
     }
-
-    // Average rating
-    let ratingHtml = '';
-    const pid = product.Product_ID;
-    if (avgRatings[pid]) {
-      const avg = avgRatings[pid]['avg'];
-      const count = avgRatings[pid]['count'];
-      ratingHtml = `<div class=\"mb-2\" style=\"font-size:1.1em;\">
-        <span style=\"color:#FFB27A;font-size:1.2em;\">&#9733;</span>
-        <strong>${avg}</strong> / 5` +
-        (count > 0 ? ` <span style=\"color:#888;\">(${count} review${count > 1 ? 's' : ''})</span>` : '') +
-        `</div>`;
-    } else {
-      ratingHtml = '<div class=\"mb-2\" style=\"font-size:1.1em;color:#888;\">No ratings yet</div>';
-    }
-    return `
-      <div class="menu-card" data-product-id="${product.Product_ID}" style="position:relative;">
-        <div class="allergen-icon-group">${allergenIconsHtml}</div>
-        <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
-        <div class="menu-card-title">${product.Product_Name}</div>
-        ${ratingHtml}
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-          data-product="${product.Product_Name}">
-          Add to Cart
-        </button>
-        <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-        <div class="star-rating-card" style="display:none; margin-top:1em;">
-          <form class="review-form" data-product-id="${product.Product_ID}">
-            <div>
-              <span onclick="gfg(this,1)" class="star">&#9733;</span>
-              <span onclick="gfg(this,2)" class="star">&#9733;</span>
-              <span onclick="gfg(this,3)" class="star">&#9733;</span>
-              <span onclick="gfg(this,4)" class="star">&#9733;</span>
-              <span onclick="gfg(this,5)" class="star">&#9733;</span>
-              <input type="hidden" name="rating" value="0">
-            </div>
-            <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-            <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-            <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-          </form>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Re-attach add-to-cart event listeners
-  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      const product = this.getAttribute('data-product');
-      const found = cart.find(item => item.name === product);
-      if (found) {
-        found.qty += 1;
-      } else {
-        cart.push({ name: product, qty: 1 });
+    // Cap to 4 suggestions
+    const list = productsArr.slice(0, 4);
+    recommendedCardsDiv.innerHTML = list.map(product => {
+      let allergenIconsHtml = '';
+      if (product.Product_allergens) {
+        allergenIconsHtml = product.Product_allergens.split(',').map(a => a.trim()).map(allergen => {
+          const icon = allergenIcons[allergen];
+          return icon ? `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">` : '';
+        }).join('');
       }
-      updateCartBadge();
-      renderCartItems();
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: 'Added to cart!',
-        showConfirmButton: false,
-        timer: 1200
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
+      return `
+        <div class="menu-card" data-product-id="${pid}">
+          <div class="menu-card-image">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+            <div class="allergen-icon-group">${allergenIconsHtml}</div>
+          </div>
+          <div class="menu-card-content">
+            <div class="menu-card-header">
+              <h3 class="menu-card-title">${product.Product_Name}</h3>
+              <span class="menu-card-price">${priceDisplay}</span>
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Add-to-cart (recommended) -> open add-ons modal if available
+    recommendedCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productName = btn.getAttribute('data-product');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (!prod) return;
+        await openAddonsModal(prod.Product_ID, prod.Product_Name);
       });
     });
-  });
 
-  // Attach product details modal events
-  document.querySelectorAll('.menu-card').forEach(function(card) {
-    card.addEventListener('click', function(e) {
-      // Prevent modal if Add to Cart or Rate button is clicked
-      if (e.target.classList.contains('add-to-cart-btn') || e.target.classList.contains('btn-outline-soft-orange') || e.target.closest('.star-rating-card')) {
-        return;
-      }
-      const pid = card.getAttribute('data-product-id');
-      const product = allProducts.find(p => p.Product_ID == pid);
-      if (product) {
+    // Card click -> modal (recommended)
+    recommendedCardsDiv.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return;
+        const pid = card.dataset.productId;
+        const product = allProducts.find(p => p.Product_ID == pid) || list.find(p => p.Product_ID == pid);
+        if (!product) return;
         const allergens = product.Product_allergens || 'None';
-        const price = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : 'N/A';
-        const html = `
+        const modalPrice = product.Price_Amount ? '₱' + parseFloat(product.Price_Amount).toFixed(2) : '₱0.00';
+        const modalHtml = `
           <div class="text-center mb-3">
             <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
           </div>
           <h4 class="mb-2">${product.Product_Name}</h4>
-          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc}</div>
+          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
           <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
-          <div class="mb-2"><strong>Price:</strong> ${price}</div>
+          <div class="mb-2"><strong>Price:</strong> ${modalPrice}</div>
         `;
-        document.getElementById('productDetailsContent').innerHTML = html;
-        var modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+        document.getElementById('productDetailsContent').innerHTML = modalHtml;
+        const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
         modal.show();
-
-        // Set Add to Cart button handler in modal footer
-        const addToCartBtn = document.getElementById('modalAddToCartBtn');
-        addToCartBtn.onclick = function() {
-          const productName = product.Product_Name;
-          const found = cart.find(item => item.name === productName);
-          if (found) {
-            found.qty += 1;
-          } else {
-            cart.push({ name: productName, qty: 1 });
-          }
-          updateCartBadge();
-          renderCartItems();
-          Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'Added to cart!',
-            showConfirmButton: false,
-            timer: 1200
-          });
+        document.getElementById('modalAddToCartBtn').onclick = async () => {
           modal.hide();
+          await openAddonsModal(product.Product_ID, product.Product_Name);
         };
+      });
+    });
+  }
+
+  function renderMenuCards(productsArr) {
+    if (!productsArr || !productsArr.length) {
+      menuCardsDiv.innerHTML = `<div class="text-center text-muted" style="padding:1.5rem;">No products found.</div>`;
+      return;
+    }
+    menuCardsDiv.innerHTML = productsArr.map(product => {
+      let allergenIconsHtml = '';
+      if (product.Product_allergens) {
+        allergenIconsHtml = product.Product_allergens.split(',').map(a => a.trim()).map(allergen => {
+          const icon = allergenIcons[allergen];
+          return icon ? `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">` : '';
+        }).join('');
       }
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
+
+      return `
+        <div class="menu-card" data-product-id="${pid}">
+          <div class="menu-card-image">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+            <div class="allergen-icon-group">${allergenIconsHtml}</div>
+          </div>
+          <div class="menu-card-content">
+            <div class="menu-card-header">
+              <h3 class="menu-card-title">${product.Product_Name}</h3>
+              <span class="menu-card-price">${priceDisplay}</span>
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Add-to-cart -> open add-ons modal
+    menuCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productName = btn.getAttribute('data-product');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (!prod) return;
+        await openAddonsModal(prod.Product_ID, prod.Product_Name);
+      });
+    });
+
+    // Card click -> modal
+    menuCardsDiv.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return;
+        const pid = card.dataset.productId;
+        const product = allProducts.find(p => p.Product_ID == pid);
+        if (!product) return;
+        const allergens = product.Product_allergens || 'None';
+        const modalPrice = product.Price_Amount ? '₱' + parseFloat(product.Price_Amount).toFixed(2) : '₱0.00';
+        const modalHtml = `
+          <div class="text-center mb-3">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
+          </div>
+          <h4 class="mb-2">${product.Product_Name}</h4>
+          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
+            <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
+          <div class="mb-2"><strong>Price:</strong> ${modalPrice}</div>
+        `;
+        document.getElementById('productDetailsContent').innerHTML = modalHtml;
+        const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+        modal.show();
+        document.getElementById('modalAddToCartBtn').onclick = async () => {
+          modal.hide();
+          await openAddonsModal(product.Product_ID, product.Product_Name);
+        };
+      });
+    });
+  }
+
+  // CATEGORY + SEARCH FILTERS
+  let currentCategory = null;
+  function applyMenuFilters() {
+    let filtered = allProducts;
+    if (currentCategory) {
+      filtered = filtered.filter(p => p.Category_Name === currentCategory);
+    }
+    const q = menuSearchInput.value.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter(p =>
+        (p.Product_Name && p.Product_Name.toLowerCase().includes(q)) ||
+        (p.Product_desc && p.Product_desc.toLowerCase().includes(q))
+      );
+    }
+    renderMenuCards(filtered);
+  }
+
+  document.querySelectorAll('.category-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCategory = btn.getAttribute('data-category');
+      document.querySelectorAll('.menu-category-btn').forEach(b => b.classList.remove('active-category'));
+      btn.classList.add('active-category');
+      menuSearchInput.value = '';
+      applyMenuFilters();
+    });
+  });
+
+  if (showBestsellersBtn) {
+    showBestsellersBtn.addEventListener('click', () => {
+      currentCategory = null;
+      document.querySelectorAll('.menu-category-btn').forEach(b => b.classList.remove('active-category'));
+      showBestsellersBtn.classList.add('active-category');
+      menuSearchInput.value = '';
+      if (Array.isArray(bestsellers) && bestsellers.length) {
+        renderMenuCards(bestsellers);
+      } else {
+        renderMenuCards(allProducts);
+      }
+    });
+  }
+
+  if (menuSearchInput) {
+    menuSearchInput.addEventListener('input', applyMenuFilters);
+  }
+
+  // INITIAL RENDER
+  // Recommended row
+  renderRecommendedCards(recommended);
+
+  if (!Array.isArray(bestsellers) || bestsellers.length === 0) {
+    console.warn('No bestsellers found; showing all products.');
+    renderMenuCards(allProducts);
+    showBestsellersBtn && showBestsellersBtn.classList.add('active-category');
+  } else {
+    renderMenuCards(bestsellers);
+    showBestsellersBtn && showBestsellersBtn.classList.add('active-category');
+  }
+});
+
+// REMOVE / FIX MISSING IMAGE TO STOP 404
+// Delete bg13.jpg from the contactImages array above OR add the actual file assets/bg13.jpg.
+
+const ORDER_STATUS_STEPS = ["Pending","Processing","To Ship","To Receive","Delivered"];
+const STATUS_LABEL_MAP = {
+  Pending: "Pending",
+  Processing: "Preparing",
+  "To Ship": "To Ship",
+  "To Receive": "To Receive",
+  Delivered: "Delivered",
+  Cancelled: "Cancelled"
+};
+const STATUS_BADGE_CLASS = {
+  Pending: "bg-secondary",
+  Processing: "bg-info text-dark",
+  "To Ship": "bg-primary",
+  "To Receive": "bg-warning text-dark",
+  Delivered: "bg-success",
+  Cancelled: "bg-dark"
+};
+function renderProgress(current) {
+  const idx = ORDER_STATUS_STEPS.indexOf(current);
+  return `
+    <div class="order-progress d-flex align-items-center mb-2">
+      ${ORDER_STATUS_STEPS.map((s,i)=>{
+        const state = i < idx ? 'completed' : (i === idx ? 'active' : 'upcoming');
+        return `
+          <div class="step ${state}">
+            <div class="dot">${i < idx ? '✓' : ''}</div>
+            <div class="label">${STATUS_LABEL_MAP[s]||s}</div>
+          </div>
+          ${i<ORDER_STATUS_STEPS.length-1?`<div class="bar ${i<idx?'filled':''}"></div>`:""}
+        `;
+      }).join('')}
+    </div>`;
+}
+
+// ================== ORDER LIST / FILTER UI ==================
+const RAW_STATUS_STEPS = ["Pending","Processing","To Ship","To Receive","Delivered"];
+const STATUS_DISPLAY = {
+  All: "All",
+  Pending:"Pending",
+  Processing:"Processing",
+  "To Ship":"To Ship",
+  "To Receive":"To Receive",
+  Delivered:"Delivered",
+  Cancelled:"Cancelled"
+};
+const CHIP_SEQUENCE = ["All","Pending","Processing","To Ship","To Receive","Delivered","Cancelled"];
+
+let ORDERS_CACHE = [];
+let ACTIVE_STATUS = "All";
+
+function skeletonOrders(count=3){
+  return Array.from({length:count}).map(()=>`
+    <div class="card mb-2" aria-hidden="true" style="border-radius:14px;">
+      <div class="card-body">
+        <div class="placeholder-wave">
+          <div class="placeholder col-4 mb-2"></div>
+          <div class="placeholder col-7 mb-2"></div>
+          <div class="placeholder col-5"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// Map backend combination -> UI status (adjust if your real logic differs)
+function deriveUiStatus(o){
+  // Honor backend status primarily; use payment only to refine Processing -> To Ship
+  if (o.order_status === "Delivered") return "Delivered";
+  if (o.order_status === "Cancelled") return "Cancelled";
+  if (o.order_status === "Pending") return "Pending"; // don’t treat as To Ship
+  if (o.order_status === "Processing") {
+    return (o.payment_status === "Paid") ? "To Ship" : "Processing";
+  }
+  if (o.order_status === "To Ship") return "To Ship";
+  if (o.order_status === "To Receive") return "To Receive";
+  // Fallback to raw if it matches known steps
+  if (RAW_STATUS_STEPS.includes(o.order_status)) return o.order_status;
+  return o.order_status || "Pending";
+}
+
+function buildStatusCounts(rawList){
+  const counts = {All: rawList.length};
+  CHIP_SEQUENCE.forEach(s => { if(s!=="All") counts[s]=0; });
+  rawList.forEach(o => { const st = deriveUiStatus(o); if(counts[st]!==undefined) counts[st]++; });
+  return counts;
+}
+
+function renderStatusChips(){
+  const container = document.getElementById('orderStatusChips');
+  const counts = buildStatusCounts(ORDERS_CACHE);
+  container.innerHTML = CHIP_SEQUENCE
+    .filter(s => s==="All" || counts[s] > 0) // optionally hide zero statuses except All
+    .map(s => `
+      <div class="status-chip ${ACTIVE_STATUS===s?'active':''}" data-status="${s}">
+        <span>${STATUS_DISPLAY[s]||s}</span>
+        <span class="count">${counts[s]||0}</span>
+      </div>`).join('');
+  container.querySelectorAll('.status-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      ACTIVE_STATUS = chip.dataset.status;
+      renderStatusChips();
+      renderOrders();
     });
   });
 }
 
-// On page load, show bestsellers
-renderMenuCards(bestsellers);
-attachReviewFormHandlers();
-attachStarHandlers && attachStarHandlers(); // If you have star handlers
+function passesDateFilter(o){
+  const sel = document.getElementById('ordersFilter').value;
+  if(!sel) return true;
+  const days = parseInt(sel,10);
+  const orderDate = new Date(o.Order_Date.replace(' ','T'));
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return orderDate >= cutoff;
+}
 
-    // Handle category button clicks
-    document.querySelectorAll('.category-link').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    const cat = this.getAttribute('data-category');
-    const filtered = allProducts.filter(p => p.Category_Name === cat);
-    renderMenuCards(filtered);
-    attachReviewFormHandlers();
-    attachStarHandlers && attachStarHandlers();
-  });
-});
+function renderOrders(){
+  const listEl = document.getElementById('ordersList');
+  const q = document.getElementById('ordersSearch').value.trim().toLowerCase();
 
-    // Handle Bestsellers button
-    showBestsellersBtn.addEventListener('click', function() {
-  renderMenuCards(bestsellers);
-  attachReviewFormHandlers();
-  attachStarHandlers && attachStarHandlers();
-});
+  let processed = ORDERS_CACHE.map(o => ({...o, ui_status: deriveUiStatus(o)}));
 
-const allergenIcons = {
-  Milk: "assets/milk.png",
-  Eggs: "assets/boiled-egg.png",
-  Peanuts: "assets/peanut.png",
-  Soy: "assets/soy-sauce.png"
-  // Add more as needed
-};
+  if(ACTIVE_STATUS !== "All"){
+    processed = processed.filter(o => o.ui_status === ACTIVE_STATUS);
+  }
+  processed = processed.filter(passesDateFilter);
 
-function openStarRating(btn) {
-  // Find the nearest .menu-card or parent container
-  var card = btn.closest('.menu-card');
-  if (!card) return;
-  // Find the star-rating-card inside this card
-  var ratingCard = card.querySelector('.star-rating-card');
-  if (ratingCard) {
-    ratingCard.style.display = (ratingCard.style.display === 'none' || ratingCard.style.display === '') ? 'block' : 'none';
+  if(q){
+    processed = processed.filter(o =>
+      String(o.Order_ID).includes(q) ||
+      o.items.some(it => it.Product_Name && it.Product_Name.toLowerCase().includes(q))
+    );
+  }
+
+  const totalShowing = processed.length;
+  const summary = `${totalShowing} order${totalShowing!==1?'s':''} showing`;
+  document.getElementById('ordersSummaryLine').textContent = summary;
+
+  if(!processed.length){
+    listEl.innerHTML = `<div class="text-muted py-4 text-center">No matching orders.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = processed.map(o => {
+    const uiStatus = o.ui_status;
+    const badgeClass = (uiStatus==="Delivered"?"bg-success":
+                       uiStatus==="To Ship"?"bg-primary":
+                       uiStatus==="To Receive"?"bg-warning text-dark":
+                       uiStatus==="Processing"?"bg-info text-dark":
+                       uiStatus==="Pending"?"bg-secondary":
+                       uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
+    const itemsPreview = o.items.slice(0,3).map(it=>`
+      <div class="d-inline-flex align-items-center me-2 mb-1" style="font-size:.75rem;">
+        <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
+        <span>${it.Product_Name} x ${it.Quantity}</span>
+      </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
+
+    return `
+      <div class="card mb-2" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div>
+              <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
+              <div class="mt-1">${renderProgress(uiStatus)}</div>
+            </div>
+            <span class="badge ${badgeClass}" style="height:fit-content;">${uiStatus}</span>
+          </div>
+          <div class="mt-2">${itemsPreview}</div>
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            ${actionButtons(uiStatus,o.Order_ID)}
+          </div>
+          <div class="mt-2 fw-semibold">Total: ₱${parseFloat(o.Order_Amount).toFixed(2)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function actionButtons(status,id){
+  // Look up order to decide if review should be enabled
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(id));
+  const allReviewed = order?.items?.length ? order.items.every(it => !!it.Already_Reviewed) : false;
+  switch(status){
+    case "Pending":
+      return `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`;
+    case "To Receive":
+      return `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm Received</button>`;
+    case "Delivered":
+      return allReviewed
+        ? `<button class="btn btn-secondary btn-sm" data-action="review" data-id="${id}" disabled>Reviewed</button>`
+        : `<button class="btn btn-soft-orange btn-sm" data-action="review" data-id="${id}">Review Items</button>`;
+    default:
+      return '';
   }
 }
 
-function attachStarHandlers() {
-  document.querySelectorAll('.review-form').forEach(function(form) {
-    const stars = form.querySelectorAll('.star');
-    const ratingInput = form.querySelector('input[name="rating"]');
-    const output = form.querySelector('.output');
-    stars.forEach((star, idx) => {
-      star.addEventListener('click', function() {
-        ratingInput.value = idx + 1;
-        stars.forEach((s, i) => {
-          s.classList.toggle('selected', i <= idx);
-        });
-        if (output) output.textContent = `Rating is: ${idx + 1}/5`;
-      });
-    });
-  });
-}
+// (Removed earlier duplicate click listener to avoid conflicts)
 
-// Attach review form submit handler (call after rendering cards)
-function attachReviewFormHandlers() {
-  document.querySelectorAll('.review-form').forEach(function(form) {
-    form.addEventListener('submit', function(e) {
+// Ensure offcanvas closes before opening My Orders to avoid aria-hidden focus issues
+(function(){
+  const trigger = document.getElementById('openMyOrdersBtn');
+  const offcanvasEl = document.getElementById('profileOffcanvas');
+  const modalEl = document.getElementById('myOrdersModal');
+  if(!trigger || !offcanvasEl || !modalEl) return;
+  trigger.addEventListener('click', (e)=>{
+    const instance = bootstrap.Offcanvas.getInstance(offcanvasEl) || bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+    if(offcanvasEl.classList.contains('show')){
       e.preventDefault();
-      const product_id = form.getAttribute('data-product-id');
-      const rating = form.querySelector('input[name="rating"]').value;
-      const review_text = form.querySelector('textarea[name="review_text"]').value.trim();
-
-      if (rating < 1 || rating > 5) {
-        Swal.fire({icon: 'warning', title: 'Please select a rating.'});
-        return;
-      }
-      if (!review_text) {
-        Swal.fire({icon: 'warning', title: 'Please write a review.'});
-        return;
-      }
-
-      fetch('submit_review.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `product_id=${encodeURIComponent(product_id)}&rating=${encodeURIComponent(rating)}&review_text=${encodeURIComponent(review_text)}`
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire({icon: 'success', title: 'Thank you for your review!'});
-          // Hide the form after submit
-          form.closest('.star-rating-card').style.display = 'none';
-        } else {
-          Swal.fire({icon: 'error', title: 'Error', text: data.message || 'Could not submit review.'});
-        }
-      })
-      .catch(() => {
-        Swal.fire({icon: 'error', title: 'Error', text: 'Could not submit review.'});
-      });
-    });
+      offcanvasEl.addEventListener('hidden.bs.offcanvas', ()=>{
+        const m = bootstrap.Modal.getOrCreateInstance(modalEl);
+        m.show();
+      }, {once:true});
+      instance.hide();
+    }
   });
+})();
+
+// On modal open fetch orders (with success handling)
+document.getElementById('myOrdersModal').addEventListener('show.bs.modal', ()=>{
+  const listEl = document.getElementById('ordersList');
+  if(listEl) listEl.innerHTML = skeletonOrders();
+  ACTIVE_STATUS = "All";
+  fetch('orders_api.php?t=' + Date.now())
+    .then(r=> r.ok ? r.json() : Promise.reject(r.status))
+    .then(data=>{
+      ORDERS_CACHE = Array.isArray(data) ? data : [];
+      renderStatusChips();
+      renderOrders();
+    })
+    .catch((err)=>{
+      if(listEl) listEl.innerHTML = `<div class="text-danger">Failed to load orders.</div>`;
+      console.error('orders_api failed', err);
+    });
+});
+
+// Search / date filter
+document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
+document.getElementById('ordersFilter').addEventListener('change', ()=>renderOrders());
+
+// ---------- Review Items (My Orders) ----------
+let CURRENT_REVIEW_ORDER_ID = null;
+
+function buildStarsHtml(initial=0){
+  // 5 clickable stars
+  return `
+    <div class="review-stars" role="radiogroup" aria-label="Rating">
+      ${[1,2,3,4,5].map(v => `
+        <span class="review-star ${v<=initial?'active':''}" data-value="${v}" aria-label="${v} star${v>1?'s':''}" role="radio"></span>
+      `).join('')}
+    </div>`;
 }
 
-// Call this function after renderMenuCards in renderMenuCards function
-function afterRenderMenuCards() {
-  attachReviewFormHandlers();
-}
+function openReviewModalByOrderId(orderId){
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(orderId));
+  if(!order || !order.items || !order.items.length){
+    Swal.fire({icon:'error', title:'No items to review.', confirmButtonColor:'#FFB27A'});
+    return;
+  }
+  const pendingItems = order.items.filter(it => !it.Already_Reviewed);
+  if(!pendingItems.length){
+    // All reviewed; disable the review button in the orders list and inform user
+    document.querySelector(`#myOrdersModal [data-action="review"][data-id="${orderId}"]`)?.setAttribute('disabled','disabled');
+    Swal.fire({icon:'info', title:'You already reviewed all items in this order.', timer:1600, showConfirmButton:false});
+    return;
+  }
+  CURRENT_REVIEW_ORDER_ID = orderId;
+  document.getElementById('reviewOrderHeader').textContent =
+    `Order #${order.Order_ID} • ${order.Order_Date}`;
 
-// Modify renderMenuCards to call afterRenderMenuCards
-function renderMenuCards(productsArr) {
-  menuCardsDiv.innerHTML = productsArr.map(product => {
-    // Allergen icons
-    let allergenIconsHtml = '';
-    if (product.Product_allergens) {
-      const allergens = product.Product_allergens.split(',').map(a => a.trim());
-      allergenIconsHtml = allergens.map(allergen => {
-        const icon = allergenIcons[allergen];
-        if (icon) {
-          return `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">`;
-        }
-        return '';
-      }).join('');
-    }
-
-    // Average rating
-    let ratingHtml = '';
-    const pid = product.Product_ID;
-    if (avgRatings[pid]) {
-      const avg = avgRatings[pid]['avg'];
-      const count = avgRatings[pid]['count'];
-      ratingHtml = `<div class=\"mb-2\" style=\"font-size:1.1em;\">
-        <span style=\"color:#FFB27A;font-size:0.50em;\">&#9733;</span>
-        <strong>${avg}</strong> / 5` +
-        (count > 0 ? ` <span style=\"color:#888;\">(${count} review${count > 1 ? 's' : ''})</span>` : '') +
-        `</div>`;
-    } else {
-      ratingHtml = '<div class=\"mb-2\" style=\"font-size:1.1em;color:#888;\">No ratings yet</div>';
-    }
+  const container = document.getElementById('reviewItemsContainer');
+  const itemsHtml = pendingItems.map(it => {
+    const pid = it.Product_ID || it.product_id || it.ProductId || it.id || 0;  // robust fallback
     return `
-      <div class="menu-card" data-product-id="${product.Product_ID}" style="position:relative;">
-        <div class="allergen-icon-group">${allergenIconsHtml}</div>
-        <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
-        <div class="menu-card-title">${product.Product_Name}</div>
-        ${ratingHtml}
-        <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn"
-          data-product="${product.Product_Name}">
-          Add to Cart
-        </button>
-        <button class="btn btn-outline-soft-orange w-100 mt-2" onclick="openStarRating(this)">Rate & Review</button>
-        <div class="star-rating-card" style="display:none; margin-top:1em;">
-          <form class="review-form" data-product-id="${product.Product_ID}">
-            <div>
-              <span onclick="gfg(this,1)" class="star">&#9733;</span>
-              <span onclick="gfg(this,2)" class="star">&#9733;</span>
-              <span onclick="gfg(this,3)" class="star">&#9733;</span>
-              <span onclick="gfg(this,4)" class="star">&#9733;</span>
-              <span onclick="gfg(this,5)" class="star">&#9733;</span>
-              <input type="hidden" name="rating" value="0">
+      <div class="card product-review-card mb-3" data-product-id="${pid}" data-rating="0" data-locked="0"
+           style="border-radius:16px; overflow:hidden;">
+        <div class="card-body d-flex align-items-start">
+          <img src="../admin/uploads/products/${it.Product_Image}" alt="${it.Product_Name}"
+               style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
+          <div class="ms-3 flex-grow-1">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold" style="color:var(--text-dark)">${it.Product_Name}</div>
+                <div class="text-muted small">Please rate your item</div>
+              </div>
+              <span class="badge bg-light text-dark">x${it.Quantity}</span>
             </div>
-            <div class="output" style="margin-top:8px;">Rating is: 0/5</div>
-            <textarea name="review_text" class="form-control mt-2" rows="2" placeholder="Write your review..." required></textarea>
-            <button type="submit" class="btn btn-soft-orange btn-sm mt-2">Submit Review</button>
-          </form>
+            <div class="mt-2">${buildStarsHtml(0)}</div>
+            <textarea class="form-control form-control-sm mt-3 review-text" rows="2"
+              placeholder="Share a short review (optional)"></textarea>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+  container.innerHTML = itemsHtml;
 
-  // Re-attach add-to-cart event listeners
-  document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      const product = this.getAttribute('data-product');
-      const found = cart.find(item => item.name === product);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
+}
+
+// Single handler: close My Orders first to avoid stacked modals (prevents aria-hidden warning)
+document.getElementById('myOrdersModal').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const {action,id} = btn.dataset;
+
+  if(action==="review"){
+    const ordersEl = document.getElementById('myOrdersModal');
+    const ordersModal = bootstrap.Modal.getInstance(ordersEl);
+    if (ordersEl.classList.contains('show')) {
+      ordersEl.addEventListener('hidden.bs.modal', () => openReviewModalByOrderId(id), { once:true });
+      ordersModal.hide();
+    } else {
+      openReviewModalByOrderId(id);
+    }
+    return;
+  }
+
+  if(action==="cancel"){
+    // Allow cancel only when current UI status is Pending
+    const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(id));
+    const uiStatus = order ? deriveUiStatus(order) : null;
+    if (uiStatus !== 'Pending') {
+      Swal.fire({icon:'info', title:'Cannot cancel', text:'Only pending orders can be canceled.', confirmButtonColor:'#FFB27A'});
+      return;
+    }
+
+    Swal.fire({title:'Cancel this order?',icon:'warning',showCancelButton:true,confirmButtonColor:'#FFB27A'})
+      .then(async r=>{ 
+        if(r.isConfirmed){ 
+          try{
+            const resp = await fetch('cancel_order.php', {
+              method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','Accept':'application/json'},
+              body: new URLSearchParams({order_id: id}).toString()
+            });
+            const data = await resp.json().catch(()=>({success:false,message:'Invalid response'}));
+            console.log('cancel_order.php response', resp.status, data);
+            if(resp.ok && data.success){
+              const idx = ORDERS_CACHE.findIndex(o=>String(o.Order_ID)===String(id));
+              if(idx!==-1){ ORDERS_CACHE[idx].order_status = 'Cancelled'; }
+              renderStatusChips();
+              renderOrders();
+              Swal.fire({icon:'success',title:'Order canceled',timer:1200,showConfirmButton:false});
+            } else {
+              Swal.fire({icon:'error',title:data.message||'Unable to cancel',timer:1800,showConfirmButton:false});
+            }
+          }catch(err){
+            Swal.fire({icon:'error',title:'Network error',text:String(err).slice(0,160),confirmButtonColor:'#FFB27A'});
+          }
+        }
+      });
+  } else if(action==="confirm"){
+    Swal.fire({title:'Confirm receipt?',icon:'question',showCancelButton:true,confirmButtonColor:'#FFB27A'})
+      .then(r=>{ if(r.isConfirmed){ Swal.fire({icon:'success',title:'Thank you!',timer:1200,showConfirmButton:false}); }});
+  }
+});
+
+// Submit reviews: ensure numeric product_id
+document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>{
+  const cards = Array.from(document.querySelectorAll('#reviewItemsContainer .product-review-card'));
+  const raw = cards
+    .filter(c => c.dataset.locked !== '1')
+    .map(c => {
+    const datasetRating = Number(c.dataset.rating) || 0;
+    const countedRating = c.querySelectorAll('.review-star.active').length;
+    const rating = datasetRating || countedRating || 0;
+    const product_id = Number(c.dataset.productId) || 0;
+    const review_text = c.querySelector('.review-text')?.value?.trim() || '';
+    return { product_id, rating, review_text };
+  });
+  const payload = raw.filter(x => x.product_id > 0 && x.rating > 0);
+
+  if(payload.length === 0){
+    // Diagnose why it's empty: missing ids or ratings?
+    const missingIds = raw.filter(x => x.rating > 0 && x.product_id <= 0).length;
+    const zeroRatings = raw.filter(x => x.product_id > 0 && x.rating <= 0).length;
+    const noneInteracted = raw.every(x => x.rating <= 0);
+    let text = 'Please tap on the stars to rate at least one item.';
+    if (missingIds > 0 && !noneInteracted) {
+      text = 'We could not link your rating to a product. Please close My Orders, reopen it, then try again.';
+    }
+    if (missingIds > 0 && zeroRatings > 0) {
+      text += ' (Some items are missing product IDs; refresh the page if this persists.)';
+    }
+    Swal.fire({icon:'warning', title:'Please rate at least one item.', text, confirmButtonColor:'#FFB27A'});
+    return;
+  }
+
+  const btn = document.getElementById('submitReviewsBtn');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+
+  try {
+    const results = await Promise.all(payload.map(async (p) => {
+      const form = new FormData();
+      form.append('product_id', String(p.product_id));
+      form.append('rating', String(p.rating));
+      form.append('review_text', p.review_text);
+      const res = await fetch('submit_review.php', { method:'POST', body: form });
+      return res.json();
+    }));
+    const failed = results.filter(r => !r?.success);
+    if(failed.length===0){
+      // Mark items as reviewed in cache
+      const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(CURRENT_REVIEW_ORDER_ID));
+      if (order && Array.isArray(order.items)) {
+        order.items.forEach(it => {
+          if (payload.some(p => p.product_id === (it.Product_ID||it.product_id||it.ProductId||it.id))) {
+            it.Already_Reviewed = true;
+          }
+        });
+      }
+      Swal.fire({icon:'success', title:'Thank you for your reviews!', timer:1500, showConfirmButton:false});
+      bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+      // Re-render orders so the Review button can disable if all reviewed
+      renderOrders();
+    } else {
+      Swal.fire({icon:'error', title:'Some reviews failed', text: failed.map(f=>f.message||'Error').join('\n'), confirmButtonColor:'#FFB27A'});
+    }
+  } catch(err){
+    Swal.fire({icon:'error', title:'Unable to submit reviews', text:String(err||'Error'), confirmButtonColor:'#FFB27A'});
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
+// Enable clicking stars in the Review Items modal (event delegation)
+(function(){
+  const reviewModalEl = document.getElementById('reviewModal');
+  if(!reviewModalEl) return;
+
+  reviewModalEl.addEventListener('click', (e) => {
+    const star = e.target.closest('.review-star');
+    if (!star) return;
+    const card = star.closest('.product-review-card');
+    if (!card) return;
+  if (card.dataset.locked === '1') return; // ignore interactions on locked cards
+    const val = Number(star.dataset.value) || 0;
+    card.dataset.rating = String(val);
+    const stars = card.querySelectorAll('.review-star');
+    stars.forEach(s => {
+      const active = Number(s.dataset.value) <= val;
+      s.classList.toggle('active', active);
+      s.setAttribute('aria-checked', active ? 'true' : 'false');
+      s.setAttribute('tabindex', '0');
+    });
+  });
+})();
+
+  </script>
+
+  <script>
+  async function openAddonsModal(productId, productName){
+    PENDING_ADD_TO_CART = { productId, productName };
+    try{
+      const res = await fetch('get_product_addons.php?product_id='+productId+'&t='+Date.now());
+      const data = await res.json();
+      const list = data.success ? (data.addons||[]) : [];
+      const wrap = document.getElementById('addonsList');
+      if (!list.length) {
+        // No add-ons: add directly
+        const found = cart.find(i => i.name === productName);
+        if (found) found.qty += 1; else cart.push({ name: productName, qty: 1, addons: [] });
+        updateCartBadge();
+        renderCartItems();
+        Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+        return;
+      }
+      wrap.innerHTML = list.map(a=>`
+        <label class="d-flex align-items-center justify-content-between border rounded p-2 bg-white">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+            <span>${a.Addon_Name}</span>
+          </div>
+          <span>₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+        </label>
+      `).join('');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('addonsModal')).show();
+    }catch(err){
+      console.error('addons fetch failed', err);
+      const found = cart.find(i => i.name === productName);
+      if (found) found.qty += 1; else cart.push({ name: productName, qty: 1, addons: [] });
+      updateCartBadge();
+      renderCartItems();
+      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+    }
+  }
+
+  document.getElementById('confirmAddonsBtn').addEventListener('click', ()=>{
+    const modalEl = document.getElementById('addonsModal');
+    const checks = Array.from(modalEl.querySelectorAll('input[type="checkbox"]:checked'));
+    const addons = checks.map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
+    if (PENDING_ADD_TO_CART){
+      const found = cart.find(i => i.name === PENDING_ADD_TO_CART.productName);
       if (found) {
         found.qty += 1;
+        found.addons = addons; // last selection wins for simplicity
       } else {
-        cart.push({ name: product, qty: 1 });
+        cart.push({ name: PENDING_ADD_TO_CART.productName, qty: 1, addons });
       }
       updateCartBadge();
       renderCartItems();
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: 'Added to cart!',
-        showConfirmButton: false,
-        timer: 1200
-      });
-    });
+      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+    }
+    PENDING_ADD_TO_CART = null;
+    bootstrap.Modal.getInstance(modalEl).hide();
   });
-
-  // Attach product details modal events
-  document.querySelectorAll('.menu-card').forEach(function(card) {
-    card.addEventListener('click', function(e) {
-      // Prevent modal if Add to Cart or Rate button is clicked
-      if (e.target.classList.contains('add-to-cart-btn') || e.target.classList.contains('btn-outline-soft-orange') || e.target.closest('.star-rating-card')) {
-        return;
-      }
-      const pid = card.getAttribute('data-product-id');
-      const product = allProducts.find(p => p.Product_ID == pid);
-      if (product) {
-        const allergens = product.Product_allergens || 'None';
-        const price = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : 'N/A';
-        const html = `
-          <div class="text-center mb-3">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
-          </div>
-          <h4 class="mb-2">${product.Product_Name}</h4>
-          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc}</div>
-          <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
-          <div class="mb-2"><strong>Price:</strong> ${price}</div>
-        `;
-        document.getElementById('productDetailsContent').innerHTML = html;
-        var modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
-        modal.show();
-
-        // Set Add to Cart button handler in modal footer
-        const addToCartBtn = document.getElementById('modalAddToCartBtn');
-        addToCartBtn.onclick = function() {
-          const productName = product.Product_Name;
-          const found = cart.find(item => item.name === productName);
-          if (found) {
-            found.qty += 1;
-          } else {
-            cart.push({ name: productName, qty: 1 });
-          }
-          updateCartBadge();
-          renderCartItems();
-          Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'Added to cart!',
-            showConfirmButton: false,
-            timer: 1200
-          });
-          modal.hide();
-        };
-      }
-    });
-  });
-
-  // Attach review form submit handler
-  attachReviewFormHandlers();
-}
-
-// On page load, show bestsellers
-renderMenuCards(bestsellers);
-attachReviewFormHandlers();
-attachStarHandlers && attachStarHandlers(); // If you have star handlers
   </script>
 
 </body>

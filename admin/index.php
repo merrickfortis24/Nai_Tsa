@@ -131,6 +131,12 @@ try {
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'addons.php' ? ' active' : '' ?>" href="addons.php">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>Add-ons</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="categories.php">
                                 <i class="bi bi-tags"></i>
                                 <span>Categories</span>

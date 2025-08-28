@@ -281,8 +281,46 @@ class database{
 
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
-        $stmt = $con->prepare("UPDATE orders SET order_status=? WHERE Order_ID=?");
-        return $stmt->execute([$order_status, $order_id]);
+        // Fetch current status
+        $curStmt = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = ? LIMIT 1");
+        $curStmt->execute([$order_id]);
+        $current = $curStmt->fetchColumn();
+        if ($current === false) return false;
+
+        $from = strtolower(trim($current));
+        $to = strtolower(trim($order_status));
+
+        // Normalize target case (DB uses capitalized words)
+        $normalize = function($s){ return ucwords($s); };
+
+        // Define allowed transitions
+        $forward = [
+            'pending'    => ['processing', 'cancelled'],
+            'processing' => ['delivered'],
+            'to ship'    => ['to receive'], // if ever used
+            'to receive' => ['delivered'],  // if ever used
+            'delivered'  => [],
+            'cancelled'  => [],
+        ];
+
+        // Already the same
+        if ($from === $to) return true;
+
+        // Cancel only from pending
+        if ($to === 'cancelled' && $from !== 'pending') {
+            return false;
+        }
+        // Cancelled/delivered are terminal
+        if (in_array($from, ['cancelled','delivered'], true)) {
+            return false;
+        }
+        // Forward progression must be allowed
+        if (!in_array($to, $forward[$from] ?? [], true)) {
+            return false;
+        }
+
+        $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
+        return $stmt->execute([$normalize($to), $order_id]);
     }
 
     function updatePaymentStatusByOrder($order_id, $payment_status) {
@@ -546,4 +584,69 @@ public function getProductsCount($category_id = null) {
     }
     return $stmt->fetchColumn();
 }
+}
+
+// ===================== Add-ons (Admin) =====================
+// CRUD for addons table and mapping to products via product_addons
+class addons_helper extends database {
+    public function getAllAddons(): array {
+        $con = $this->opencon();
+        $stmt = $con->query("SELECT Addon_ID, Addon_Name, Addon_Price, Status, Created_At, Updated_At FROM addons ORDER BY Status DESC, Addon_Name ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function addAddon(string $name, float $price, string $status = 'Active'): array {
+        $con = $this->opencon();
+        $stmt = $con->prepare("INSERT INTO addons (Addon_Name, Addon_Price, Status) VALUES (:n,:p,:s)");
+        $ok = $stmt->execute([':n' => $name, ':p' => $price, ':s' => ($status === 'Inactive' ? 'Inactive' : 'Active')]);
+        return ['success' => (bool)$ok, 'id' => $ok ? (int)$con->lastInsertId() : null];
+    }
+
+    public function updateAddon(int $id, string $name, float $price, string $status = 'Active'): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("UPDATE addons SET Addon_Name=:n, Addon_Price=:p, Status=:s WHERE Addon_ID=:id");
+        return $stmt->execute([':n' => $name, ':p' => $price, ':s' => ($status === 'Inactive' ? 'Inactive' : 'Active'), ':id' => $id]);
+    }
+
+    public function deleteAddon(int $id): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("DELETE FROM addons WHERE Addon_ID=:id");
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function getAllProductsLite(): array {
+        $con = $this->opencon();
+        $stmt = $con->query("SELECT Product_ID, Product_Name FROM product ORDER BY Product_Name ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getProductAddons(int $productId): array {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT Addon_ID FROM product_addons WHERE Product_ID = :pid");
+        $stmt->execute([':pid' => $productId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function setProductAddons(int $productId, array $addonIds): bool {
+        $con = $this->opencon();
+        $con->beginTransaction();
+        try {
+            $del = $con->prepare("DELETE FROM product_addons WHERE Product_ID = :pid");
+            $del->execute([':pid' => $productId]);
+
+            if (!empty($addonIds)) {
+                $ins = $con->prepare("INSERT INTO product_addons (Product_ID, Addon_ID) VALUES (:pid, :aid)");
+                foreach ($addonIds as $aid) {
+                    $aid = (int)$aid;
+                    if ($aid <= 0) continue;
+                    $ins->execute([':pid' => $productId, ':aid' => $aid]);
+                }
+            }
+            $con->commit();
+            return true;
+        } catch (Throwable $e) {
+            $con->rollBack();
+            return false;
+        }
+    }
 }

@@ -20,6 +20,25 @@ class database {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Ensure order_item_addons table exists (idempotent)
+    private function ensureOrderItemAddons(PDO $con) {
+        $con->exec("CREATE TABLE IF NOT EXISTS order_item_addons (
+            Order_Item_Addon_ID INT NOT NULL AUTO_INCREMENT,
+            Order_ID INT NOT NULL,
+            Order_Item_ID INT NULL,
+            Product_ID INT NOT NULL,
+            Addon_ID INT NOT NULL,
+            Addon_Name VARCHAR(100) NOT NULL,
+            Addon_Price DECIMAL(10,2) NOT NULL,
+            Quantity INT NOT NULL DEFAULT 1,
+            PRIMARY KEY (Order_Item_Addon_ID),
+            INDEX idx_oia_order (Order_ID),
+            CONSTRAINT fk_oia_order FOREIGN KEY (Order_ID) REFERENCES orders (Order_ID) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT fk_oia_product FOREIGN KEY (Product_ID) REFERENCES product (Product_ID) ON DELETE CASCADE ON UPDATE CASCADE,
+            CONSTRAINT fk_oia_addon FOREIGN KEY (Addon_ID) REFERENCES addons (Addon_ID) ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    }
+
     // Insert order and return the new order ID
     function insertOrder($data) {
         $con = $this->opencon();
@@ -144,14 +163,29 @@ function getAverageRatings() {
     return $avg_ratings;
 }
 
-function addReview($product_id, $customer_id, $rating, $review_text) {
+public function hasReview(int $product_id, int $customer_id): bool
+{
     $con = $this->opencon();
-    $stmt = $con->prepare("INSERT INTO reviews (Product_ID, Customer_ID, Rating, Review_Text, Review_Date) VALUES (?, ?, ?, ?, NOW())");
-    if ($stmt->execute([$product_id, $customer_id, $rating, $review_text])) {
-        return true;
-    } else {
-        return $stmt->errorInfo();
-    }
+    $stmt = $con->prepare("SELECT 1 FROM reviews WHERE Product_ID = :pid AND Customer_ID = :cid LIMIT 1");
+    $stmt->execute([':pid'=>$product_id, ':cid'=>$customer_id]);
+    return (bool)$stmt->fetchColumn();
+}
+
+public function addReview(int $product_id, int $customer_id, int $rating, string $review_text = ''): bool
+{
+    $con = $this->opencon();
+    // Insert-only to prevent re-rating existing reviews
+    $sql = "
+        INSERT INTO reviews (Product_ID, Customer_ID, Rating, Review_Text, Review_Date, Updated_At)
+        VALUES (:pid, :cid, :rating, :review, NOW(), NOW())
+    ";
+    $stmt = $con->prepare($sql);
+    return $stmt->execute([
+        ':pid'    => $product_id,
+        ':cid'    => $customer_id,
+        ':rating' => $rating,
+        ':review' => $review_text
+    ]);
 }
 
 function createPasswordResetToken($email) {
@@ -176,8 +210,9 @@ function createPasswordResetToken($email) {
     }
 }
 
-function processCheckout($data, $customer_name) {
+    function processCheckout($data, $customer_name) {
     $con = $this->opencon();
+        $this->ensureOrderItemAddons($con);
 
     $orderType = $data['orderType'] ?? '';
     $street = $data['street'] ?? '';
@@ -205,7 +240,7 @@ function processCheckout($data, $customer_name) {
         $customer_id = $con->lastInsertId();
     }
 
-    // 2. Calculate total
+    // 2. Calculate total (base products + selected add-ons per item)
     $total = 0;
     foreach ($cart as $item) {
         $stmt = $con->prepare("SELECT Price_ID FROM product WHERE Product_Name=?");
@@ -215,7 +250,17 @@ function processCheckout($data, $customer_name) {
             $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
             $stmt2->execute([$product['Price_ID']]);
             $price = $stmt2->fetchColumn();
-            $total += $price * $item['qty'];
+        $prodQty = (int)($item['qty'] ?? 1);
+        $line = ($price ?: 0) * $prodQty;
+            // Add-ons: cart items may include addons: [{id,name,price,qty}]
+            if (!empty($item['addons']) && is_array($item['addons'])) {
+                foreach ($item['addons'] as $ad) {
+            $ap = isset($ad['price']) ? (float)$ad['price'] : 0;
+            $aq = isset($ad['qty']) ? (int)$ad['qty'] : 1;
+            $line += $ap * $aq * $prodQty; // addon price applies per product unit
+                }
+            }
+            $total += $line;
         }
     }
 
@@ -240,7 +285,7 @@ function processCheckout($data, $customer_name) {
         'Unpaid'
     ]);
 
-    // Insert each cart item into order_item
+    // Insert each cart item into order_item, then insert selected add-ons
     foreach ($cart as $item) {
         $stmt = $con->prepare("SELECT Product_ID, Price_ID FROM product WHERE Product_Name=?");
         $stmt->execute([$item['name']]);
@@ -249,14 +294,29 @@ function processCheckout($data, $customer_name) {
             $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
             $stmt2->execute([$product['Price_ID']]);
             $price = $stmt2->fetchColumn();
-
             $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-            $stmt3->execute([
-                $order_id,
-                $product['Product_ID'],
-                $item['qty'],
-                $price
-            ]);
+            $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price]);
+            $orderItemId = $con->lastInsertId();
+
+            // Persist selected add-ons for this item
+            if (!empty($item['addons']) && is_array($item['addons'])) {
+                $ins = $con->prepare("INSERT INTO order_item_addons (Order_ID, Order_Item_ID, Product_ID, Addon_ID, Addon_Name, Addon_Price, Quantity)
+                                      VALUES (:oid,:oiid,:pid,:aid,:aname,:aprice,:qty)");
+                foreach ($item['addons'] as $ad) {
+                    $prodQty = (int)($item['qty'] ?? 1);
+                    $addonQty = (int)($ad['qty'] ?? 1);
+                    $totalQty = max(1, $prodQty * $addonQty);
+                    $ins->execute([
+                        ':oid' => $order_id,
+                        ':oiid' => $orderItemId ?: null,
+                        ':pid' => $product['Product_ID'],
+                        ':aid' => (int)($ad['id'] ?? 0),
+                        ':aname' => (string)($ad['name'] ?? ''),
+                        ':aprice' => (float)($ad['price'] ?? 0),
+                        ':qty' => $totalQty,
+                    ]);
+                }
+            }
         }
     }
 
@@ -276,47 +336,62 @@ public function getRecommendedProducts($customer_id, $limit = 4) {
     $con = $this->opencon();
     $limit = (int)$limit;
     // Recommend products the user ordered most, fallback to top sellers
-    $stmt = $con->prepare("
-        SELECT p.*
-        FROM product p
-        JOIN order_item oi ON p.Product_ID = oi.Product_ID
-        JOIN orders o ON oi.Order_ID = o.Order_ID
-        WHERE o.Customer_ID = ?
-        GROUP BY p.Product_ID
-        ORDER BY COUNT(*) DESC
-        LIMIT $limit
-    ");
-    $stmt->execute([$customer_id]);
-    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (!$products) {
-        // Fallback: top sellers
-        $stmt = $con->prepare("
-            SELECT p.*
+        $sql = "
+            SELECT p.*, pp.Price_Amount
             FROM product p
             JOIN order_item oi ON p.Product_ID = oi.Product_ID
+            JOIN orders o ON oi.Order_ID = o.Order_ID
+            LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+            WHERE o.Customer_ID = ?
             GROUP BY p.Product_ID
             ORDER BY COUNT(*) DESC
             LIMIT $limit
-        ");
-        $stmt->execute();
+        ";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([$customer_id]);
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    return $products;
+        if (!$products) {
+            $sql2 = "
+                SELECT p.*, pp.Price_Amount
+                FROM product p
+                JOIN order_item oi ON p.Product_ID = oi.Product_ID
+                LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+                GROUP BY p.Product_ID
+                ORDER BY COUNT(*) DESC
+                LIMIT $limit
+            ";
+            $stmt2 = $con->prepare($sql2);
+            $stmt2->execute();
+            $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+        }
+        return $products;
 }
 
 public function getBestsellerProducts($limit = 4) {
     $con = $this->opencon();
     $limit = (int)$limit;
-    $stmt = $con->prepare("
-        SELECT p.*, COUNT(oi.Product_ID) as order_count
-        FROM product p
-        JOIN order_item oi ON p.Product_ID = oi.Product_ID
-        GROUP BY p.Product_ID
-        ORDER BY order_count DESC
-        LIMIT $limit
-    ");
-    $stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sql = "
+            SELECT 
+                p.Product_ID,
+                p.Product_Name,
+                p.Product_desc,
+                p.Product_Image,
+                p.Product_allergens,
+                c.Category_Name,
+                pp.Price_Amount,
+                COUNT(oi.Product_ID) AS order_count
+            FROM order_item oi
+            JOIN product p ON oi.Product_ID = p.Product_ID
+            JOIN category c ON p.Category_ID = c.Category_ID
+            LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+            GROUP BY p.Product_ID
+            ORDER BY order_count DESC
+            LIMIT :lim
+        ";
+        $stmt = $con->prepare($sql);
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 public function fetchAllCategories() {

@@ -174,15 +174,17 @@ $unpaidPayments = $db->countUnpaidPayments();
                                                             if ($order['order_status'] === 'Pending') echo ' bg-warning text-dark';
                                                             elseif ($order['order_status'] === 'Processing') echo ' bg-info text-dark';
                                                             elseif ($order['order_status'] === 'Delivered') echo ' bg-success text-white';
+                                                            elseif ($order['order_status'] === 'Cancelled') echo ' bg-danger text-white';
                                                         ?>"
                                                     onchange="this.form.submit()"
-                                                    style="min-width:120px;"
+                                                    style="min-width:150px;"
                                                 >
                                                     <?php
-                                                    $statuses = ['Pending', 'Processing', 'Delivered'];
-                                                    foreach ($statuses as $status) {
-                                                        $selected = $order['order_status'] === $status ? 'selected' : '';
-                                                        echo "<option value=\"$status\" $selected>$status</option>";
+                                                    // Allowed options shown; backend still enforces rules
+                                                    $options = ['Pending', 'Processing', 'Delivered', 'Cancelled'];
+                                                    foreach ($options as $opt) {
+                                                        $selected = $order['order_status'] === $opt ? 'selected' : '';
+                                                        echo "<option value=\"$opt\" $selected>$opt</option>";
                                                     }
                                                     ?>
                                                 </select>
@@ -263,13 +265,15 @@ $unpaidPayments = $db->countUnpaidPayments();
 
 document.querySelectorAll('.order-status-select').forEach(function(select) {
     select.addEventListener('change', function() {
-        select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'text-dark', 'text-white');
+        select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'bg-danger', 'text-dark', 'text-white');
         if (select.value === 'Pending') {
             select.classList.add('bg-warning', 'text-dark');
         } else if (select.value === 'Processing') {
             select.classList.add('bg-info', 'text-dark');
         } else if (select.value === 'Delivered') {
             select.classList.add('bg-success', 'text-white');
+        } else if (select.value === 'Cancelled') {
+            select.classList.add('bg-danger', 'text-white');
         }
     });
 });

@@ -101,6 +101,12 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                                 <span>Products</span>
                             </a>
                         </li>
+                                                <li class="nav-item">
+                            <a class="nav-link" href="addons.php">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>Add-ons</span>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="categories.php">
                                 <i class="bi bi-tags"></i>
