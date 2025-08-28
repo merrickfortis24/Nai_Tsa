@@ -142,7 +142,7 @@ $pendingOrders = $db->countPendingOrProcessingOrders();
                                 </thead>
                                 <tbody>
                                     <?php foreach ($payments as $payment): ?>
-                                    <tr>
+                                    <tr<?= (isset($payment['order_status']) && $payment['order_status'] === 'Cancelled') ? ' class="table-danger"' : '' ?>>
                                         <td>
                                             <?php
 $customerName = $db->getCustomerNameByOrderId($payment['Order_ID']);
@@ -153,6 +153,9 @@ echo htmlspecialchars($customerName);
                                         <td><?= htmlspecialchars($payment['Payment_Method']) ?></td>
                                         <td><?= date('F j, Y g:i A', strtotime($payment['Payment_Date'])) ?></td>
                                         <td>
+                                            <?php if (isset($payment['order_status']) && $payment['order_status'] === 'Cancelled'): ?>
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            <?php else: ?>
                                             <form method="post" action="payments.php" style="display:inline;">
                                                 <input type="hidden" name="payment_id" value="<?= $payment['Payment_ID'] ?>">
                                                 <select
@@ -174,6 +177,7 @@ echo htmlspecialchars($customerName);
                                                     ?>
                                                 </select>
                                             </form>
+                                            <?php endif; ?>
                                         </td>
                                         <!-- <td>
                                             <a href="#" class="action-btn"><i class="bi bi-eye"></i></a>

@@ -393,9 +393,9 @@ $all_products = $db->fetchAllProducts();
     </div>
   </div>
 
-  <!-- Product Details Modal -->
+  <!-- Product Details Modal (wide, with Add-ons) -->
   <div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
       <div class="modal-content" style="border-radius:20px;">
         <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
           <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
@@ -403,12 +403,15 @@ $all_products = $db->fetchAllProducts();
         </div>
         <div class="modal-body" style="background:var(--beige);">
           <div id="productDetailsContent">
-            <!-- Content will be injected by JS -->
+            <!-- Injected by JS: left (image/details), right (add-ons) -->
           </div>
         </div>
-        <div class="modal-footer" style="background:var(--beige);">
-          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
+        <div class="modal-footer d-flex justify-content-between align-items-center" style="background:var(--beige);">
+          <div class="fw-semibold">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+          <div>
+            <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
+          </div>
         </div>
       </div>
     </div>
@@ -553,7 +556,7 @@ document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
     const allProducts = <?php echo json_encode($all_products); ?>;
     const prod = (allProducts||[]).find(p => p.Product_Name === productName);
     if (!prod) return;
-    await openAddonsModal(prod.Product_ID, prod.Product_Name);
+    await openProductDetailsWithAddons(prod);
   });
 });
 
@@ -772,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    // Add-to-cart (recommended) -> open add-ons modal if available
+  // Add-to-cart (recommended) -> open product details modal with add-ons
     recommendedCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.preventDefault();
@@ -781,35 +784,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const allProducts = <?php echo json_encode($all_products); ?>;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (!prod) return;
-        await openAddonsModal(prod.Product_ID, prod.Product_Name);
+    await openProductDetailsWithAddons(prod);
       });
     });
 
-    // Card click -> modal (recommended)
+  // Card click -> modal (recommended) with add-ons
     recommendedCardsDiv.querySelectorAll('.menu-card').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('.add-to-cart-btn')) return;
         const pid = card.dataset.productId;
         const product = allProducts.find(p => p.Product_ID == pid) || list.find(p => p.Product_ID == pid);
         if (!product) return;
-        const allergens = product.Product_allergens || 'None';
-        const modalPrice = product.Price_Amount ? '₱' + parseFloat(product.Price_Amount).toFixed(2) : '₱0.00';
-        const modalHtml = `
-          <div class="text-center mb-3">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
-          </div>
-          <h4 class="mb-2">${product.Product_Name}</h4>
-          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
-          <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
-          <div class="mb-2"><strong>Price:</strong> ${modalPrice}</div>
-        `;
-        document.getElementById('productDetailsContent').innerHTML = modalHtml;
-        const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
-        modal.show();
-        document.getElementById('modalAddToCartBtn').onclick = async () => {
-          modal.hide();
-          await openAddonsModal(product.Product_ID, product.Product_Name);
-        };
+    openProductDetailsWithAddons(product);
       });
     });
   }
@@ -866,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }).join('');
 
-    // Add-to-cart -> open add-ons modal
+  // Add-to-cart -> open product details modal with add-ons
     menuCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.preventDefault();
@@ -875,35 +861,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const allProducts = <?php echo json_encode($all_products); ?>;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (!prod) return;
-        await openAddonsModal(prod.Product_ID, prod.Product_Name);
+    await openProductDetailsWithAddons(prod);
       });
     });
 
-    // Card click -> modal
+  // Card click -> modal with add-ons
     menuCardsDiv.querySelectorAll('.menu-card').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('.add-to-cart-btn')) return;
         const pid = card.dataset.productId;
         const product = allProducts.find(p => p.Product_ID == pid);
         if (!product) return;
-        const allergens = product.Product_allergens || 'None';
-        const modalPrice = product.Price_Amount ? '₱' + parseFloat(product.Price_Amount).toFixed(2) : '₱0.00';
-        const modalHtml = `
-          <div class="text-center mb-3">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:180px;max-height:180px;border-radius:12px;">
-          </div>
-          <h4 class="mb-2">${product.Product_Name}</h4>
-          <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
-            <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
-          <div class="mb-2"><strong>Price:</strong> ${modalPrice}</div>
-        `;
-        document.getElementById('productDetailsContent').innerHTML = modalHtml;
-        const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
-        modal.show();
-        document.getElementById('modalAddToCartBtn').onclick = async () => {
-          modal.hide();
-          await openAddonsModal(product.Product_ID, product.Product_Name);
-        };
+    openProductDetailsWithAddons(product);
       });
     });
   }
@@ -1419,6 +1388,108 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
+// Replace card click handlers to load add-ons into product modal
+function buildProductModalHtml(product, addons){
+  const allergens = product.Product_allergens || 'None';
+  const basePrice = Number(product.Price_Amount||0);
+  const priceDisplay = '₱' + basePrice.toFixed(2);
+  const addonsHtml = (addons||[]).map(a=>`
+    <label class="d-flex align-items-center justify-content-between border rounded p-2 bg-white mb-2">
+      <div class="form-check">
+        <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+        <span>${a.Addon_Name}</span>
+      </div>
+      <span>₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+    </label>
+  `).join('') || '<div class="text-muted">No add-ons available.</div>';
+
+  return `
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="text-center mb-3">
+          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:260px;max-height:260px;border-radius:12px;object-fit:cover;">
+        </div>
+        <h4 class="mb-2">${product.Product_Name}</h4>
+        <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
+        <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
+        <div class="mb-2"><strong>Base Price:</strong> ${priceDisplay}</div>
+      </div>
+      <div class="col-lg-7">
+        <h5 class="mb-2">Add-ons</h5>
+        <div id="productAddonsList">${addonsHtml}</div>
+      </div>
+    </div>`;
+}
+
+function updateProductModalTotal(basePrice){
+  const checks = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'));
+  const extra = checks.reduce((sum,c)=> sum + (Number(c.getAttribute('data-price'))||0), 0);
+  const total = Number(basePrice||0) + extra;
+  const el = document.getElementById('productWithAddonsTotal');
+  if (el) el.textContent = '₱' + total.toFixed(2);
+}
+
+async function openProductDetailsWithAddons(product){
+  try{
+    const res = await fetch('get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const data = await res.json();
+    const addons = data.success ? (data.addons||[]) : [];
+    document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, addons);
+    updateProductModalTotal(Number(product.Price_Amount||0));
+    document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
+      cb.addEventListener('change', ()=> updateProductModalTotal(Number(product.Price_Amount||0)));
+    });
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
+    modal.show();
+
+    document.getElementById('modalAddToCartBtn').onclick = ()=>{
+      const selected = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'))
+        .map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
+      const found = cart.find(i => i.name === product.Product_Name);
+      if (found) {
+        found.qty += 1;
+        found.addons = selected;
+      } else {
+        cart.push({ name: product.Product_Name, qty: 1, addons: selected });
+      }
+      updateCartBadge();
+      renderCartItems();
+      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+      modal.hide();
+    };
+  }catch(err){
+    console.error('openProductDetailsWithAddons failed', err);
+  }
+}
+
+// Hook into existing card click flows to use the new modal
+(function(){
+  function attachCardHandlers(container){
+    if(!container) return;
+    container.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return; // handled separately
+        const pid = card.dataset.productId;
+        const product = (<?php echo json_encode($all_products); ?> || []).find(p => String(p.Product_ID) === String(pid));
+        if (!product) return;
+        openProductDetailsWithAddons(product);
+      });
+    });
+    container.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const name = btn.getAttribute('data-product');
+        const product = (<?php echo json_encode($all_products); ?> || []).find(p => p.Product_Name === name);
+        if (!product) return;
+        openProductDetailsWithAddons(product);
+      });
+    });
+  }
+  // Initial attachment for recommended and menu lists after render functions run
+  const origRenderRecommended = (typeof renderRecommendedCards === 'function') ? renderRecommendedCards : null;
+  const origRenderMenu = (typeof renderMenuCards === 'function') ? renderMenuCards : null;
+})();
   </script>
 
   <script>

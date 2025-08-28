@@ -331,14 +331,20 @@ class database{
 
     function getAllPayments() {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT * FROM payment ORDER BY Payment_Date DESC");
+        // Join orders to get order_status
+        $stmt = $con->prepare("SELECT p.*, o.order_status FROM payment p LEFT JOIN orders o ON p.Order_ID = o.Order_ID ORDER BY p.Payment_Date DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     function countUnpaidPayments() {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT COUNT(*) FROM payment WHERE payment_status = 'Unpaid'");
+                // Exclude payments whose orders are Cancelled from the unpaid count
+                $stmt = $con->prepare("SELECT COUNT(*)
+                                                             FROM payment p
+                                                             LEFT JOIN orders o ON p.Order_ID = o.Order_ID
+                                                             WHERE p.payment_status = 'Unpaid'
+                                                                 AND (o.order_status IS NULL OR o.order_status <> 'Cancelled')");
         $stmt->execute();
         return (int)$stmt->fetchColumn();
     }
