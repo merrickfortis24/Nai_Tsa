@@ -264,22 +264,86 @@ function createPasswordResetToken($email) {
         }
     }
 
+    // 2.1 Delivery fee (distance-based if lat/lng provided, fallback to flat)
+    $delivery_fee = 0.0;
+    $distance_km = null;
+    if (strcasecmp($orderType, 'Delivery') === 0) {
+        $lat = isset($data['lat']) ? (float)$data['lat'] : null;
+        $lng = isset($data['lng']) ? (float)$data['lng'] : null;
+    // Store coordinates (PJ LIZA STORE) — keep in sync with frontend
+    $storeLat = 13.929589; $storeLng = 121.09449;
+
+        if ($lat && $lng) {
+            // Haversine distance in KM
+            $toRad = function($v){ return $v * M_PI / 180; };
+            $R = 6371; // earth radius km
+            $dLat = $toRad($lat - $storeLat);
+            $dLng = $toRad($lng - $storeLng);
+            $a = sin($dLat/2)**2 + cos($toRad($storeLat)) * cos($toRad($lat)) * sin($dLng/2)**2;
+            $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+            $distance_km = $R * $c;
+
+            // Tiered pricing policy to match frontend
+            if ($distance_km <= 2) {
+                $delivery_fee = 29.0;
+            } elseif ($distance_km <= 5) {
+                $delivery_fee = 49.0;
+            } elseif ($distance_km <= 8) {
+                $delivery_fee = 69.0;
+            } elseif ($distance_km <= 12) {
+                $delivery_fee = 89.0;
+            } else {
+                $extra = max(0, ceil($distance_km - 12));
+                $delivery_fee = 99.0 + (8.0 * $extra);
+            }
+        } else {
+            // Fallback flat fee if no coords
+            $delivery_fee = 49.00;
+        }
+    }
+
+    // Add delivery fee to total
+    $total_with_fee = $total + $delivery_fee;
+
     // 3. Insert order
-    $order_stmt = $con->prepare("INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $order_stmt->bindValue(1, $total);
-    $order_stmt->bindValue(2, $customer_id);
-    $order_stmt->bindValue(3, $street, $street === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue(4, $barangay, $barangay === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue(5, $city, $city === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue(6, $contact, $contact === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue(7, 'Pending');
+    // Try to persist fee and distance if columns exist; fallback to minimal insert
+    $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    // Probe whether orders table has Delivery_Fee and Delivery_Distance_Km columns
+    try {
+        $check = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Fee'");
+        $hasFeeCol = $check && $check->rowCount() > 0;
+        $check2 = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Distance_Km'");
+        $hasDistCol = $check2 && $check2->rowCount() > 0;
+        if ($hasFeeCol && $hasDistCol) {
+            $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status, Delivery_Fee, Delivery_Distance_Km) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        } elseif ($hasFeeCol) {
+            $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status, Delivery_Fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+    } catch (Exception $e) { /* ignore schema probe errors */ }
+
+    $order_stmt = $con->prepare($order_sql);
+    $bindIdx = 1;
+    $order_stmt->bindValue($bindIdx++, $total_with_fee);
+    $order_stmt->bindValue($bindIdx++, $customer_id);
+    $order_stmt->bindValue($bindIdx++, $street, $street === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $order_stmt->bindValue($bindIdx++, $barangay, $barangay === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $order_stmt->bindValue($bindIdx++, $city, $city === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $order_stmt->bindValue($bindIdx++, $contact, $contact === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $order_stmt->bindValue($bindIdx++, 'Pending');
+    // Optional fee/distance binds when present in SQL
+    if (strpos($order_sql, 'Delivery_Fee') !== false) {
+        $order_stmt->bindValue($bindIdx++, $delivery_fee);
+        if (strpos($order_sql, 'Delivery_Distance_Km') !== false) {
+            $order_stmt->bindValue($bindIdx++, $distance_km);
+        }
+    }
     $order_success = $order_stmt->execute();
     $order_id = $con->lastInsertId();
 
     $payment_stmt = $con->prepare("INSERT INTO payment (Payment_Method, Payment_Amount, Order_ID, Admin_ID, payment_status) VALUES (?, ?, ?, ?, ?)");
     $payment_success = $payment_stmt->execute([
         $data['paymentMethod'],
-        $total,
+        $total_with_fee,
         $order_id,
         1, // Admin_ID
         'Unpaid'
@@ -329,7 +393,7 @@ function createPasswordResetToken($email) {
         return ['success' => false, 'message' => 'Payment insert failed: ' . $error[2]];
     }
 
-    return ['success' => true];
+    return ['success' => true, 'delivery_fee' => $delivery_fee, 'amount' => $total_with_fee, 'distance_km' => $distance_km];
 }
 
 public function getRecommendedProducts($customer_id, $limit = 4) {

@@ -51,6 +51,8 @@ $all_products = $db->fetchAllProducts();
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <!-- Leaflet CSS for interactive map picker -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body>
   <!-- Navbar -->
@@ -149,12 +151,11 @@ $all_products = $db->fetchAllProducts();
           <iframe
             width="100%"
             height="180"
-            frameborder="0"
             style="border:0; display:block;"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=121.118%2C13.940%2C121.175%2C13.990&layer=mapnik&marker=13.965%2C121.146"
+            loading="lazy"
             allowfullscreen
-            aria-hidden="false"
-            tabindex="0"></iframe>
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d223.12180430306455!2d121.0944898450661!3d13.929589039573633!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd12b3c5bfce1f%3A0x3cd9f9ce0a7759b3!2sPJ%20LIZA%20STORE!5e1!3m2!1sen!2sph!4v1756433717417!5m2!1sen!2sph"></iframe>
         </div>
         <div class="p-3">
           <div class="mb-2" style="font-size:1.08rem; color:#61391D;">
@@ -301,6 +302,22 @@ $all_products = $db->fetchAllProducts();
             <div class="mb-3">
               <input type="text" class="form-control" name="contact" placeholder="Contact Number">
             </div>
+            <div class="mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-soft-orange btn-sm" type="button" id="useMyLocationBtn">Use my current location</button>
+                <span id="distanceInfo" class="small text-muted" aria-live="polite"></span>
+              </div>
+              <input type="hidden" name="lat" id="latInput">
+              <input type="hidden" name="lng" id="lngInput">
+            </div>
+            <div class="mb-2 d-flex align-items-center gap-2 flex-wrap">
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="findOnMapBtn">Find address on map</button>
+              <span class="small text-muted">Move the map so the pin is centered on your delivery spot, then Confirm.</span>
+              <button class="btn btn-soft-orange btn-sm ms-auto" type="button" id="confirmPinBtn">Confirm Pin Location</button>
+            </div>
+            <div class="mb-3" id="mapPickerWrap" style="height:260px; border-radius:12px; overflow:hidden; display:none;">
+              <div id="mapPicker" style="height:100%; width:100%;"></div>
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label mb-1">Payment Method</label><br>
@@ -331,6 +348,15 @@ $all_products = $db->fetchAllProducts();
               <strong>Credit Card:</strong><br>
               Name: Nai Tsa<br>
               Number: <span id="generatedCardNumber"></span>
+            </div>
+          </div>
+          <!-- Order Summary -->
+          <div id="orderSummary" class="card" style="border-radius:12px;">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between"><span>Subtotal</span><span id="summarySubtotal">₱0.00</span></div>
+              <div class="d-flex justify-content-between"><span>Delivery Fee</span><span id="summaryDelivery">₱0.00</span></div>
+              <hr class="my-2">
+              <div class="d-flex justify-content-between fw-semibold"><span>Total</span><span id="summaryTotal">₱0.00</span></div>
             </div>
           </div>
         </div>
@@ -419,6 +445,8 @@ $all_products = $db->fetchAllProducts();
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Leaflet JS for map picker -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9vmQ9vR4C0R8y+4U6jk=" crossorigin=""></script>
   <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
@@ -595,12 +623,87 @@ document.getElementById('checkoutBtn').addEventListener('click', function() {
 const paymentModalEl = document.getElementById('paymentModal');
 const paymentForm = document.getElementById('paymentForm');
 const deliveryFields = document.getElementById('deliveryFields');
+const STORE_COORDS = { lat: 13.929589, lng: 121.09449 }; // PJ LIZA STORE (store location)
+const summary = {
+  subtotalEl: document.getElementById('summarySubtotal'),
+  deliveryEl: document.getElementById('summaryDelivery'),
+  totalEl: document.getElementById('summaryTotal'),
+  distanceInfo: document.getElementById('distanceInfo'),
+  latInput: document.getElementById('latInput'),
+  lngInput: document.getElementById('lngInput')
+};
+
+function moneyPhp(n){ return '₱' + (Number(n||0).toFixed(2)); }
+
+function getProductPriceByName(name){
+  try{
+    const allProducts = <?php echo json_encode($all_products); ?>;
+    const p = (allProducts||[]).find(pp => pp.Product_Name === name);
+    return Number(p?.Price_Amount || 0);
+  }catch(e){ return 0; }
+}
+
+function computeCartSubtotal(){
+  return cart.reduce((sum, item)=>{
+    const base = getProductPriceByName(item.name) * (item.qty||1);
+    const addons = (item.addons||[]).reduce((s,a)=> s + (Number(a.price)||0) * (a.qty||1) * (item.qty||1), 0);
+    return sum + base + addons;
+  }, 0);
+}
+
+function haversineKm(lat1, lon1, lat2, lon2){
+  function toRad(v){ return v * Math.PI / 180; }
+  const R = 6371; // km
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function computeDeliveryFee(distanceKm){
+  if (!isFinite(distanceKm) || distanceKm <= 0) return 0;
+  // Tiered pricing: <=2km ₱29, <=5km ₱49, <=8km ₱69, <=12km ₱89, >12km => ₱99 + ₱8/km (ceil) beyond 12
+  if (distanceKm <= 2) return 29;
+  if (distanceKm <= 5) return 49;
+  if (distanceKm <= 8) return 69;
+  if (distanceKm <= 12) return 89;
+  const extra = Math.max(0, Math.ceil(distanceKm - 12));
+  return 99 + (8 * extra);
+}
+
+function updateOrderSummary(){
+  const subtotal = computeCartSubtotal();
+  const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
+  let fee = 0;
+  let distance = null;
+  if (orderType === 'Delivery'){
+    const lat = parseFloat(summary.latInput?.value);
+    const lng = parseFloat(summary.lngInput?.value);
+    if (isFinite(lat) && isFinite(lng)){
+      distance = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+      fee = computeDeliveryFee(distance);
+      if(summary.distanceInfo){ summary.distanceInfo.textContent = `Distance: ${distance.toFixed(2)} km • Fee: ${moneyPhp(fee)}`; }
+    } else {
+      if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
+    }
+  } else {
+    if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+  }
+  if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
+  if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
+  if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
+}
 
 // Show/hide delivery fields based on order type
 document.querySelectorAll('input[name="orderType"]').forEach(function(radio) {
   radio.addEventListener('change', function() {
     document.getElementById('deliveryFields').style.display =
       this.value === 'Delivery' ? 'block' : 'none';
+  updateOrderSummary();
+    if (this.value === 'Delivery') {
+      try { ensureMapPicker(); } catch (e) {}
+    }
   });
 });
 
@@ -612,6 +715,7 @@ document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio)
     if (this.value === 'Credit Card') {
       document.getElementById('generatedCardNumber').textContent = generateCreditCardNumber();
     }
+  updateOrderSummary();
   });
 });
 
@@ -625,17 +729,313 @@ function generateCreditCardNumber() {
   return num;
 }
 
+// Geolocation button
+const useMyLocationBtn = document.getElementById('useMyLocationBtn');
+if (useMyLocationBtn){
+  useMyLocationBtn.addEventListener('click', function(){
+    if (!navigator.geolocation){
+      Swal.fire({icon:'info', title:'Geolocation not supported', text:'Your browser does not support location access.', confirmButtonColor:'#FFB27A'});
+      return;
+    }
+    useMyLocationBtn.disabled = true;
+    useMyLocationBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Locating...';
+    navigator.geolocation.getCurrentPosition(function(pos){
+      const { latitude, longitude } = pos.coords;
+      if(summary.latInput) summary.latInput.value = String(latitude);
+      if(summary.lngInput) summary.lngInput.value = String(longitude);
+      updateOrderSummary();
+        try{
+          if (window.__mapMarker && window.__map){
+            window.__mapMarker.setLatLng([latitude, longitude]);
+            window.__map.setView([latitude, longitude], 16);
+          } else {
+            ensureMapPicker();
+          }
+        }catch(e){}
+      useMyLocationBtn.disabled = false;
+      useMyLocationBtn.textContent = 'Use my current location';
+    }, function(err){
+      console.warn('Geolocation error', err);
+      Swal.fire({icon:'warning', title:'Location blocked', text:'Please allow location access to estimate the fee.', confirmButtonColor:'#FFB27A'});
+      useMyLocationBtn.disabled = false;
+      useMyLocationBtn.textContent = 'Use my current location';
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  });
+}
+
+// Helper: geocode current typed address (street/barangay/city) and set lat/lng
+async function geocodeTypedAddressAndSet(){
+  const form = document.getElementById('paymentForm');
+  const street = form.street?.value?.trim() || '';
+  const barangay = form.barangay?.value?.trim() || '';
+  const cityRaw = form.city?.value?.trim() || '';
+  // Parse cityRaw like "Lipa City, Batangas, Philippines"
+  const parts = cityRaw.split(',').map(s=>s.trim()).filter(Boolean);
+  const city = parts[0] || cityRaw || '';
+  // heuristics
+  const county = (parts.find(p=>/batangas/i.test(p)) || '').replace(/\s+/g,' ').trim();
+  const country = 'Philippines';
+
+  async function nominatimJson(url){
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) return [];
+    return res.json();
+  }
+
+  const queries = [];
+  // 1) Structured search with street+barangay+city
+  if (street && city){
+    const u = new URL('https://nominatim.openstreetmap.org/search');
+    u.searchParams.set('format','json');
+    u.searchParams.set('limit','1');
+    u.searchParams.set('countrycodes','ph');
+    u.searchParams.set('street', `${street}${barangay?`, ${barangay}`:''}`);
+    u.searchParams.set('city', city);
+    if (county) u.searchParams.set('county', county);
+    u.searchParams.set('country', country);
+    queries.push(u.toString());
+  }
+  // 2) Unstructured full
+  const full1 = [street, barangay, cityRaw || city, 'Philippines'].filter(Boolean).join(', ');
+  if (full1){
+    const u = new URL('https://nominatim.openstreetmap.org/search');
+    u.searchParams.set('format','json');
+    u.searchParams.set('limit','1');
+    u.searchParams.set('countrycodes','ph');
+    u.searchParams.set('q', full1);
+    queries.push(u.toString());
+  }
+  // 3) Street + City + Batangas + PH
+  const full2 = [street, city || cityRaw, county || 'Batangas', country].filter(Boolean).join(', ');
+  const u2 = new URL('https://nominatim.openstreetmap.org/search');
+  u2.searchParams.set('format','json');
+  u2.searchParams.set('limit','1');
+  u2.searchParams.set('countrycodes','ph');
+  u2.searchParams.set('q', full2);
+  queries.push(u2.toString());
+  // 4) Barangay + City + Batangas + PH (fallback without street)
+  if (barangay || city){
+    const full3 = [barangay, city || cityRaw, county || 'Batangas', country].filter(Boolean).join(', ');
+    const u3 = new URL('https://nominatim.openstreetmap.org/search');
+    u3.searchParams.set('format','json');
+    u3.searchParams.set('limit','1');
+    u3.searchParams.set('countrycodes','ph');
+    u3.searchParams.set('q', full3);
+    queries.push(u3.toString());
+  }
+
+  let best = null;
+  for (const q of queries){
+    try{
+      const list = await nominatimJson(q);
+      if (Array.isArray(list) && list.length){ best = list[0]; break; }
+    }catch(e){ /* continue */ }
+    // be polite to the public API
+    await new Promise(r=>setTimeout(r, 400));
+  }
+
+  // Last resort: city center
+  if (!best && (city || cityRaw)){
+    const u = new URL('https://nominatim.openstreetmap.org/search');
+    u.searchParams.set('format','json');
+    u.searchParams.set('limit','1');
+    u.searchParams.set('countrycodes','ph');
+    u.searchParams.set('q', `${city || cityRaw}, ${county || 'Batangas'}, ${country}`);
+    const list = await nominatimJson(u.toString());
+    if (Array.isArray(list) && list.length) best = list[0];
+  }
+
+  if (!best) return null;
+  const lat = parseFloat(best.lat), lng = parseFloat(best.lon);
+  if(summary.latInput) summary.latInput.value = String(lat);
+  if(summary.lngInput) summary.lngInput.value = String(lng);
+  try{
+    if (window.__mapMarker && window.__map){
+      window.__mapMarker.setLatLng([lat, lng]);
+      window.__map.setView([lat, lng], 16);
+    } else {
+      ensureMapPicker();
+    }
+  }catch(e){}
+  updateOrderSummary();
+  return { lat, lng };
+}
+
+// Debounced auto-geocode when typing address
+let _geoTimer = null;
+let _lastGeoQuery = '';
+function debounceGeocode(){
+  const form = document.getElementById('paymentForm');
+  if (!form) return;
+  const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
+  if (orderType !== 'Delivery') return;
+  const street = form.street?.value?.trim() || '';
+  const barangay = form.barangay?.value?.trim() || '';
+  const city = form.city?.value?.trim() || '';
+  const full = [street, barangay, city, 'Philippines'].filter(Boolean).join(', ');
+  if (!full) return;
+  if (full === _lastGeoQuery) return; // avoid re-querying same
+  clearTimeout(_geoTimer);
+  _geoTimer = setTimeout(async ()=>{
+    const pos = await geocodeTypedAddressAndSet().catch(()=>null);
+    if (pos) _lastGeoQuery = full;
+  }, 800);
+}
+
+['street','barangay','city'].forEach(name => {
+  const el = document.querySelector(`#paymentForm [name="${name}"]`);
+  if (el){ el.addEventListener('input', debounceGeocode); }
+});
+
+// Geocode typed address and show map preview
+const findOnMapBtn = document.getElementById('findOnMapBtn');
+if (findOnMapBtn){
+  findOnMapBtn.addEventListener('click', async function(){
+    const form = document.getElementById('paymentForm');
+    const street = form.street?.value?.trim() || '';
+    const barangay = form.barangay?.value?.trim() || '';
+    const city = form.city?.value?.trim() || '';
+    const full = [street, barangay, city, 'Philippines'].filter(Boolean).join(', ');
+    if (!full){
+      Swal.fire({icon:'info', title:'Type your address', text:'Fill Street/Barangay/City first.', confirmButtonColor:'#FFB27A'});
+      return;
+    }
+    findOnMapBtn.disabled = true;
+    findOnMapBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Finding...';
+    try{
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(full);
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const list = await res.json();
+      const best = Array.isArray(list) && list.length ? list[0] : null;
+      if (!best){
+        Swal.fire({icon:'warning', title:'Address not found', text:'Try refining your address.', confirmButtonColor:'#FFB27A'});
+        return;
+      }
+      const lat = parseFloat(best.lat), lng = parseFloat(best.lon);
+      if(summary.latInput) summary.latInput.value = String(lat);
+      if(summary.lngInput) summary.lngInput.value = String(lng);
+      updateOrderSummary();
+      try{
+        if (window.__mapMarker && window.__map){
+          window.__mapMarker.setLatLng([lat, lng]);
+          window.__map.setView([lat, lng], 16);
+        } else {
+          ensureMapPicker();
+        }
+      }catch(e){}
+    }catch(err){
+      console.warn('Geocode failed', err);
+      Swal.fire({icon:'error', title:'Geocoding error', text:'Unable to locate that address.', confirmButtonColor:'#FFB27A'});
+    } finally {
+      findOnMapBtn.disabled = false;
+      findOnMapBtn.textContent = 'Find address on map';
+    }
+  });
+}
+
+// Lazy-load Leaflet if needed (fallback to jsDelivr) then run callback
+function loadLeafletIfNeeded(onReady){
+  if (window.L) { onReady && onReady(); return; }
+  if (window.__leafletLoading) { // wait and retry soon
+    return setTimeout(() => loadLeafletIfNeeded(onReady), 300);
+  }
+  window.__leafletLoading = true;
+  // inject CSS if missing
+  if (!document.querySelector('link[href*="leaflet.css"]')){
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(l);
+  }
+  // inject JS
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  s.async = true;
+  s.onload = function(){ window.__leafletLoading = false; onReady && onReady(); };
+  s.onerror = function(){ window.__leafletLoading = false; console.warn('Leaflet failed to load'); };
+  document.head.appendChild(s);
+}
+
+// Leaflet map picker setup
+function ensureMapPicker(){
+  const wrap = document.getElementById('mapPickerWrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  // Ensure Leaflet is loaded before creating the map
+  if (!window.L){
+    loadLeafletIfNeeded(() => {
+      // Try again after Leaflet becomes available
+      ensureMapPicker();
+    });
+    return;
+  }
+  if (!window.__map){
+    const mapEl = document.getElementById('mapPicker');
+    if (!mapEl) return;
+    const latVal = parseFloat(summary.latInput?.value);
+    const lngVal = parseFloat(summary.lngInput?.value);
+    const startPos = (isFinite(latVal) && isFinite(lngVal)) ? [latVal, lngVal] : [STORE_COORDS.lat, STORE_COORDS.lng];
+  const map = L.map(mapEl).setView(startPos, 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    // Non-draggable marker that always stays at the map center
+    const marker = L.marker(startPos).addTo(map);
+    // Keep marker at center as the user pans/zooms the map
+    map.on('move', function(){
+      try{ marker.setLatLng(map.getCenter()); }catch(e){}
+    });
+    window.__map = map;
+    window.__mapMarker = marker;
+    // Invalidate after a tick to ensure correct sizing when inside modal
+    setTimeout(() => { try { map.invalidateSize(); } catch(e){} }, 300);
+  }
+}
+
+// Confirm pin button ensures we have lat/lng and updates summary
+const confirmPinBtn = document.getElementById('confirmPinBtn');
+if (confirmPinBtn){
+  confirmPinBtn.addEventListener('click', function(){
+    if (!window.__map){ ensureMapPicker(); }
+    const pos = window.__map?.getCenter?.();
+    if (pos){
+      if(summary.latInput) summary.latInput.value = String(pos.lat);
+      if(summary.lngInput) summary.lngInput.value = String(pos.lng);
+      updateOrderSummary();
+      Swal.fire({icon:'success', title:'Location set', timer:1000, showConfirmButton:false});
+    } else {
+      Swal.fire({icon:'info', title:'Drag the pin to your location first', confirmButtonColor:'#FFB27A'});
+    }
+  });
+}
+
+// Populate order summary when the checkout modal opens
+if (paymentModalEl){
+  // Use shown.bs.modal so the map container is visible before init
+  paymentModalEl.addEventListener('shown.bs.modal', () => {
+    try{ updateOrderSummary(); }catch(e){}
+    try{
+      const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
+      if (orderType === 'Delivery') ensureMapPicker();
+    }catch(e){}
+  });
+}
+
 // Handle payment form submission
-document.getElementById('paymentForm').addEventListener('submit', function(e) {
+document.getElementById('paymentForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const orderType = document.querySelector('input[name="orderType"]:checked').value;
   const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
   let street = '', barangay = '', city = '', contact = '';
+  let lat = '', lng = '';
   if (orderType === 'Delivery') {
     street = this.street.value.trim();
     barangay = this.barangay.value.trim();
     city = this.city.value.trim();
     contact = this.contact.value.trim();
+    lat = this.lat.value || '';
+    lng = this.lng.value || '';
     if (!street || !barangay || !city || !contact) {
       Swal.fire({
         icon: 'error',
@@ -644,6 +1044,13 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
         confirmButtonColor: '#FFB27A'
       });
       return;
+    }
+    // Fallback: if lat/lng missing, geocode typed address now
+    if (!lat || !lng) {
+      try{
+        const pos = await geocodeTypedAddressAndSet();
+        if (pos){ lat = String(pos.lat); lng = String(pos.lng); }
+      }catch(err){ /* ignore; server will fallback */ }
     }
   }
   // Send data to PHP
@@ -657,6 +1064,8 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
       barangay,
       city,
       contact,
+      lat,
+      lng,
       cart
     })
   })
@@ -671,10 +1080,11 @@ document.getElementById('paymentForm').addEventListener('submit', function(e) {
   })
   .then(data => {
     if (data.success) {
+      const feeLine = (typeof data.delivery_fee !== 'undefined') ? `\nDelivery Fee: ${moneyPhp(data.delivery_fee)}${data.distance_km?` (Distance: ${Number(data.distance_km).toFixed(2)} km)`:''}` : '';
       Swal.fire({
         icon: 'success',
         title: 'Order Confirmed!',
-        text: 'Your order has been placed successfully.',
+        text: 'Your order has been placed successfully.' + feeLine,
         confirmButtonColor: '#FFB27A'
       }).then(() => {
         cart.length = 0;
@@ -1388,78 +1798,116 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
-// Replace card click handlers to load add-ons into product modal
 function buildProductModalHtml(product, addons){
   const allergens = product.Product_allergens || 'None';
   const basePrice = Number(product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
-    <label class="d-flex align-items-center justify-content-between border rounded p-2 bg-white mb-2">
-      <div class="form-check">
-        <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-        <span>${a.Addon_Name}</span>
-      </div>
-      <span>₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+    <label class="addon-card">
+      <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+      <span class="addon-name">${a.Addon_Name}</span>
+      <span class="addon-price">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
     </label>
   `).join('') || '<div class="text-muted">No add-ons available.</div>';
 
   return `
-    <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="text-center mb-3">
-          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}" style="max-width:260px;max-height:260px;border-radius:12px;object-fit:cover;">
+    <div class="product-details-grid">
+      <div>
+        <div class="product-hero">
+          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
         </div>
-        <h4 class="mb-2">${product.Product_Name}</h4>
-        <div class="mb-2"><strong>Description:</strong><br>${product.Product_desc || ''}</div>
-        <div class="mb-2"><strong>Allergens:</strong> ${allergens}</div>
-        <div class="mb-2"><strong>Base Price:</strong> ${priceDisplay}</div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <h4 class="product-title mb-1">${product.Product_Name}</h4>
+            <div class="product-price" aria-label="Base price">${priceDisplay}</div>
+          </div>
+          <div class="product-meta small">Allergens: ${allergens}</div>
+          <p class="mt-2 mb-0">${product.Product_desc || ''}</p>
+        </div>
       </div>
-      <div class="col-lg-7">
-        <h5 class="mb-2">Add-ons</h5>
-        <div id="productAddonsList">${addonsHtml}</div>
+      <div>
+        <div class="addons-section">
+          <h5 class="mb-2">Add-ons</h5>
+          <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3">
+          <div class="input-group" style="width:140px;">
+            <button class="btn btn-outline-secondary" type="button" id="pdQtyMinus">-</button>
+            <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
+            <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
+          </div>
+          <div class="ms-auto modal-total-line">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+        </div>
       </div>
     </div>`;
 }
 
+// Compute and display the modal total based on base price, selected add-ons, and quantity
 function updateProductModalTotal(basePrice){
+  const qtyEl = document.getElementById('pdQty');
+  const qty = Math.max(1, Number(qtyEl?.value || 1));
   const checks = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'));
   const extra = checks.reduce((sum,c)=> sum + (Number(c.getAttribute('data-price'))||0), 0);
-  const total = Number(basePrice||0) + extra;
-  const el = document.getElementById('productWithAddonsTotal');
-  if (el) el.textContent = '₱' + total.toFixed(2);
+  const total = (Number(basePrice||0) + extra) * qty;
+  const totalEl = document.getElementById('productWithAddonsTotal');
+  if (totalEl) totalEl.textContent = '₱' + total.toFixed(2);
 }
 
 async function openProductDetailsWithAddons(product){
+  // Build initial shell (no add-ons yet), show modal immediately
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, []);
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
+  modal.show();
+
+  // Bind qty +/- and total updates for this render
+  const basePrice = Number(product.Price_Amount||0);
+  const qtyEl = document.getElementById('pdQty');
+  const minusEl = document.getElementById('pdQtyMinus');
+  const plusEl = document.getElementById('pdQtyPlus');
+  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
+  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
+  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  updateProductModalTotal(basePrice);
+
+  // Add to Cart handler
+  document.getElementById('modalAddToCartBtn').onclick = ()=>{
+    const selected = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'))
+      .map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
+    const found = cart.find(i => i.name === product.Product_Name);
+    if (found) {
+      found.qty += Number(document.getElementById('pdQty').value||1);
+      found.addons = selected;
+    } else {
+      cart.push({ name: product.Product_Name, qty: Math.max(1, Number(document.getElementById('pdQty').value||1)), addons: selected });
+    }
+    updateCartBadge();
+    renderCartItems();
+    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+    modal.hide();
+  };
+
+  // Fetch add-ons asynchronously and render; on failure keep empty list
   try{
     const res = await fetch('get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
     const data = await res.json();
     const addons = data.success ? (data.addons||[]) : [];
-    document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, addons);
-    updateProductModalTotal(Number(product.Price_Amount||0));
-    document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
-      cb.addEventListener('change', ()=> updateProductModalTotal(Number(product.Price_Amount||0)));
-    });
-
-    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
-    modal.show();
-
-    document.getElementById('modalAddToCartBtn').onclick = ()=>{
-      const selected = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'))
-        .map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
-      const found = cart.find(i => i.name === product.Product_Name);
-      if (found) {
-        found.qty += 1;
-        found.addons = selected;
-      } else {
-        cart.push({ name: product.Product_Name, qty: 1, addons: selected });
-      }
-      updateCartBadge();
-      renderCartItems();
-      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-      modal.hide();
-    };
+    const listEl = document.getElementById('productAddonsList');
+    if (listEl) {
+      listEl.innerHTML = addons.length ? addons.map(a=>`
+        <label class="addon-card">
+          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+          <span class="addon-name">${a.Addon_Name}</span>
+          <span class="addon-price">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+        </label>
+      `).join('') : '<div class="text-muted">No add-ons available.</div>';
+      // Bind checkbox changes to total update
+      document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
+        cb.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+      });
+      updateProductModalTotal(basePrice);
+    }
   }catch(err){
-    console.error('openProductDetailsWithAddons failed', err);
+    console.warn('Add-ons fetch failed, continuing without add-ons', err);
   }
 }
 
@@ -1493,6 +1941,33 @@ async function openProductDetailsWithAddons(product){
   </script>
 
   <script>
+  // Robust delegated click handlers to cover dynamically rendered cards/buttons
+  document.addEventListener('click', function(e){
+    const addBtn = e.target.closest('.add-to-cart-btn');
+    if (addBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const productName = addBtn.getAttribute('data-product');
+      try{
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (prod) openProductDetailsWithAddons(prod);
+      }catch(err){ console.warn('delegate add-to-cart failed', err); }
+      return;
+    }
+
+    const card = e.target.closest('.menu-card');
+    if (card && !e.target.closest('.add-to-cart-btn')){
+      e.preventDefault();
+      try{
+        const pid = card.getAttribute('data-product-id');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => String(p.Product_ID) === String(pid));
+        if (prod) openProductDetailsWithAddons(prod);
+      }catch(err){ console.warn('delegate card click failed', err); }
+    }
+  });
+
   async function openAddonsModal(productId, productName){
     PENDING_ADD_TO_CART = { productId, productName };
     try{
