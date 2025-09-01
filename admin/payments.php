@@ -52,65 +52,7 @@ $pendingOrders = $db->countPendingOrProcessingOrders();
         <div class="row">
             <!-- Sidebar -->
             <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
-                <div class="pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <div class="bg-white p-2 rounded me-2">
-                            <i class="bi bi-shield-lock text-primary fs-4"></i>
-                        </div>
-                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
-                    </div>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admins.php">
-                                <i class="bi bi-people-fill"></i>
-                                <span>Admins</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="orders.php">
-                                <i class="bi bi-cart4"></i>
-                                <span>Orders</span>
-                                <!-- Orders badge (optional, see below for how to count) -->
-                                <?php if (!empty($pendingOrders) && $pendingOrders > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $pendingOrders ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="payments.php">
-                                <i class="bi bi-credit-card"></i>
-                                <span>Payments</span>
-                                <?php if ($unpaidPayments > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.php">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Products</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="bi bi-tags"></i>
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">
-                                <i class="bi bi-box-arrow-right"></i>
-                                <span>Logout</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+                <?php include 'sidebar.php'; ?>
             </div>
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
@@ -208,6 +150,11 @@ echo htmlspecialchars($customerName);
             </div>
         </div>
     </div>
+    
+    <!-- Toast Container -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080">
+        <div id="notifToastContainer"></div>
+    </div>
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -230,6 +177,58 @@ document.querySelectorAll('.payment-status-select').forEach(function(select) {
         }
     });
 });
+
+// Notification polling and toast display
+(function(){
+    const container = document.getElementById('notifToastContainer');
+    if (!container) return;
+
+    function showToast(title, message) {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+        <div class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="7000">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>${title}</strong><br/>
+                    <span>${message}</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>`;
+        const toastEl = wrap.firstElementChild;
+        container.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+        return toastEl;
+    }
+
+    async function poll() {
+        try {
+            const res = await fetch('ajax/notifications_list.php', { cache: 'no-store' });
+            if (!res.ok) throw new Error('net');
+            const data = await res.json();
+            if (data && data.success && Array.isArray(data.data) && data.data.length) {
+                const ids = [];
+                data.data.forEach(n => {
+                    ids.push(n.Notification_ID);
+                    showToast(n.Title || 'Notification', n.Message || '');
+                });
+                // Mark read
+                fetch('ajax/notifications_mark_read.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids })
+                }).catch(()=>{});
+            }
+        } catch (e) {
+            // ignore
+        } finally {
+            setTimeout(poll, 6000);
+        }
+    }
+    poll();
+})();
     </script>
 </body>
 </html>

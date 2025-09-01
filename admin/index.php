@@ -84,72 +84,8 @@ try {
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 sidebar collapse d-lg-block" id="sidebarCollapse">
-                <div class="pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <div class="bg-white p-2 rounded me-2">
-                            <i class="bi bi-shield-lock text-primary fs-4"></i>
-                        </div>
-                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
-                    </div>
-                    
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admins.php">
-                                <i class="bi bi-people-fill"></i>
-                                <span>Admins</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'orders.php' ? ' active' : '' ?>" href="orders.php">
-                                <i class="bi bi-cart4"></i>
-                                <span>Orders</span>
-                                <?php if ($pendingProcessingCount > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'payments.php' ? ' active' : '' ?>" href="payments.php">
-                                <i class="bi bi-credit-card"></i>
-                                <span>Payments</span>
-                                <?php if ($unpaidPayments > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.php">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Products</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link<?= basename($_SERVER['PHP_SELF']) == 'addons.php' ? ' active' : '' ?>" href="addons.php">
-                                <i class="bi bi-plus-circle"></i>
-                                <span>Add-ons</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="bi bi-tags"></i>
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">
-                                <i class="bi bi-box-arrow-right"></i>
-                                <span>Logout</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+                <?php include 'sidebar.php'; ?>
             </div>
             
             <!-- Main Content -->

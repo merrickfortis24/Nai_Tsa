@@ -195,7 +195,7 @@ class database{
     function fetchOrders() {
         $con = $this->opencon();
         $stmt = $con->prepare("
-            SELECT o.*, p.payment_status 
+            SELECT o.*, p.payment_status, o.Driver_Status
             FROM orders o
             LEFT JOIN payment p ON o.Order_ID = p.Order_ID
             ORDER BY o.Order_Date DESC

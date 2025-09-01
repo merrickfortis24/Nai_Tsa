@@ -1414,7 +1414,9 @@ function skeletonOrders(count=3){
 
 // Map backend combination -> UI status (adjust if your real logic differs)
 function deriveUiStatus(o){
-  // Honor backend status primarily; use payment only to refine Processing -> To Ship
+  // Derived driver states
+  if (o.Driver_Status === 'on_the_way' || o.Driver_Status === 'picked_up') return 'Out for delivery';
+  // Honor backend status primarily; refine Processing -> To Ship when paid
   if (o.order_status === "Delivered") return "Delivered";
   if (o.order_status === "Cancelled") return "Cancelled";
   if (o.order_status === "Pending") return "Pending"; // don’t treat as To Ship

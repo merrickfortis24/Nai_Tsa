@@ -8,11 +8,18 @@ $response = ['status' => 'Unknown'];
 
 if ($order_id) {
     $con = $db->opencon();
-    $stmt = $con->prepare("SELECT order_status, driver_lat, driver_lng FROM orders WHERE Order_ID = ?");
+    $stmt = $con->prepare("SELECT order_status, Driver_Status, driver_lat, driver_lng FROM orders WHERE Order_ID = ?");
     $stmt->execute([$order_id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $response['status'] = $row['order_status'];
+        // Derived status mapping
+        if (in_array($row['Driver_Status'] ?? '', ['on_the_way','picked_up'], true)) {
+            $response['status'] = 'Out for delivery';
+        } elseif (($row['order_status'] ?? '') === 'Processing') {
+            $response['status'] = 'Preparing';
+        } else {
+            $response['status'] = $row['order_status'];
+        }
         $response['lat'] = $row['driver_lat'] ?? null;
         $response['lng'] = $row['driver_lng'] ?? null;
     }

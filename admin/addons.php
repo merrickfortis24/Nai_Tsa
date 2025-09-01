@@ -8,15 +8,29 @@ if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Manage Add-ons</title>
-  <link href="../bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   <link href="assets/css/style.css" rel="stylesheet">
 </head>
-<body class="bg-light">
-<div class="container py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h3 class="mb-0">Add-ons</h3>
-    <a class="btn btn-outline-secondary" href="index.php">Back to Dashboard</a>
-  </div>
+<body class="dashboard-page">
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+      <?php include 'sidebar.php'; ?>
+    </div>
+    <!-- Main Content -->
+    <div class="col-md-10 col-lg-10 main-content">
+      <div class="header d-flex justify-content-between align-items-center mt-3">
+        <div>
+          <h4 class="mb-0 fw-bold">Add-ons</h4>
+          <p class="mb-0 text-muted">Manage add-ons and product mappings</p>
+        </div>
+        <!-- Sidebar toggle for small screens -->
+        <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <i class="bi bi-list" style="font-size:1.7rem;"></i>
+        </button>
+      </div>
 
   <div class="row g-4">
     <div class="col-md-5">
@@ -94,7 +108,7 @@ if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
   </div>
 </div>
 
-<script src="../bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let ADDONS = [];
 let PRODUCTS = [];

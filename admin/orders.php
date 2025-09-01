@@ -1,5 +1,5 @@
-<?php
 
+<?php
 session_start();
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -17,6 +17,17 @@ try {
     $error = "Database Error: " . $e->getMessage();
 }
 
+// Derived display status helper
+function admin_display_status($row) {
+    if (isset($row['Driver_Status']) && in_array($row['Driver_Status'], ['on_the_way','picked_up'], true)) {
+        return 'Out for delivery';
+    }
+    if (!empty($row['order_status']) && $row['order_status'] === 'Processing') {
+        return 'Preparing';
+    }
+    return $row['order_status'] ?? 'Pending';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['order_status'], $_POST['order_id'])) {
         $db->updateOrderStatus($_POST['order_id'], $_POST['order_status']);
@@ -25,28 +36,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['payment_status'], $_POST['order_id'])) {
         $db->updatePaymentStatusByOrder($_POST['order_id'], $_POST['payment_status']);
     }
-
-    // After updating, check if both Delivered and Paid, then insert into sales
-    if (
-        (isset($_POST['order_status']) || isset($_POST['payment_status'])) &&
-        isset($_POST['order_id'])
-    ) {
-        $db->insertSalesIfDeliveredAndPaid($_POST['order_id'], $_SESSION['admin_id']);
-    }
-    header("Location: orders.php");
-    exit;
+    // ...existing code...
 }
-
-$pendingProcessingCount = $db->countPendingOrProcessingOrders();
-$unpaidPayments = $db->countUnpaidPayments();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orders | Admin Panel</title>
+    <title>Admin Orders</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -54,75 +55,23 @@ $unpaidPayments = $db->countUnpaidPayments();
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
-                <div class="pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <div class="bg-white p-2 rounded me-2">
-                            <i class="bi bi-shield-lock text-primary fs-4"></i>
-                        </div>
-                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
-                    </div>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admins.php">
-                                <i class="bi bi-people-fill"></i>
-                                <span>Admins</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="orders.php">
-                                <i class="bi bi-cart4"></i>
-                                <span>Orders</span>
-                                <?php if ($pendingProcessingCount > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="payments.php">
-                                <i class="bi bi-credit-card"></i>
-                                <span>Payments</span>
-                                <?php if ($unpaidPayments > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.php">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Products</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="bi bi-tags"></i>
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">
-                                <i class="bi bi-box-arrow-right"></i>
-                                <span>Logout</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+                <?php include 'sidebar.php'; ?>
             </div>
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
-                <div class="header d-flex justify-content-between align-items-center">
+                <!-- Header -->
+                <div class="header d-flex justify-content-between align-items-center mt-3">
                     <div>
                         <h4 class="mb-0 fw-bold">Orders</h4>
                         <p class="mb-0 text-muted">List of all orders</p>
                     </div>
+                    <!-- Sidebar toggle button for small screens -->
+                    <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="bi bi-list" style="font-size:1.7rem;"></i>
+                    </button>
                 </div>
-                <div class="card">
+                <div class="card mt-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>Orders List</span>
                     </div>
@@ -142,6 +91,7 @@ $unpaidPayments = $db->countUnpaidPayments();
                                         <th>Barangay</th>
                                         <th>City</th>
                                         <th>Contact Number</th>
+                                        <th>Status</th>
                                         <th>Order Status</th>
                                         <th>Payment Status</th>
                                         <th>Actions</th>
@@ -163,7 +113,9 @@ $unpaidPayments = $db->countUnpaidPayments();
                                         <td><?= htmlspecialchars($order['Barangay']) ?></td>
                                         <td><?= htmlspecialchars($order['City']) ?></td>
                                         <td><?= htmlspecialchars($order['Contact_Number']) ?></td>
-                                        <!-- Order Status -->
+                                        <!-- Derived Display Status -->
+                                        <td><?= htmlspecialchars(admin_display_status($order)) ?></td>
+                                        <!-- Order Status (editable) -->
                                         <td>
                                             <form method="post" action="orders.php" style="display:inline;">
                                                 <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
@@ -193,8 +145,8 @@ $unpaidPayments = $db->countUnpaidPayments();
                                         <!-- Payment Status -->
                                         <td>
                                             <span class="badge <?= ($order['payment_status'] ?? '') === 'Paid' ? 'bg-success' : 'bg-secondary' ?>">
-                <?= htmlspecialchars($order['payment_status'] ?? 'Unpaid') ?>
-            </span>
+                                                <?= htmlspecialchars($order['payment_status'] ?? 'Unpaid') ?>
+                                            </span>
                                         </td>
                                         <!-- Actions -->
                                         <td>
@@ -226,57 +178,58 @@ $unpaidPayments = $db->countUnpaidPayments();
             </div>
         </div>
     </div>
-    <!-- Order Items Modals -->
-    <?php foreach ($orders as $order): ?>
-    <div class="modal fade" id="orderItemsModal<?= $order['Order_ID'] ?>" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Order #<?= $order['Order_ID'] ?> Items</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <ul>
-              <?php
-                $items = $db->fetchOrderItems($order['Order_ID']);
-                foreach ($items as $item):
-              ?>
-                <li>
-                  <?= htmlspecialchars($item['Product_Name']) ?> x <?= $item['Quantity'] ?> @ ₱<?= number_format($item['Price'], 2) ?>
-                </li>
-              <?php endforeach; ?>
-            </ul>
-          </div>
-        </div>
+</div>
+<!-- Order Items Modals -->
+<?php foreach ($orders as $order): ?>
+<div class="modal fade" id="orderItemsModal<?= $order['Order_ID'] ?>" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Order #<?= $order['Order_ID'] ?> Items</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul>
+          <?php
+            $items = $db->fetchOrderItems($order['Order_ID']);
+            foreach ($items as $item):
+          ?>
+            <li>
+              <?= htmlspecialchars($item['Product_Name']) ?> x <?= $item['Quantity'] ?> @ ₱<?= number_format($item['Price'], 2) ?>
+            </li>
+          <?php endforeach; ?>
+        </ul>
       </div>
     </div>
-    <?php endforeach; ?>
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Close alerts after 5 seconds
-        setTimeout(() => {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
+  </div>
+</div>
+<?php endforeach; ?>
+<!-- Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Close alerts after 5 seconds
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
 
-document.querySelectorAll('.order-status-select').forEach(function(select) {
-    select.addEventListener('change', function() {
-        select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'bg-danger', 'text-dark', 'text-white');
-        if (select.value === 'Pending') {
-            select.classList.add('bg-warning', 'text-dark');
-        } else if (select.value === 'Processing') {
-            select.classList.add('bg-info', 'text-dark');
-        } else if (select.value === 'Delivered') {
-            select.classList.add('bg-success', 'text-white');
-        } else if (select.value === 'Cancelled') {
-            select.classList.add('bg-danger', 'text-white');
-        }
+    document.querySelectorAll('.order-status-select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'bg-danger', 'text-dark', 'text-white');
+            if (select.value === 'Pending') {
+                select.classList.add('bg-warning', 'text-dark');
+            } else if (select.value === 'Processing') {
+                select.classList.add('bg-info', 'text-dark');
+            } else if (select.value === 'Delivered') {
+                select.classList.add('bg-success', 'text-white');
+            } else if (select.value === 'Cancelled') {
+                select.classList.add('bg-danger', 'text-white');
+            }
+        });
     });
-});
-    </script>
+</script>
 </body>
 </html>

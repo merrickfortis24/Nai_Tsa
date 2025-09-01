@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 require_once('classes/database.php');
-include 'sidebar_counts.php'; // This makes $pendingProcessingCount and $unpaidPayments available
+include 'sidebar_counts.php'; // For sidebar badges/counters
 
 $db = new database();
 
@@ -13,7 +13,8 @@ $error = '';
 try {
     $categories = $db->getAllCategories();
 } catch (PDOException $e) {
-    $error = "Database Error: " . $e->getMessage();
+    $error = 'Database Error: ' . $e->getMessage();
+    $categories = [];
 }
 ?>
 <!DOCTYPE html>
@@ -22,86 +23,40 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Categories | Admin Panel</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Custom Admin CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
+    
 </head>
 <body class="dashboard-page">
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
-                <div class="pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <div class="bg-white p-2 rounded me-2">
-                            <i class="bi bi-shield-lock text-primary fs-4"></i>
-                        </div>
-                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
-                    </div>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admins.php">
-                                <i class="bi bi-people-fill"></i>
-                                <span>Admins</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="orders.php">
-                                <i class="bi bi-cart4"></i>
-                                <span>Orders</span>
-                                <?php if ($pendingProcessingCount > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="payments.php">
-                                <i class="bi bi-credit-card"></i>
-                                <span>Payments</span>
-                                <?php if ($unpaidPayments > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.php">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Products</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="categories.php">
-                                <i class="bi bi-tags"></i>
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">
-                                <i class="bi bi-box-arrow-right"></i>
-                                <span>Logout</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+                <?php include 'sidebar.php'; ?>
             </div>
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
-                <div class="header d-flex justify-content-between align-items-center">
+                <!-- Header -->
+                <div class="header d-flex justify-content-between align-items-center mt-3">
                     <div>
                         <h4 class="mb-0 fw-bold">Categories</h4>
                         <p class="mb-0 text-muted">List of all product categories</p>
                     </div>
+                    <!-- Sidebar toggle for small screens -->
+                    <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                        <i class="bi bi-list" style="font-size:1.7rem;"></i>
+                    </button>
                 </div>
-                <div class="card">
+
+                <!-- Categories Card -->
+                <div class="card mt-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>Categories List</span>
-                        <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                             <i class="bi bi-plus-lg me-2"></i> Add Category
                         </button>
                     </div>
@@ -124,14 +79,12 @@ try {
                                         <td><?= htmlspecialchars($category['Category_ID']) ?></td>
                                         <td><?= htmlspecialchars($category['Category_Name']) ?></td>
                                         <td>
-                                            <a href="#" 
-                                               class="action-btn edit-category-btn"
+                                            <a href="#" class="action-btn edit-category-btn"
                                                data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>"
                                                data-category-name="<?= htmlspecialchars($category['Category_Name']) ?>">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <a href="#" 
-                                               class="action-btn delete-category-btn"
+                                            <a href="#" class="action-btn delete-category-btn"
                                                data-category-id="<?= htmlspecialchars($category['Category_ID']) ?>">
                                                 <i class="bi bi-trash"></i>
                                             </a>
@@ -157,37 +110,37 @@ try {
                         </nav>
                     </div>
                 </div>
+                <!-- End Categories Card -->
             </div>
         </div>
     </div>
 
     <!-- Add Category Modal -->
     <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <form id="addCategoryForm" class="modal-content" action="ajax/add_category.php" method="POST">
-      <input type="hidden" id="edit_category_id" name="category_id" value="">
-      <div class="modal-header">
-        <h5 class="modal-title" id="addCategoryModalLabel">Add Category</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-dialog">
+        <form id="addCategoryForm" class="modal-content" action="ajax/add_category.php" method="POST">
+          <input type="hidden" id="edit_category_id" name="category_id" value="">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addCategoryModalLabel">Add Category</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="category_name" class="form-label">Category Name</label>
+              <input type="text" class="form-control" id="category_name" name="category_name" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Category</button>
+          </div>
+        </form>
       </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label for="category_name" class="form-label">Category Name</label>
-          <input type="text" class="form-control" id="category_name" name="category_name" required>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary">Add Category</button>
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/script.js"></script>
     <script>
 document.getElementById('addCategoryForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -285,6 +238,6 @@ document.getElementById('addCategoryModal').addEventListener('hidden.bs.modal', 
 });
 
 
-</script>
+    </script>
 </body>
 </html>

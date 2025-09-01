@@ -53,202 +53,129 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="dashboard-page">
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
-                <div class="pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <div class="bg-white p-2 rounded me-2">
-                            <i class="bi bi-shield-lock text-primary fs-4"></i>
-                        </div>
-                        <div class="logo-text fw-bold fs-5">AdminPanel</div>
-                    </div>
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-speedometer2"></i>
-                                <span>Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admins.php">
-                                <i class="bi bi-people-fill"></i>
-                                <span>Admins</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="orders.php">
-                                <i class="bi bi-cart4"></i>
-                                <span>Orders</span>
-                                <?php if ($pendingProcessingCount > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $pendingProcessingCount ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="payments.php">
-                                <i class="bi bi-credit-card"></i>
-                                <span>Payments</span>
-                                <?php if ($unpaidPayments > 0): ?>
-                                    <span class="badge bg-danger ms-1"><?= $unpaidPayments ?></span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="products.php">
-                                <i class="bi bi-box-seam"></i>
-                                <span>Products</span>
-                            </a>
-                        </li>
-                                                <li class="nav-item">
-                            <a class="nav-link" href="addons.php">
-                                <i class="bi bi-plus-circle"></i>
-                                <span>Add-ons</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.php">
-                                <i class="bi bi-tags"></i>
-                                <span>Categories</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">
-                                <i class="bi bi-box-arrow-right"></i>
-                                <span>Logout</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <!-- Main Content -->
-            <div class="col-md-10 col-lg-10 main-content">
-                <!-- Header -->
-                <div class="header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-0 fw-bold">Products Management</h4>
-                        <p class="mb-0 text-muted">Manage your products inventory</p>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <div class="search-container me-3">
-                            <i class="bi bi-search"></i>
-                            <input type="text" class="form-control" placeholder="Search products...">
-                        </div>
-                        <button class="btn btn-primary d-flex align-items-center me-2" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                            <i class="bi bi-plus-lg me-2"></i> Add Product
-                        </button>
-                        <button class="btn btn-outline-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#addPriceModal">
-                            <i class="bi bi-plus-lg me-2"></i> Add Price
-                        </button>
-                    </div>
-                </div>
-                <!-- Products List -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Products List</span>
-                        <div>
-                            <form method="get" class="d-inline">
-                              <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
-                                <option value="">All Categories</option>
-                                <?php foreach ($categories_list as $category): ?>
-                                  <option value="<?= htmlspecialchars($category['Category_ID']) ?>" <?= (isset($_GET['category']) && $_GET['category'] == $category['Category_ID']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($category['Category_Name']) ?>
-                                  </option>
-                                <?php endforeach; ?>
-                              </select>
-                              <?php if (isset($_GET['page'])): ?>
-                                <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
-                              <?php endif; ?>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <?php if (!empty($error)): ?>
-                            <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-                        <?php endif; ?>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Image</th>
-                                        <th>Product Name</th>
-                                        <th>Description</th>
-                                        <th><strong>Allergens</strong></th> <!-- Add this line -->
-                                        <th>Created At</th>
-                                        <th>Updated At</th>
-                                        <th>Admin Name</th>
-                                        <th>Category</th>
-                                        <th>Price</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($products as $product): ?>
-                                    <tr>
-                                        <td>
-                                            <?php if (!empty($product['Product_Image'])): ?>
-                                                <img src="uploads/products/<?= htmlspecialchars($product['Product_Image']) ?>" alt="Product Image" style="width:45px; height:45px; object-fit:cover; border-radius:8px;">
-                                            <?php else: ?>
-                                                <span class="text-muted">No image</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= htmlspecialchars($product['Product_Name']) ?></td>
-                                        <td><?= htmlspecialchars($product['Product_desc']) ?></td>
-                                        <td><?= htmlspecialchars($product['Product_allergens'] ?? ''); ?></td>
-                                        <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
-                                        <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
-                                        <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
-                                        <td><?= htmlspecialchars($product['Category_Name']) ?></td>
-                                        <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
-                                        <td>
-                                            <a href="#" 
-                                               class="action-btn edit-product-btn"
-                                               data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>"
-                                               data-product-name="<?= htmlspecialchars($product['Product_Name']) ?>"
-                                               data-product-desc="<?= htmlspecialchars($product['Product_desc']) ?>"
-                                               data-category-id="<?= htmlspecialchars($product['Category_ID']) ?>"
-                                               data-price-id="<?= htmlspecialchars($product['Price_ID']) ?>"
-                                               data-image="<?= htmlspecialchars($product['Product_Image']) ?>"
-                                               data-effective-from="<?= htmlspecialchars($product['Effective_From'] ?? '') ?>"
-                                               data-effective-to="<?= htmlspecialchars($product['Effective_To'] ?? '') ?>"
-                                            >
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a href="#" 
-                                               class="action-btn delete-product-btn"
-                                               data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                            </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Pagination -->
-                        <nav>
-                          <ul class="pagination justify-content-end">
-                            <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
-                              <a class="page-link" href="?page=<?= $currentPage - 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Previous</a>
-                            </li>
-                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                              <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
-                                <a class="page-link" href="?page=<?= $i ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>"><?= $i ?></a>
-                              </li>
-                            <?php endfor; ?>
-                            <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
-                              <a class="page-link" href="?page=<?= $currentPage + 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Next</a>
-                            </li>
-                          </ul>
-                        </nav>
-                    </div>
-                </div>
-                <!-- End Products List -->
-            </div>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+        <?php include 'sidebar.php'; ?>
+      </div>
+      <!-- Main Content -->
+      <div class="col-md-10 col-lg-10 main-content">
+        <!-- Header -->
+        <div class="header d-flex justify-content-between align-items-center mt-3">
+          <div>
+            <h4 class="mb-0 fw-bold">Products</h4>
+            <p class="mb-0 text-muted">Manage your products</p>
+          </div>
+          <!-- Sidebar toggle button for small screens -->
+          <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-list" style="font-size:1.7rem;"></i>
+          </button>
         </div>
+
+        <!-- Products List Card -->
+        <div class="card mt-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Products List</span>
+            <div>
+              <form method="get" class="d-inline">
+                <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
+                  <option value="">All Categories</option>
+                  <?php foreach ($categories_list as $category): ?>
+                    <option value="<?= htmlspecialchars($category['Category_ID']) ?>" <?= (isset($_GET['category']) && $_GET['category'] == $category['Category_ID']) ? 'selected' : '' ?>>
+                      <?= htmlspecialchars($category['Category_Name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <?php if (isset($_GET['page'])): ?>
+                  <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
+                <?php endif; ?>
+              </form>
+            </div>
+          </div>
+          <div class="card-body">
+            <?php if (!empty($error)): ?>
+              <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Product Name</th>
+                    <th>Description</th>
+                    <th><strong>Allergens</strong></th>
+                    <th>Created At</th>
+                    <th>Updated At</th>
+                    <th>Admin Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($products as $product): ?>
+                  <tr>
+                    <td>
+                      <?php if (!empty($product['Product_Image'])): ?>
+                        <img src="uploads/products/<?= htmlspecialchars($product['Product_Image']) ?>" alt="Product Image" style="width:45px; height:45px; object-fit:cover; border-radius:8px;">
+                      <?php else: ?>
+                        <span class="text-muted">No image</span>
+                      <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars($product['Product_Name']) ?></td>
+                    <td><?= htmlspecialchars($product['Product_desc']) ?></td>
+                    <td><?= htmlspecialchars($product['Product_allergens'] ?? '') ?></td>
+                    <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
+                    <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
+                    <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
+                    <td><?= htmlspecialchars($product['Category_Name']) ?></td>
+                    <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
+                    <td>
+                      <a href="#" class="action-btn edit-product-btn"
+                         data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>"
+                         data-product-name="<?= htmlspecialchars($product['Product_Name']) ?>"
+                         data-product-desc="<?= htmlspecialchars($product['Product_desc']) ?>"
+                         data-category-id="<?= htmlspecialchars($product['Category_ID']) ?>"
+                         data-price-id="<?= htmlspecialchars($product['Price_ID']) ?>"
+                         data-image="<?= htmlspecialchars($product['Product_Image']) ?>"
+                         data-effective-from="<?= htmlspecialchars($product['Effective_From'] ?? '') ?>"
+                         data-effective-to="<?= htmlspecialchars($product['Effective_To'] ?? '') ?>">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                      <a href="#" class="action-btn delete-product-btn" data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>">
+                        <i class="bi bi-trash"></i>
+                      </a>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav>
+              <ul class="pagination justify-content-end">
+                <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
+                  <a class="page-link" href="?page=<?= $currentPage - 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Previous</a>
+                </li>
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                  <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>"><?= $i ?></a>
+                  </li>
+                <?php endfor; ?>
+                <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
+                  <a class="page-link" href="?page=<?= $currentPage + 1 ?><?= $categoryFilter ? '&category=' . urlencode($categoryFilter) : '' ?>">Next</a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <!-- End Products List Card -->
+      </div>
     </div>
+  </div>
 
     <!-- Add Product Modal -->
     <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
