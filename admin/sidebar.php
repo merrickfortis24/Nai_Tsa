@@ -1,6 +1,11 @@
 <?php
 // Shared sidebar navigation for admin pages
 $page = basename($_SERVER['PHP_SELF'], '.php');
+// Ensure sidebar counters are available on every page that includes this file
+if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
+    /** @noinspection PhpIncludeInspection */
+    @require_once __DIR__ . '/sidebar_counts.php';
+}
 ?>
 <div class="pt-3">
     <div class="d-flex align-items-center mb-4 px-3">
@@ -26,12 +31,18 @@ $page = basename($_SERVER['PHP_SELF'], '.php');
             <a class="nav-link<?php if($page=='orders')echo' active'; ?>" href="orders.php">
                 <i class="bi bi-cart4"></i>
                 <span>Orders</span>
+                <?php if (!empty($pendingProcessingCount)) : ?>
+                    <span class="badge rounded-pill bg-warning text-dark float-end"><?= (int)$pendingProcessingCount ?></span>
+                <?php endif; ?>
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link<?php if($page=='payments')echo' active'; ?>" href="payments.php">
                 <i class="bi bi-credit-card"></i>
                 <span>Payments</span>
+                <?php if (!empty($unpaidPayments)) : ?>
+                    <span class="badge rounded-pill bg-danger float-end"><?= (int)$unpaidPayments ?></span>
+                <?php endif; ?>
             </a>
         </li>
         <li class="nav-item">

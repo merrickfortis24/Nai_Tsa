@@ -2,9 +2,9 @@
  
 class database {
     // Hostinger DB credentials
-    private string $host = 'mysql.hostinger.com';                 // Hostinger internal MySQL host
+    private string $host = 'mysql.hostinger.com';                 // from hPanel
     private string $db   = 'u677397674_naitsa';            // MySQL Database
-    private string $user = 'u677397674_naitsa_user';           // Same DB user as main site
+    private string $user = 'u677397674_naitsa_user';            // MySQL User
     private string $pass = 'Naitsa@123';                // set in hPanel
 
     private static ?PDO $pdo = null;
