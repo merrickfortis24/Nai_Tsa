@@ -28,10 +28,19 @@ require_once $found . '/SMTP.php';
 
 function mailer_instance(): PHPMailer {
     // Optional local config bootstrap: if a file sets env vars, include it.
-    $localEnv = __DIR__ . '/../.mail.env.php';
-    if (is_file($localEnv)) {
-        /** @noinspection PhpIncludeInspection */
-        include $localEnv; // can call putenv("KEY=value");
+    // Some hosts skip dotfiles on upload; support alternate names.
+    $envCandidates = [
+        __DIR__ . '/../.mail.env.php',
+        __DIR__ . '/../mail.env.php',
+        __DIR__ . '/../config/.mail.env.php',
+        __DIR__ . '/../config/mail.env.php',
+    ];
+    foreach ($envCandidates as $envFile) {
+        if (is_file($envFile)) {
+            /** @noinspection PhpIncludeInspection */
+            include $envFile; // may call putenv("KEY=value")
+            break;
+        }
     }
 
     $mail = new PHPMailer(true);
@@ -47,7 +56,7 @@ function mailer_instance(): PHPMailer {
     $mail->Username = getenv('SMTP_USER') ?: '';
     $mail->Password = getenv('SMTP_PASS') ?: '';
     if ($mail->Username === '' || $mail->Password === '') {
-        throw new \RuntimeException('SMTP_USER/SMTP_PASS not set. Edit Nai_Tsa/.mail.env.php');
+        throw new \RuntimeException('SMTP_USER/SMTP_PASS not set. Upload Nai_Tsa/.mail.env.php (or rename to mail.env.php) with your mailbox credentials.');
     }
     $mail->SMTPAuth = true;
 

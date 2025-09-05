@@ -1,14 +1,31 @@
 <?php
  
-class database{
- 
-    function opencon() {
- 
-        return new PDO(
-            'mysql:host=localhost;dbname=naitsa',
-            'root',
-            ''
-        );
+class database {
+    // Hostinger DB credentials
+    private string $host = 'mysql.hostinger.com';                 // from hPanel
+    private string $db   = 'u677397674_naitsa';            // MySQL Database
+    private string $user = 'u677397674_naitsa_user';            // MySQL User
+    private string $pass = 'Naitsa@123';                // set in hPanel
+
+    private static ?PDO $pdo = null;
+
+    public function opencon(): PDO {
+        if (self::$pdo instanceof PDO) return self::$pdo;
+
+        $dsn = "mysql:host={$this->host};dbname={$this->db};charset=utf8mb4";
+        $opts = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,   // real prepares
+            PDO::ATTR_PERSISTENT         => false,   // safer on shared hosting
+        ];
+        try {
+            self::$pdo = new PDO($dsn, $this->user, $this->pass, $opts);
+        } catch (PDOException $e) {
+            error_log('DB connect error: ' . $e->getMessage());
+            throw new RuntimeException('Database connection failed.');
+        }
+        return self::$pdo;
     }
 
     function addProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name = '', $product_Allergens = '') {
