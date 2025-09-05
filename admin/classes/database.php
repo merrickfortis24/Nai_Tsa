@@ -2,9 +2,9 @@
  
 class database {
     // Hostinger DB credentials
-    private string $host = 'mysql.hostinger.com';                 // from hPanel
-    private string $db   = 'u677397674_naitsa';            // MySQL Database
-    private string $user = 'u677397674_naitsa_user';            // MySQL User
+    private string $host = 'localhost';                 // Hostinger internal MySQL host
+    private string $db   = 'u677397674_nai';            // Use the same DB as the main site
+    private string $user = 'u677397674_use';            // Same DB user as main site
     private string $pass = 'Naitsa@123';                // set in hPanel
 
     private static ?PDO $pdo = null;
@@ -171,7 +171,7 @@ class database {
 
     function searchAdmin($keyword) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT * FROM Admin WHERE Admin_Name LIKE ? OR Admin_Email LIKE ? ORDER BY Created_At DESC");
+        $stmt = $con->prepare("SELECT * FROM admin WHERE Admin_Name LIKE ? OR Admin_Email LIKE ? ORDER BY Created_At DESC");
         $search = '%' . $keyword . '%';
         $stmt->execute([$search, $search]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -181,7 +181,7 @@ class database {
     function deleteAdmin($admin_id) {
         $con = $this->opencon();
         try {
-            $stmt = $con->prepare("DELETE FROM Admin WHERE Admin_ID = ?");
+            $stmt = $con->prepare("DELETE FROM admin WHERE Admin_ID = ?");
             $stmt->execute([$admin_id]);
             return ['success' => true, 'message' => 'Admin deleted successfully!'];
         } catch (PDOException $e) {
@@ -249,7 +249,7 @@ class database {
 
         $con = $this->opencon();
 
-        $sql = "UPDATE Admin SET 
+        $sql = "UPDATE admin SET 
                 Admin_Name = :name, 
                 Admin_Email = :email, 
                 Admin_Role = :role, 
@@ -267,7 +267,7 @@ class database {
 
         if (!empty($new_password)) {
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-            $sql = "UPDATE Admin SET 
+            $sql = "UPDATE admin SET 
                     Admin_Name = :name, 
                     Admin_Email = :email, 
                     Admin_Role = :role, 
@@ -398,7 +398,7 @@ class database {
 
     function resetAdminPasswordByToken($token, $password, $confirm) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Admin_ID, Reset_Expires FROM Admin WHERE Reset_Token = ?");
+        $stmt = $con->prepare("SELECT Admin_ID, Reset_Expires FROM admin WHERE Reset_Token = ?");
         $stmt->execute([$token]);
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -411,7 +411,7 @@ class database {
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $update = $con->prepare("UPDATE Admin SET Admin_Password = ?, Reset_Token = NULL, Reset_Expires = NULL WHERE Admin_ID = ?");
+        $update = $con->prepare("UPDATE admin SET Admin_Password = ?, Reset_Token = NULL, Reset_Expires = NULL WHERE Admin_ID = ?");
         $update->execute([$hash, $admin['Admin_ID']]);
 
         if ($update->rowCount() > 0) {
@@ -423,7 +423,7 @@ class database {
 
     function isValidAdminResetToken($token) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Reset_Expires FROM Admin WHERE Reset_Token = ?");
+        $stmt = $con->prepare("SELECT Reset_Expires FROM admin WHERE Reset_Token = ?");
         $stmt->execute([$token]);
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($admin && strtotime($admin['Reset_Expires']) > time()) {
@@ -482,7 +482,7 @@ function getCustomerNameById($customer_id) {
 
     function adminLogin($email, $password) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Admin_ID, Admin_Name, Admin_Password, Admin_Role, Status FROM Admin WHERE Admin_Email = :email");
+        $stmt = $con->prepare("SELECT Admin_ID, Admin_Name, Admin_Password, Admin_Role, Status FROM admin WHERE Admin_Email = :email");
         $stmt->bindParam(':email', $email);
         $stmt->execute();
 
@@ -512,14 +512,14 @@ function getCustomerNameById($customer_id) {
     function addAdmin($name, $email, $password, $role, $status) {
         $con = $this->opencon();
         // Check if email exists
-        $stmt = $con->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
+        $stmt = $con->prepare("SELECT COUNT(*) FROM admin WHERE Admin_Email = ?");
         $stmt->execute([$email]);
         if ($stmt->fetchColumn() > 0) {
             return ['success' => false, 'message' => 'This email is already taken!'];
         }
         // Insert new admin
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $con->prepare("INSERT INTO Admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
+    $stmt = $con->prepare("INSERT INTO admin (Admin_Name, Admin_Password, Admin_Email, Admin_Role, Created_At, Status) 
                                VALUES (:name, :password, :email, :role, NOW(), :status)");
         $stmt->bindParam(':name', $name);
         $stmt->bindParam(':password', $hashed_password);
@@ -535,7 +535,7 @@ function getCustomerNameById($customer_id) {
 
     function getAllAdmins() {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT * FROM Admin ORDER BY Created_At DESC");
+        $stmt = $con->prepare("SELECT * FROM admin ORDER BY Created_At DESC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -543,21 +543,21 @@ function getCustomerNameById($customer_id) {
     function getAdminStats() {
         $con = $this->opencon();
         return [
-            'total' => (int)$con->query("SELECT COUNT(*) FROM Admin")->fetchColumn(),
-            'active' => (int)$con->query("SELECT COUNT(*) FROM Admin WHERE Status = 'Active'")->fetchColumn(),
-            'inactive' => (int)$con->query("SELECT COUNT(*) FROM Admin WHERE Status = 'Inactive'")->fetchColumn(),
-            'super' => (int)$con->query("SELECT COUNT(*) FROM Admin WHERE Admin_Role = 'Super Admin'")->fetchColumn(),
+            'total' => (int)$con->query("SELECT COUNT(*) FROM admin")->fetchColumn(),
+            'active' => (int)$con->query("SELECT COUNT(*) FROM admin WHERE Status = 'Active'")->fetchColumn(),
+            'inactive' => (int)$con->query("SELECT COUNT(*) FROM admin WHERE Status = 'Inactive'")->fetchColumn(),
+            'super' => (int)$con->query("SELECT COUNT(*) FROM admin WHERE Admin_Role = 'Super Admin'")->fetchColumn(),
         ];
     }
 
     function createPasswordResetToken($email) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Admin_ID FROM Admin WHERE Admin_Email = ?");
+        $stmt = $con->prepare("SELECT Admin_ID FROM admin WHERE Admin_Email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() === 1) {
             $token = bin2hex(random_bytes(32));
             $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
-            $update = $con->prepare("UPDATE Admin SET Reset_Token = ?, Reset_Expires = ? WHERE Admin_Email = ?");
+            $update = $con->prepare("UPDATE admin SET Reset_Token = ?, Reset_Expires = ? WHERE Admin_Email = ?");
             $update->execute([$token, $expires, $email]);
             return [
                 'success' => true,
@@ -570,7 +570,7 @@ function getCustomerNameById($customer_id) {
 
     function adminEmailExists($email) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT COUNT(*) FROM Admin WHERE Admin_Email = ?");
+        $stmt = $con->prepare("SELECT COUNT(*) FROM admin WHERE Admin_Email = ?");
         $stmt->execute([trim($email)]);
         return $stmt->fetchColumn() > 0;
     }
