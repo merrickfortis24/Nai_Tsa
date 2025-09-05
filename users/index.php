@@ -1028,14 +1028,14 @@ document.getElementById('paymentForm').addEventListener('submit', async function
   const orderType = document.querySelector('input[name="orderType"]:checked').value;
   const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
   let street = '', barangay = '', city = '', contact = '';
-  let lat = '', lng = '';
+  // Always read current hidden inputs for lat/lng so Pickup can carry coords too
+  let lat = this.lat?.value || '';
+  let lng = this.lng?.value || '';
   if (orderType === 'Delivery') {
     street = this.street.value.trim();
     barangay = this.barangay.value.trim();
     city = this.city.value.trim();
     contact = this.contact.value.trim();
-    lat = this.lat.value || '';
-    lng = this.lng.value || '';
     if (!street || !barangay || !city || !contact) {
       Swal.fire({
         icon: 'error',
@@ -1349,13 +1349,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // REMOVE / FIX MISSING IMAGE TO STOP 404
 // Delete bg13.jpg from the contactImages array above OR add the actual file assets/bg13.jpg.
 
-const ORDER_STATUS_STEPS = ["Pending","Processing","To Ship","To Receive","Delivered"];
+// Progress steps: branch by order_type
+const DELIVERY_STEPS = ["Pending","Processing","Ready to deliver","On the way","Delivered"];
+const PICKUP_STEPS   = ["Pending","Processing","Ready to pick up","Received"];
 const STATUS_LABEL_MAP = {
   Pending: "Pending",
   Processing: "Preparing",
-  "To Ship": "To Ship",
-  "To Receive": "To Receive",
+  "Ready to deliver": "Ready to deliver",
+  "On the way": "On the way",
   Delivered: "Delivered",
+  "Ready to pick up": "Ready to pick up",
+  Received: "Received",
   Cancelled: "Cancelled"
 };
 const STATUS_BADGE_CLASS = {
@@ -1366,25 +1370,26 @@ const STATUS_BADGE_CLASS = {
   Delivered: "bg-success",
   Cancelled: "bg-dark"
 };
-function renderProgress(current) {
-  const idx = ORDER_STATUS_STEPS.indexOf(current);
+function renderProgress(current, orderType) {
+  const steps = (orderType === 'Pickup') ? PICKUP_STEPS : DELIVERY_STEPS;
+  const idx = steps.indexOf(current);
   return `
     <div class="order-progress d-flex align-items-center mb-2">
-      ${ORDER_STATUS_STEPS.map((s,i)=>{
+      ${steps.map((s,i)=>{
         const state = i < idx ? 'completed' : (i === idx ? 'active' : 'upcoming');
         return `
           <div class="step ${state}">
             <div class="dot">${i < idx ? '✓' : ''}</div>
             <div class="label">${STATUS_LABEL_MAP[s]||s}</div>
           </div>
-          ${i<ORDER_STATUS_STEPS.length-1?`<div class="bar ${i<idx?'filled':''}"></div>`:""}
+          ${i<steps.length-1?`<div class="bar ${i<idx?'filled':''}"></div>`:""}
         `;
       }).join('')}
     </div>`;
 }
 
 // ================== ORDER LIST / FILTER UI ==================
-const RAW_STATUS_STEPS = ["Pending","Processing","To Ship","To Receive","Delivered"];
+const RAW_STATUS_STEPS = ["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received"];
 const STATUS_DISPLAY = {
   All: "All",
   Pending:"Pending",
@@ -1414,20 +1419,30 @@ function skeletonOrders(count=3){
 
 // Map backend combination -> UI status (adjust if your real logic differs)
 function deriveUiStatus(o){
-  // Derived driver states
-  if (o.Driver_Status === 'on_the_way' || o.Driver_Status === 'picked_up') return 'Out for delivery';
-  // Honor backend status primarily; refine Processing -> To Ship when paid
-  if (o.order_status === "Delivered") return "Delivered";
-  if (o.order_status === "Cancelled") return "Cancelled";
-  if (o.order_status === "Pending") return "Pending"; // don’t treat as To Ship
-  if (o.order_status === "Processing") {
-    return (o.payment_status === "Paid") ? "To Ship" : "Processing";
+  const type = o.order_type || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
+  if (o.order_status === 'Cancelled') return 'Cancelled';
+  if (type === 'Pickup') {
+    // Normalize pickup statuses
+    if (o.order_status === 'Pending') return 'Pending';
+    if (o.order_status === 'Processing') return 'Processing';
+    if (o.order_status === 'Ready to pick up') return 'Ready to pick up';
+    if (o.order_status === 'Received' || o.order_status === 'Delivered') return 'Received';
+  // Legacy to-ship/receive should not appear for pickup, fallback
+    return 'Pending';
+  } else {
+    // Delivery: consider driver live states
+    if (o.Driver_Status === 'on_the_way') return 'On the way';
+    if (o.Driver_Status === 'picked_up') return 'On the way';
+    if (o.order_status === 'Pending') return 'Pending';
+    if (o.order_status === 'Processing') return 'Processing';
+  // Legacy statuses mapping
+  if (o.order_status === 'To Ship') return 'Ready to deliver';
+  if (o.order_status === 'To Receive') return 'On the way';
+    if (o.order_status === 'Ready to deliver') return 'Ready to deliver';
+    if (o.order_status === 'On the way') return 'On the way';
+    if (o.order_status === 'Delivered') return 'Delivered';
+    return 'Pending';
   }
-  if (o.order_status === "To Ship") return "To Ship";
-  if (o.order_status === "To Receive") return "To Receive";
-  // Fallback to raw if it matches known steps
-  if (RAW_STATUS_STEPS.includes(o.order_status)) return o.order_status;
-  return o.order_status || "Pending";
 }
 
 function buildStatusCounts(rawList){
@@ -1494,13 +1509,14 @@ function renderOrders(){
   }
 
   listEl.innerHTML = processed.map(o => {
-    const uiStatus = o.ui_status;
-    const badgeClass = (uiStatus==="Delivered"?"bg-success":
-                       uiStatus==="To Ship"?"bg-primary":
-                       uiStatus==="To Receive"?"bg-warning text-dark":
-                       uiStatus==="Processing"?"bg-info text-dark":
-                       uiStatus==="Pending"?"bg-secondary":
-                       uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
+  const uiStatus = o.ui_status;
+  const badgeClass = (uiStatus==="Delivered"?"bg-success":
+             uiStatus==="Ready to deliver"?"bg-primary":
+             uiStatus==="On the way"?"bg-primary":
+             uiStatus==="To Receive"||uiStatus==="Ready to pick up"||uiStatus==="Received"?"bg-warning text-dark":
+             uiStatus==="Processing"?"bg-info text-dark":
+             uiStatus==="Pending"?"bg-secondary":
+             uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
     const itemsPreview = o.items.slice(0,3).map(it=>`
       <div class="d-inline-flex align-items-center me-2 mb-1" style="font-size:.75rem;">
         <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
@@ -1513,7 +1529,7 @@ function renderOrders(){
           <div class="d-flex justify-content-between flex-wrap gap-2">
             <div>
               <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
-              <div class="mt-1">${renderProgress(uiStatus)}</div>
+              <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
             </div>
             <span class="badge ${badgeClass}" style="height:fit-content;">${uiStatus}</span>
           </div>

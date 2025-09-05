@@ -1,3 +1,27 @@
+<?php
+$categories = [];
+$products = [];
+$avg_ratings = [];
+$bestsellers = [];
+try {
+  require_once __DIR__ . '/users/classes/database.php';
+  $db = new database();
+  if (method_exists($db, 'fetchAllCategories')) {
+    $categories = $db->fetchAllCategories();
+  }
+  if (method_exists($db, 'fetchAllProducts')) {
+    $products = $db->fetchAllProducts();
+  }
+  if (method_exists($db, 'getAverageRatings')) {
+    $avg_ratings = $db->getAverageRatings();
+  }
+  if (method_exists($db, 'getBestsellerProducts')) {
+    $bestsellers = $db->getBestsellerProducts(8);
+  }
+} catch (Throwable $e) {
+  // leave arrays empty; UI will degrade gracefully
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -98,45 +122,82 @@ Open daily from 10AM to midnight..</p>
     </div>
   </section>
 
-  <!-- Menu Section -->
+  <!-- Menu Section (public view imitating user menu UI) -->
   <section class="section" id="menu">
     <div class="section-overlay"></div>
-    <div class="section-content" style="max-width: 950px;">
+    <div class="section-content section-content--wide">
       <h2 class="section-title text-center w-100" style="font-size:3.2rem;">Menu</h2>
-      <div class="menu-cards w-100 justify-content-center">
-        <div class="menu-card">
-          <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80" alt="Classic Milk Tea">
-          <div class="menu-card-title">Classic Milk Tea</div>
-          <div class="menu-card-desc">Traditional black tea with creamy milk, slightly sweet, perfectly chilled.</div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Classic Milk Tea">Add to Cart</button>
-        </div>
-        <div class="menu-card">
-          <img src="https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=150&q=80" alt="Brown Sugar Boba">
-          <div class="menu-card-title">Brown Sugar Boba</div>
-          <div class="menu-card-desc">Rich brown sugar syrup, chewy pearls, and velvety milk tea.</div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Brown Sugar Boba">Add to Cart</button>
-        </div>
-        <div class="menu-card">
-          <img src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=150&q=80" alt="Coffee Latte">
-          <div class="menu-card-title">Coffee Latte</div>
-          <div class="menu-card-desc">Espresso meets creamy steamed milk, topped with light foam.</div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Coffee Latte">Add to Cart</button>
-        </div>
-        <div class="menu-card">
-          <img src="https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=150&q=80" alt="Strawberry Matcha">
-          <div class="menu-card-title">Strawberry Matcha</div>
-          <div class="menu-card-desc">Earthy matcha layered with fresh strawberry milk for a vibrant treat.</div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Strawberry Matcha">Add to Cart</button>
-        </div>
-        <div class="menu-card">
-          <img src="https://images.unsplash.com/photo-1528825871115-3581a5387919?auto=format&fit=crop&w=150&q=80" alt="Caramel Macchiato">
-          <div class="menu-card-title">Caramel Macchiato</div>
-          <div class="menu-card-desc">Sweet caramel, rich espresso, and frothy milk in an irresistible blend.</div>
-          <button class="btn btn-soft-orange w-100 mt-2 add-to-cart-btn" data-product="Caramel Macchiato">Add to Cart</button>
-        </div>
+
+      <!-- Category filter buttons (from database) -->
+      <div class="d-flex flex-wrap justify-content-center mb-3 w-100 gap-2">
+        <button class="menu-category-btn active-category" id="showBestsellersBtn" data-category="bestsellers">Bestsellers</button>
+        <?php foreach ($categories as $cat): ?>
+          <button class="menu-category-btn category-link" data-category="<?php echo htmlspecialchars($cat['Category_Name']); ?>"><?php echo htmlspecialchars($cat['Category_Name']); ?></button>
+        <?php endforeach; ?>
       </div>
+
+      <!-- Menu grid -->
+      <div id="menuCards" class="menu-cards w-100 justify-content-center">
+        <?php if (!empty($products)): ?>
+          <?php
+            $bestIds = array_column($bestsellers, 'Product_ID');
+            $bestMap = [];
+            foreach ($bestIds as $bid) { $bestMap[(int)$bid] = true; }
+          ?>
+          <?php foreach ($products as $p): ?>
+            <?php
+              $pid  = (int)($p['Product_ID'] ?? 0);
+              $name = htmlspecialchars($p['Product_Name'] ?? '');
+              $desc = htmlspecialchars($p['Product_desc'] ?? '');
+              $cat  = htmlspecialchars($p['Category_Name'] ?? 'Other');
+              $img  = !empty($p['Product_Image']) ? ('admin/uploads/products/' . $p['Product_Image']) : 'assets/naitsalogo.jpg';
+              $price = isset($p['Price_Amount']) ? number_format((float)$p['Price_Amount'], 2) : null;
+              $avg  = isset($avg_ratings[$pid]['avg']) ? number_format((float)$avg_ratings[$pid]['avg'], 2) : '0.0';
+              $rcnt = isset($avg_ratings[$pid]['count']) ? (int)$avg_ratings[$pid]['count'] : 0;
+              $isBest = isset($bestMap[$pid]);
+              // allergens removed from public view
+            ?>
+            <div class="menu-card" data-category="<?php echo $cat; ?>" data-product-id="<?php echo $pid; ?>" data-bestseller="<?php echo $isBest ? '1' : '0'; ?>">
+              <div class="menu-card-image">
+                <img src="<?php echo htmlspecialchars($img); ?>" alt="<?php echo $name; ?>">
+                
+              </div>
+              <div class="menu-card-content">
+                <div class="menu-card-header">
+                  <h3 class="menu-card-title"><?php echo $name; ?></h3>
+                  <?php if ($price !== null): ?>
+                    <span class="menu-card-price">₱<?php echo $price; ?></span>
+                  <?php endif; ?>
+                </div>
+                <?php if (!empty($desc)): ?>
+                  <p class="menu-card-description"><?php echo $desc; ?></p>
+                <?php endif; ?>
+                <div class="menu-card-rating">
+                  <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  <span class="rating-value"><?php echo $avg; ?></span>
+                  <span class="rating-count">(<?php echo $rcnt; ?> reviews)</span>
+                </div>
+              </div>
+              <div class="menu-card-footer">
+                <button class="add-to-cart-btn" data-product="<?php echo $name; ?>">
+                  <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="text-muted">No products available right now.</div>
+        <?php endif; ?>
+      </div>
+
       <div class="text-center w-100" style="margin-top: 0.2rem;">
-        <a href="#" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
+        <a href="#" id="moreProductsBtn" class="btn btn-outline-soft-orange" style="font-size:1.09rem; padding:0.7rem 2.2rem; font-weight:600;">
           More Products
         </a>
       </div>
@@ -253,24 +314,63 @@ Open daily from 10AM to midnight..</p>
     setupRotatingBg("menu", menuImages);
     setupRotatingBg("contact", contactImages);
 
-    // Add to Cart functionality (simple alert for demo)
-    document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        Swal.fire({
-          icon: 'warning',
-          title: 'Not Logged In',
-          text: 'You must log in first to add items to your cart.',
-          showCancelButton: true,
-          confirmButtonText: 'Log In',
-          cancelButtonText: 'Cancel'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = 'login.php';
+    // Category filtering with Bestsellers default
+    (function(){
+      const filterButtons = document.querySelectorAll('.menu-category-btn');
+      const menuCards = document.querySelectorAll('#menuCards .menu-card');
+      function applyFilter(cat){
+        menuCards.forEach(function(card){
+          if (cat === 'bestsellers') {
+            card.style.display = (card.dataset.bestseller === '1') ? '' : 'none';
+          } else if (cat === 'all') {
+            card.style.display = '';
+          } else {
+            card.style.display = (card.dataset.category === cat) ? '' : 'none';
           }
         });
+      }
+      filterButtons.forEach(function(btn){
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          filterButtons.forEach(b=>b.classList.remove('active-category'));
+          this.classList.add('active-category');
+          applyFilter(this.dataset.category || 'all');
+        });
       });
-    });
+      // Default view
+      const bestBtn = document.getElementById('showBestsellersBtn');
+      if (bestBtn) {
+        filterButtons.forEach(b=>b.classList.remove('active-category'));
+        bestBtn.classList.add('active-category');
+        applyFilter('bestsellers');
+      }
+    })();
+
+    // Force login on any menu interactions
+    function promptLogin(e){
+      e.preventDefault();
+      Swal.fire({
+        icon: 'warning',
+        title: 'Not Logged In',
+        text: 'You must log in first to continue.',
+        showCancelButton: true,
+        confirmButtonText: 'Log In',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'login.php';
+        }
+      });
+    }
+
+    // Apply login prompt to menu buttons, cards, and More Products
+    document.querySelectorAll('.add-to-cart-btn').forEach(btn=>btn.addEventListener('click', promptLogin));
+    document.querySelectorAll('#menuCards .menu-card').forEach(card=>card.addEventListener('click', function(e){
+      // Avoid double if inner button handled—still prompt once
+      if (!e.target.closest('button')) { promptLogin(e); }
+    }));
+    const moreBtn = document.getElementById('moreProductsBtn');
+    if (moreBtn) { moreBtn.addEventListener('click', promptLogin); }
 
     // --- Real-time My Orders Modal Refresh ---
     // Place this after your other <script> code, before </body>

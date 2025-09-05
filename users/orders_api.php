@@ -10,6 +10,7 @@
   $stmt = $con->prepare(
     "SELECT 
       o.Order_ID, o.Order_Date, o.order_status, o.Driver_Status, o.Order_Amount,
+      o.order_type, o.Street, o.City, o.Contact_Number,
       p.payment_status,
       oi.Quantity, oi.Product_ID AS Item_Product_ID,
       pr.Product_ID AS Product_ID, pr.Product_Name, pr.Product_Image,
@@ -38,6 +39,7 @@
           'Driver_Status'  => $r['Driver_Status'] ?? null,
           'payment_status' => $r['payment_status'],
           'Order_Amount'   => (float)$r['Order_Amount'],
+          'order_type'     => ($r['order_type']) ?: ((empty($r['Street']) && empty($r['City']) && empty($r['Contact_Number'])) ? 'Pickup' : 'Delivery'),
           'items'          => []
         ];
       }

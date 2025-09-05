@@ -9,38 +9,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
     $password = $_POST['password'];
     $confirm = $_POST['confirm_password'];
 
-    if ($password !== $confirm) {
-        $message = "Passwords do not match!";
-        $sweetAlertConfig = "
-        <script>
-        Swal.fire({
-          icon: 'error',
-          title: 'Registration Failed',
-          text: 'Passwords do not match!',
-          confirmButtonText: 'OK'
-        });
-        </script>
-        ";
+  if ($password !== $confirm) {
+    $message = "Passwords do not match!";
+  } else {
+    $db = new database();
+    $result = $db->registerCustomer($name, $email, $password);
+    if ($result === true) {
+      // Trigger OTP send via AJAX after render
+      $sweetAlertConfig = '<script>window.__POST_SIGNUP_EMAIL__ = ' . json_encode($email) . '; window.__POST_SIGNUP_NAME__ = ' . json_encode($name) . ';</script>';
     } else {
-        $db = new database();
-        $result = $db->registerCustomer($name, $email, $password);
-        if ($result === true) {
-            $sweetAlertConfig = "
-            <script>
-            Swal.fire({
-              icon: 'success',
-              title: 'Registration Successful',
-              text: 'You have successfully registered!',
-              confirmButtonText: 'OK'
-            }).then(()=>{
-              window.location.href = 'login.php?signup=success';
-            });
-            </script>
-            ";
-        } else {
-            $message = $result;
-        }
+      $message = $result;
     }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -94,6 +74,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
       <a href="login.php" class="login-link">Already have an account? Sign In</a>
     </div>
   </section>
+
+  <!-- Verification Modal -->
+  <div class="modal fade" id="verifyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius:14px">
+        <div class="modal-header" style="background:#fff7ef">
+          <h5 class="modal-title">Verify your email</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-1">We sent a 6-digit code to <b id="vm-email"></b>.</p>
+          <div class="mb-3">
+            <input id="vm-code" class="form-control" maxlength="6" inputmode="numeric" placeholder="e.g. 123456" />
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <small id="vm-expire" class="text-muted">Code expires in 5:00</small>
+            <a href="#" id="vm-resend" class="link-danger">Resend</a>
+          </div>
+          <div id="vm-error" class="text-danger mt-2" style="display:none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" id="vm-verify-btn">Verify</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <?= $sweetAlertConfig ?>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -197,9 +206,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
     }
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+    // OTP modal logic
+    const vm = {
+      modal: new bootstrap.Modal(document.getElementById('verifyModal')),
+      emailEl: document.getElementById('vm-email'),
+      codeEl: document.getElementById('vm-code'),
+      expireEl: document.getElementById('vm-expire'),
+      resendEl: document.getElementById('vm-resend'),
+      errorEl: document.getElementById('vm-error'),
+      timerId: null,
+      endAt: null,
+      startCountdown() {
+        this.endAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+        const tick = () => {
+          const left = Math.max(0, this.endAt - Date.now());
+          const m = Math.floor(left/60000);
+          const s = Math.floor((left%60000)/1000).toString().padStart(2,'0');
+          this.expireEl.textContent = `Code expires in ${m}:${s}`;
+          if (left <= 0) clearInterval(this.timerId);
+        };
+        clearInterval(this.timerId);
+        this.timerId = setInterval(tick, 1000);
+        tick();
+      },
+      send(email, name) {
+        this.emailEl.textContent = email;
+        this.codeEl.value = '';
+        this.errorEl.style.display = 'none';
+        this.startCountdown();
+        fetch('send_verification_code.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'email=' + encodeURIComponent(email) + '&name=' + encodeURIComponent(name || '')
+        }).then(r => r.json()).then(data => {
+          if (!data.ok && !data.already) {
+            this.errorEl.textContent = data.error || 'Failed to send code.';
+            this.errorEl.style.display = 'block';
+          }
+        }).catch(() => {
+          this.errorEl.textContent = 'Network error.';
+          this.errorEl.style.display = 'block';
+        });
+      },
+      verify(email) {
+        const code = this.codeEl.value.trim();
+        if (!/^\d{6}$/.test(code)) {
+          this.errorEl.textContent = 'Enter the 6-digit code.';
+          this.errorEl.style.display = 'block';
+          return;
+        }
+        fetch('verify_verification_code.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'email=' + encodeURIComponent(email) + '&code=' + encodeURIComponent(code)
+        }).then(r => r.json()).then(data => {
+          if (data.ok) {
+            this.modal.hide();
+            Swal.fire({ icon:'success', title:'Verified!', text:'Your email is verified. You can log in now.' })
+              .then(()=> window.location.href='login.php');
+          } else {
+            this.errorEl.textContent = 'Invalid or expired code. Try again or resend.';
+            this.errorEl.style.display = 'block';
+          }
+        }).catch(() => {
+          this.errorEl.textContent = 'Network error.';
+          this.errorEl.style.display = 'block';
+        });
+      }
+    };
+
+  // If server set post-signup email, show modal and send code
+  if (window.__POST_SIGNUP_EMAIL__) {
+      vm.modal.show();
+      vm.send(window.__POST_SIGNUP_EMAIL__, window.__POST_SIGNUP_NAME__);
+      document.getElementById('vm-verify-btn').onclick = () => vm.verify(window.__POST_SIGNUP_EMAIL__);
+      vm.resendEl.onclick = (e) => { e.preventDefault(); vm.send(window.__POST_SIGNUP_EMAIL__, window.__POST_SIGNUP_NAME__); };
+    }
   </script>
 
-  <?= $sweetAlertConfig ?>
+  
 
   <?php if (!empty($message) && $message !== "Email already registered!"): ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

@@ -281,11 +281,13 @@ class database{
 
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
-        // Fetch current status
-        $curStmt = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = ? LIMIT 1");
+        // Fetch current status and infer order type
+        $curStmt = $con->prepare("SELECT order_status, Street, City, Contact_Number FROM orders WHERE Order_ID = ? LIMIT 1");
         $curStmt->execute([$order_id]);
-        $current = $curStmt->fetchColumn();
-        if ($current === false) return false;
+        $row = $curStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        $current = $row['order_status'];
+        $isDelivery = !empty($row['Street']) || !empty($row['City']) || !empty($row['Contact_Number']);
 
         $from = strtolower(trim($current));
         $to = strtolower(trim($order_status));
@@ -294,24 +296,34 @@ class database{
         $normalize = function($s){ return ucwords($s); };
 
         // Define allowed transitions
-        $forward = [
-            'pending'    => ['processing', 'cancelled'],
-            'processing' => ['delivered'],
-            'to ship'    => ['to receive'], // if ever used
-            'to receive' => ['delivered'],  // if ever used
-            'delivered'  => [],
-            'cancelled'  => [],
+        // Delivery flow: Pending -> Processing -> Ready to deliver -> On the way -> Delivered
+        $forwardDelivery = [
+            'pending'          => ['processing', 'cancelled'],
+            'processing'       => ['ready to deliver', 'cancelled'],
+            'ready to deliver' => ['on the way', 'cancelled'],
+            'on the way'       => ['delivered'],
+            'delivered'        => [],
+            'cancelled'        => [],
         ];
+        // Pick up flow: Pending -> Processing -> Ready to pick up -> Received
+        $forwardPickup = [
+            'pending'          => ['processing', 'cancelled'],
+            'processing'       => ['ready to pick up', 'cancelled'],
+            'ready to pick up' => ['received', 'cancelled'],
+            'received'         => [],
+            'cancelled'        => [],
+        ];
+        $forward = $isDelivery ? $forwardDelivery : $forwardPickup;
 
         // Already the same
         if ($from === $to) return true;
 
-        // Cancel only from pending
-        if ($to === 'cancelled' && $from !== 'pending') {
+        // Cancel only from non-terminal and non-delivered/received
+        if ($to === 'cancelled' && in_array($from, ['delivered','received','cancelled'], true)) {
             return false;
         }
         // Cancelled/delivered are terminal
-        if (in_array($from, ['cancelled','delivered'], true)) {
+        if (in_array($from, ['cancelled','delivered','received'], true)) {
             return false;
         }
         // Forward progression must be allowed

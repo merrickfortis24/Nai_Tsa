@@ -267,9 +267,10 @@ function createPasswordResetToken($email) {
     // 2.1 Delivery fee (distance-based if lat/lng provided, fallback to flat)
     $delivery_fee = 0.0;
     $distance_km = null;
+    // Ensure variables exist for later binding
+    $lat = isset($data['lat']) ? (float)$data['lat'] : null;
+    $lng = isset($data['lng']) ? (float)$data['lng'] : null;
     if (strcasecmp($orderType, 'Delivery') === 0) {
-        $lat = isset($data['lat']) ? (float)$data['lat'] : null;
-        $lng = isset($data['lng']) ? (float)$data['lng'] : null;
     // Store coordinates (PJ LIZA STORE) — keep in sync with frontend
     $storeLat = 13.929589; $storeLng = 121.09449;
 
@@ -306,20 +307,36 @@ function createPasswordResetToken($email) {
     $total_with_fee = $total + $delivery_fee;
 
     // 3. Insert order
-    // Try to persist fee and distance if columns exist; fallback to minimal insert
-    $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    // Probe whether orders table has Delivery_Fee and Delivery_Distance_Km columns
+    // Build INSERT dynamically based on present columns: order_type, Delivery_Fee, Delivery_Distance_Km
+    $dbOrderType = (strcasecmp($orderType, 'Pick Up') === 0) ? 'Pickup' : 'Delivery';
+    $hasFeeCol = false; $hasDistCol = false; $hasTypeCol = false;
     try {
-        $check = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Fee'");
-        $hasFeeCol = $check && $check->rowCount() > 0;
-        $check2 = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Distance_Km'");
-        $hasDistCol = $check2 && $check2->rowCount() > 0;
-        if ($hasFeeCol && $hasDistCol) {
-            $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status, Delivery_Fee, Delivery_Distance_Km) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        } elseif ($hasFeeCol) {
-            $order_sql = "INSERT INTO orders (Order_Amount, Customer_ID, Street, Barangay, City, Contact_Number, order_status, Delivery_Fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        }
+        $cType = $con->query("SHOW COLUMNS FROM orders LIKE 'order_type'");
+        $hasTypeCol = $cType && $cType->rowCount() > 0;
+        $cFee = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Fee'");
+        $hasFeeCol = $cFee && $cFee->rowCount() > 0;
+        $cDist = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Distance_Km'");
+        $hasDistCol = $cDist && $cDist->rowCount() > 0;
     } catch (Exception $e) { /* ignore schema probe errors */ }
+
+    $columns = ['Order_Amount','Customer_ID','Street','Barangay','City','Contact_Number'];
+    if ($hasTypeCol) $columns[] = 'order_type';
+    $columns[] = 'order_status';
+    if ($hasFeeCol) $columns[] = 'Delivery_Fee';
+    if ($hasDistCol) $columns[] = 'Delivery_Distance_Km';
+    // Optional: store customer lat/lng if schema has columns
+    $hasCustLatCol = false; $hasCustLngCol = false;
+    try {
+        $cLat = $con->query("SHOW COLUMNS FROM orders LIKE 'customer_lat'");
+        $hasCustLatCol = $cLat && $cLat->rowCount() > 0;
+        $cLng = $con->query("SHOW COLUMNS FROM orders LIKE 'customer_lng'");
+        $hasCustLngCol = $cLng && $cLng->rowCount() > 0;
+    } catch (Exception $e) { /* ignore */ }
+    if ($hasCustLatCol) $columns[] = 'customer_lat';
+    if ($hasCustLngCol) $columns[] = 'customer_lng';
+
+    $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+    $order_sql = 'INSERT INTO orders (' . implode(', ', $columns) . ') VALUES (' . $placeholders . ')';
 
     $order_stmt = $con->prepare($order_sql);
     $bindIdx = 1;
@@ -329,13 +346,21 @@ function createPasswordResetToken($email) {
     $order_stmt->bindValue($bindIdx++, $barangay, $barangay === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
     $order_stmt->bindValue($bindIdx++, $city, $city === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
     $order_stmt->bindValue($bindIdx++, $contact, $contact === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    if ($hasTypeCol) {
+        $order_stmt->bindValue($bindIdx++, $dbOrderType);
+    }
     $order_stmt->bindValue($bindIdx++, 'Pending');
-    // Optional fee/distance binds when present in SQL
-    if (strpos($order_sql, 'Delivery_Fee') !== false) {
+    if ($hasFeeCol) {
         $order_stmt->bindValue($bindIdx++, $delivery_fee);
-        if (strpos($order_sql, 'Delivery_Distance_Km') !== false) {
-            $order_stmt->bindValue($bindIdx++, $distance_km);
-        }
+    }
+    if ($hasDistCol) {
+        $order_stmt->bindValue($bindIdx++, $distance_km);
+    }
+    if ($hasCustLatCol) {
+        $order_stmt->bindValue($bindIdx++, $lat, $lat === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    }
+    if ($hasCustLngCol) {
+        $order_stmt->bindValue($bindIdx++, $lng, $lng === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
     }
     $order_success = $order_stmt->execute();
     $order_id = $con->lastInsertId();

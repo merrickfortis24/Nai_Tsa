@@ -11,8 +11,10 @@ class database{
         );
     }
 
+    // (Email verification columns ensured manually via SQL migration)
+
     function addCustomer($name, $email, $password) {
-        $con = $this->opencon();
+    $con = $this->opencon();
         $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, ?, ?)");
         $hashed = password_hash($password, PASSWORD_BCRYPT);
         return $stmt->execute([$name, $email, $hashed]);
@@ -78,5 +80,73 @@ class database{
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         return $products;
+    }
+
+    // Generate and store a verification token for a customer email
+    public function issueVerificationToken($email) {
+        $con = $this->opencon();
+        $token = bin2hex(random_bytes(32));
+        $stmt = $con->prepare("UPDATE customer SET verification_token = ?, verification_sent_at = NOW(), is_verified = 0 WHERE Customer_Email = ?");
+        $stmt->execute([$token, $email]);
+        if ($stmt->rowCount() === 0) {
+            return false;
+        }
+        return $token;
+    }
+
+    // Verify account by token
+    public function verifyByToken($token) {
+        $con = $this->opencon();
+        // Find customer by token
+        $stmt = $con->prepare("SELECT Customer_ID FROM customer WHERE verification_token = ?");
+        $stmt->execute([$token]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        $cid = (int)$row['Customer_ID'];
+        // Mark verified and clear token
+        $upd = $con->prepare("UPDATE customer SET is_verified = 1, verified_at = NOW(), verification_token = NULL WHERE Customer_ID = ?");
+        $upd->execute([$cid]);
+        return $upd->rowCount() > 0;
+    }
+
+    // Issue a 6-digit OTP for email verification; stores a hash in verification_token and timestamp in verification_sent_at
+    public function issueEmailOtp(string $email, int $digits = 6): array|false {
+        $con = $this->opencon();
+        // Generate numeric code
+        $min = (int) pow(10, $digits - 1);
+        $max = (int) pow(10, $digits) - 1;
+        $code = (string) random_int($min, $max);
+        $hash = password_hash($code, PASSWORD_DEFAULT);
+        $stmt = $con->prepare("UPDATE customer SET verification_token = ?, verification_sent_at = NOW(), is_verified = 0 WHERE Customer_Email = ?");
+        $stmt->execute([$hash, $email]);
+        if ($stmt->rowCount() === 0) {
+            return false;
+        }
+        return ['code' => $code, 'digits' => $digits];
+    }
+
+    // Verify a 6-digit OTP for the given email with TTL seconds (default 5 minutes)
+    public function verifyEmailOtp(string $email, string $code, int $ttlSeconds = 300): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT Customer_ID, verification_token, verification_sent_at, is_verified FROM customer WHERE Customer_Email = ?");
+        $stmt->execute([$email]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return false;
+        if ((int)($row['is_verified'] ?? 0) === 1) return true; // already verified
+        $hash = $row['verification_token'] ?? null;
+        $sentAt = $row['verification_sent_at'] ?? null;
+        if (!$hash || !$sentAt) return false;
+        // Check expiry
+        $sentTs = strtotime($sentAt);
+        if ($sentTs === false || ($sentTs + $ttlSeconds) < time()) {
+            return false; // expired
+        }
+        if (!password_verify($code, $hash)) {
+            return false;
+        }
+        // Mark verified and clear token
+        $upd = $con->prepare("UPDATE customer SET is_verified = 1, verified_at = NOW(), verification_token = NULL WHERE Customer_ID = ?");
+        $upd->execute([(int)$row['Customer_ID']]);
+        return $upd->rowCount() > 0;
     }
 }

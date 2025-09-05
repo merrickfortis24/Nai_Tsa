@@ -3,6 +3,7 @@ session_start();
 $login_success = false;
 $email_not_found = false;
 $wrong_password = false;
+$unverified = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
@@ -21,23 +22,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hashed = $account_type === 'admin' ? $user['Admin_Password'] : $user['Customer_Password'];
         if (!password_verify($password, $hashed)) {
             $wrong_password = true;
-        } else {
+    } else {
             $login_success = true;
             if ($account_type === 'admin') {
                 $_SESSION['admin_id'] = $user['Admin_ID'];
                 $_SESSION['admin_name'] = $user['Admin_Name'];
                 $_SESSION['admin_role'] = $user['Admin_Role'];
             } else {
+        // Gate unverified customers
+        if ((int)($user['is_verified'] ?? 0) !== 1) {
+          $unverified = true;
+          $login_success = false;
+        } else {
                 $_SESSION['customer_name'] = $user['Customer_Name'];
                 $_SESSION['customer_email'] = $user['Customer_Email'];
                 $_SESSION['customer_id'] = $user['Customer_ID'];
-                if ($remember) {
-                    setcookie('remember_email', $email, time() + (86400 * 30), "/");
-                    setcookie('remember_pass', $password, time() + (86400 * 30), "/");
-                } else {
-                    setcookie('remember_email', '', time() - 3600, "/");
-                    setcookie('remember_pass', '', time() - 3600, "/");
-                }
+        if ($remember) {
+          // Only remember the email; never store plaintext passwords in cookies.
+          setcookie('remember_email', $email, time() + (86400 * 30), "/");
+        } else {
+          setcookie('remember_email', '', time() - 3600, "/");
+        }
+        }
             }
         }
     }
@@ -79,8 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             value="<?php if(isset($_COOKIE['remember_email'])) echo htmlspecialchars($_COOKIE['remember_email']); ?>">
         </div>
         <div class="mb-3 position-relative">
-          <input type="password" name="password" class="form-control" id="passwordInput" placeholder="Password" required minlength="6"
-            value="<?php if(isset($_COOKIE['remember_pass'])) echo htmlspecialchars($_COOKIE['remember_pass']); ?>">
+          <input type="password" name="password" class="form-control" id="passwordInput" placeholder="Password" required minlength="6">
           <span class="toggle-password" onclick="togglePassword()" style="position:absolute;top:50%;right:1rem;transform:translateY(-50%);cursor:pointer;">
             <i id="eyeIcon" class="bi bi-eye" style="font-size:1.3em;color:gray;"></i>
           </span>
@@ -150,6 +155,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         title: 'Incorrect Password',
         text: 'The password you entered is incorrect.',
         confirmButtonColor: '#FFB27A'
+      });
+    <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $unverified): ?>
+      Swal.fire({
+        icon: 'info',
+        title: 'Verify your email',
+        html: `Your account isn't verified yet.<br><small>We can resend the verification link to <b><?php echo htmlspecialchars($email ?? ''); ?></b></small>`,
+        showCancelButton: true,
+        confirmButtonText: 'Resend Link',
+        cancelButtonText: 'Close'
+      }).then((res) => {
+        if (res.isConfirmed) {
+          fetch('resend_verification.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'email=' + encodeURIComponent('<?php echo htmlspecialchars($email ?? '', ENT_QUOTES); ?>')
+          }).then(r => r.json()).then(data => {
+            if (data.ok) {
+              Swal.fire({ icon: 'success', title: 'Sent', text: 'Check your inbox for the new link.' });
+            } else {
+              Swal.fire({ icon: 'error', title: 'Failed', text: data.error || 'Could not send email.' });
+            }
+          }).catch(() => {
+            Swal.fire({ icon: 'error', title: 'Failed', text: 'Network error.' });
+          });
+        }
       });
     <?php endif; ?>
 

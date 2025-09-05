@@ -9,8 +9,25 @@ require_once('classes/database.php');
 
 $db = new database();
 
-// Fetch all orders
+// Handle updates first (PRG pattern), then fetch fresh data
 $error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        if (isset($_POST['order_status'], $_POST['order_id'])) {
+            $db->updateOrderStatus((int)$_POST['order_id'], $_POST['order_status']);
+        }
+        if (isset($_POST['payment_status'], $_POST['order_id'])) {
+            $db->updatePaymentStatusByOrder((int)$_POST['order_id'], $_POST['payment_status']);
+        }
+    } catch (Throwable $e) {
+        $error = 'Update failed: ' . $e->getMessage();
+    }
+    // Redirect to avoid double-submit and ensure UI reflects latest values
+    header('Location: orders.php' . ($error ? ('?msg=' . urlencode($error)) : '?updated=1'));
+    exit();
+}
+
+// Fetch all orders after handling any updates
 try {
     $orders = $db->fetchOrders();
 } catch (PDOException $e) {
@@ -19,7 +36,13 @@ try {
 
 // Derived display status helper
 function admin_display_status($row) {
-    if (isset($row['Driver_Status']) && in_array($row['Driver_Status'], ['on_the_way','picked_up'], true)) {
+    // Derive order type: delivery if has address/contact
+    $isDelivery = !empty($row['Street']) || !empty($row['City']) || !empty($row['Contact_Number']);
+    // Driver statuses 'on_the_way'/'picked_up' map to Out for delivery
+    if ($isDelivery && (
+        (isset($row['order_status']) && $row['order_status'] === 'On the way') ||
+        (isset($row['Driver_Status']) && in_array($row['Driver_Status'], ['on_the_way','picked_up'], true))
+    )) {
         return 'Out for delivery';
     }
     if (!empty($row['order_status']) && $row['order_status'] === 'Processing') {
@@ -28,16 +51,7 @@ function admin_display_status($row) {
     return $row['order_status'] ?? 'Pending';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['order_status'], $_POST['order_id'])) {
-        $db->updateOrderStatus($_POST['order_id'], $_POST['order_status']);
-    }
-
-    if (isset($_POST['payment_status'], $_POST['order_id'])) {
-        $db->updatePaymentStatusByOrder($_POST['order_id'], $_POST['payment_status']);
-    }
-    // ...existing code...
-}
+// (POST handling moved above, before fetching orders)
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -132,10 +146,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     style="min-width:150px;"
                                                 >
                                                     <?php
-                                                    // Allowed options shown; backend still enforces rules
-                                                    $options = ['Pending', 'Processing', 'Delivered', 'Cancelled'];
+                                                    $isDelivery = !empty($order['Street']) || !empty($order['City']) || !empty($order['Contact_Number']);
+                                                    // Show different flows: Pick Up vs Delivery
+                                                    if ($isDelivery) {
+                                                        $options = ['Pending', 'Processing', 'Ready to deliver', 'On the way', 'Delivered', 'Cancelled'];
+                                                    } else {
+                                                        $options = ['Pending', 'Processing', 'Ready to pick up', 'Received', 'Cancelled'];
+                                                    }
                                                     foreach ($options as $opt) {
-                                                        $selected = $order['order_status'] === $opt ? 'selected' : '';
+                                                        $selected = ($order['order_status'] === $opt) ? 'selected' : '';
                                                         echo "<option value=\"$opt\" $selected>$opt</option>";
                                                     }
                                                     ?>
