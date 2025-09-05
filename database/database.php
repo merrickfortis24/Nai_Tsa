@@ -1,14 +1,26 @@
 <?php
  
-class database{
- 
-    function opencon() {
- 
-        return new PDO(
-            'mysql:host=localhost;dbname=naitsa',
-            'root',
-            ''
-        );
+class database {
+    // Hostinger DB credentials
+    private string $host = 'localhost';                 // from hPanel
+    private string $db   = 'u677397674_nai';          // MySQL Database
+    private string $user = 'u677397674_use';          // MySQL User
+    private string $pass = 'Naitsa@123';     // set in hPanel
+
+    private static ?PDO $pdo = null;
+
+    public function opencon(): PDO {
+        if (self::$pdo instanceof PDO) return self::$pdo;
+
+        $dsn = "mysql:host={$this->host};dbname={$this->db};charset=utf8mb4";
+        $opts = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,   // real prepares
+            PDO::ATTR_PERSISTENT         => true,
+        ];
+        self::$pdo = new PDO($dsn, $this->user, $this->pass, $opts);
+        return self::$pdo;
     }
 
     // (Email verification columns ensured manually via SQL migration)
