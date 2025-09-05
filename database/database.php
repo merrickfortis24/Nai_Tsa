@@ -3,9 +3,9 @@
 class database {
     // Hostinger DB credentials
     private string $host = 'localhost';                 // from hPanel
-    private string $db   = 'u677397674_nai';          // MySQL Database
-    private string $user = 'u677397674_use';          // MySQL User
-    private string $pass = 'Naitsa@123';     // set in hPanel
+    private string $db   = 'u677397674_nai';            // MySQL Database
+    private string $user = 'u677397674_use';            // MySQL User
+    private string $pass = 'Naitsa@123';                // set in hPanel
 
     private static ?PDO $pdo = null;
 
@@ -17,16 +17,21 @@ class database {
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,   // real prepares
-            PDO::ATTR_PERSISTENT         => true,
+            PDO::ATTR_PERSISTENT         => false,   // safer on shared hosting
         ];
-        self::$pdo = new PDO($dsn, $this->user, $this->pass, $opts);
+        try {
+            self::$pdo = new PDO($dsn, $this->user, $this->pass, $opts);
+        } catch (PDOException $e) {
+            error_log('DB connect error: ' . $e->getMessage());
+            throw new RuntimeException('Database connection failed.');
+        }
         return self::$pdo;
     }
 
     // (Email verification columns ensured manually via SQL migration)
 
     function addCustomer($name, $email, $password) {
-    $con = $this->opencon();
+        $con = $this->opencon();
         $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, ?, ?)");
         $hashed = password_hash($password, PASSWORD_BCRYPT);
         return $stmt->execute([$name, $email, $hashed]);
@@ -62,11 +67,13 @@ class database {
         $stmt->execute([$email]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-	
-	public function getRecommendedProducts($customer_id, $limit = 4) {
+    
+    public function getRecommendedProducts($customer_id, $limit = 4) {
         $con = $this->opencon();
-        // Example: Recommend products the user ordered most, fallback to top sellers
-        $stmt = $con->prepare("
+        // Native MySQL prepares can't bind LIMIT with emulation off. Cast and inline.
+        $limit = max(1, (int)$limit);
+
+        $sql = "
             SELECT p.*
             FROM product p
             JOIN order_item oi ON p.Product_ID = oi.Product_ID
@@ -74,21 +81,22 @@ class database {
             WHERE o.Customer_ID = ?
             GROUP BY p.Product_ID
             ORDER BY COUNT(*) DESC
-            LIMIT ?
-        ");
-        $stmt->execute([$customer_id, $limit]);
+            LIMIT $limit
+        ";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([(int)$customer_id]);
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (!$products) {
-            // Fallback: top sellers
-            $stmt = $con->prepare("
+            $sql = "
                 SELECT p.*
                 FROM product p
                 JOIN order_item oi ON p.Product_ID = oi.Product_ID
                 GROUP BY p.Product_ID
                 ORDER BY COUNT(*) DESC
-                LIMIT ?
-            ");
-            $stmt->execute([$limit]);
+                LIMIT $limit
+            ";
+            $stmt = $con->prepare($sql);
+            $stmt->execute();
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         return $products;
