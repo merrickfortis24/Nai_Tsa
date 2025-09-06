@@ -219,6 +219,28 @@ $all_products = $db->fetchAllProducts();
 </div>
 
   <!-- Cart Floating Action Button -->
+<?php 
+  $totalOrders = 0; $pendingOrders = 0; 
+  if (isset($orders_by_status) && is_array($orders_by_status)) {
+      $totalOrders = array_sum(array_map('count', $orders_by_status));
+      $pendingOrders = (int)(($orders_by_status['To Ship'] ?? []) ? count($orders_by_status['To Ship']) : 0) + (int)(($orders_by_status['To Receive'] ?? []) ? count($orders_by_status['To Receive']) : 0);
+  }
+?>
+<!-- Quick Orders Status Floating Button -->
+<a href="#" id="ordersFab" class="cart-fab position-fixed" title="My Orders" aria-label="My Orders" data-bs-toggle="modal" data-bs-target="#myOrdersModal" style="bottom:108px;right:32px;background:var(--soft-orange);display:flex;align-items:center;justify-content:center;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-list-check" viewBox="0 0 16 16" style="display:block;">
+    <path fill-rule="evenodd" d="M10.854 6.146a.5.5 0 0 0-.708.708L11.293 8l-.647.646a.5.5 0 0 0 .708.708l.646-.647.647.647a.5.5 0 0 0 .708-.708L12.707 8l.647-.646a.5.5 0 0 0-.708-.708L12 7.293l-.646-.647z"/>
+    <path d="M4.5 5.5a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5zm0 3a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5zm0 3a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5z"/>
+    <path d="M2.5 6.5A.5.5 0 1 1 2.5 7a.5.5 0 0 1 0-1zm0 3A.5.5 0 1 1 2.5 10a.5.5 0 0 1 0-1zm0 3A.5.5 0 1 1 2.5 13a.5.5 0 0 1 0-1z"/>
+  </svg>
+  <?php if ($pendingOrders > 0): ?>
+  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
+    <?= $pendingOrders ?>
+  </span>
+  <?php endif; ?>
+  <span class="visually-hidden">Open My Orders (<?= $totalOrders ?> total)</span>
+</a>
+
 <a href="#" id="cartFab" class="cart-fab position-fixed" title="View Cart" aria-label="Cart" data-bs-toggle="modal" data-bs-target="#cartModal" style="bottom:32px;right:32px;">
   <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-cart" viewBox="0 0 16 16" style="display:block;">
     <path d="M0 1.5A.5.5 0 0 1 .5 1h1a.5.5 0 0 1 .485.379L2.89 5H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 14H4a.5.5 0 0 1-.491-.408L1.01 2H.5a.5.5 0 0 1-.5-.5zm3.14 4l1.25 6h7.22l1.25-6H3.14zM5.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm7 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>
