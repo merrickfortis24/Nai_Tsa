@@ -34,6 +34,23 @@ try {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <style>
+    /* === Menu Card Layout Enhancements === */
+    #menuCards.menu-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:32px; align-items:stretch; }
+    .menu-card { display:flex; flex-direction:column; border-radius:24px; background:rgba(255,255,255,0.85); backdrop-filter:blur(6px); height:100%; box-shadow:0 6px 18px rgba(0,0,0,0.05); overflow:hidden; }
+    .menu-card-image { height:220px; border-radius:24px 24px 0 0; overflow:hidden; background:#f2f2f2; display:flex; align-items:center; justify-content:center; }
+    .menu-card-image img { width:100%; height:100%; object-fit:cover; display:block; }
+    .menu-card-image.placeholder { background:linear-gradient(135deg,#ffe5d2,#ffffff); }
+    .menu-card-image.placeholder img { width:140px; height:auto; object-fit:contain; opacity:.55; }
+    .menu-card-content { padding:1rem 1.1rem 0.75rem; flex:1 1 auto; display:flex; flex-direction:column; }
+    .menu-card-title { font-size:1.05rem; margin:0 0 .35rem; }
+    .menu-card-description { font-size:0.9rem; line-height:1.35rem; margin:0 0 .75rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-height:4.05rem; }
+    .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
+    .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
+    .add-to-cart-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:.55rem; font-weight:600; }
+    .menu-card-price { color:#c97234; font-weight:600; font-size:.9rem; }
+    @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
+  </style>
 </head>
 <body>
   <!-- Navbar -->
@@ -158,9 +175,8 @@ Open daily from 10AM to midnight..</p>
               // allergens removed from public view
             ?>
             <div class="menu-card" data-category="<?php echo $cat; ?>" data-product-id="<?php echo $pid; ?>" data-bestseller="<?php echo $isBest ? '1' : '0'; ?>">
-              <div class="menu-card-image">
+              <div class="menu-card-image <?php echo empty($p['Product_Image']) ? 'placeholder' : ''; ?>">
                 <img src="<?php echo htmlspecialchars($img); ?>" alt="<?php echo $name; ?>">
-                
               </div>
               <div class="menu-card-content">
                 <div class="menu-card-header">
