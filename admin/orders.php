@@ -117,20 +117,23 @@ function admin_display_status($row) {
                 <div class="card mt-3 shadow-sm">
                     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
                         <span class="fw-semibold"><i class="bi bi-bag-check me-1"></i> Orders List</span>
-                        <form class="d-flex gap-2 flex-wrap align-items-center" method="get" action="orders.php" style="margin-bottom:0;">
-                            <input type="text" class="form-control" name="search" placeholder="Search customer..." value="<?= htmlspecialchars($search) ?>" style="max-width:180px;">
-                            <select class="form-select" name="status">
+                        <form method="get" action="orders.php" class="d-flex align-items-center gap-2 flex-wrap mb-0">
+                            <input type="text" class="form-control form-control-sm" name="search" placeholder="Search customer..." value="<?= htmlspecialchars($search) ?>" style="max-width:180px;" />
+                            <select class="form-select form-select-sm" name="status" onchange="this.form.page && (this.form.page.value=1); this.form.submit();">
                                 <option value="">All Status</option>
                                 <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
                                     <option value="<?= $s ?>" <?= $statusFilter===$s?'selected':'' ?>><?= $s ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <select class="form-select" name="payment">
+                            <select class="form-select form-select-sm" name="payment" onchange="this.form.page && (this.form.page.value=1); this.form.submit();">
                                 <option value="">All Payments</option>
                                 <option value="Paid" <?= $paymentFilter==='Paid'?'selected':'' ?>>Paid</option>
                                 <option value="Unpaid" <?= $paymentFilter==='Unpaid'?'selected':'' ?>>Unpaid</option>
                             </select>
-                            <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+                            <?php if (isset($_GET['page'])): ?>
+                                <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
+                            <?php endif; ?>
+                            <button class="btn btn-sm btn-outline-primary" type="submit" title="Search by customer"><i class="bi bi-search"></i></button>
                         </form>
                     </div>
                     <div class="card-body">
