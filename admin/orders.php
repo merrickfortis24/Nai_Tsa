@@ -7,10 +7,17 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once('classes/database.php');
 
-$db = new database();
 
-// Handle updates first (PRG pattern), then fetch fresh data
+$db = new database();
 $error = '';
+// --- Backend: Filtering, Search, Pagination ---
+$search = trim($_GET['search'] ?? '');
+$statusFilter = $_GET['status'] ?? '';
+$paymentFilter = $_GET['payment'] ?? '';
+$perPage = 10;
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (isset($_POST['order_status'], $_POST['order_id'])) {
@@ -22,15 +29,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
         $error = 'Update failed: ' . $e->getMessage();
     }
-    // Redirect to avoid double-submit and ensure UI reflects latest values
     header('Location: orders.php' . ($error ? ('?msg=' . urlencode($error)) : '?updated=1'));
     exit();
 }
 
-// Fetch all orders after handling any updates
+// Fetch and filter orders
 try {
-    $orders = $db->fetchOrders();
+    $allOrders = $db->fetchOrders();
+    // Filter by search (customer name)
+    if ($search) {
+        $allOrders = array_filter($allOrders, function($o) use ($db, $search) {
+            $name = strtolower($db->getCustomerNameById($o['Customer_ID']));
+            return strpos($name, strtolower($search)) !== false;
+        });
+    }
+    // Filter by status
+    if ($statusFilter) {
+        $allOrders = array_filter($allOrders, function($o) use ($statusFilter) {
+            return strtolower($o['order_status']) === strtolower($statusFilter);
+        });
+    }
+    // Filter by payment
+    if ($paymentFilter) {
+        $allOrders = array_filter($allOrders, function($o) use ($paymentFilter) {
+            return strtolower($o['payment_status'] ?? 'Unpaid') === strtolower($paymentFilter);
+        });
+    }
+    $totalOrders = count($allOrders);
+    $orders = array_slice(array_values($allOrders), $offset, $perPage);
+    $totalPages = max(1, ceil($totalOrders / $perPage));
 } catch (PDOException $e) {
+    $orders = [];
     $error = "Database Error: " . $e->getMessage();
 }
 
@@ -85,57 +114,73 @@ function admin_display_status($row) {
                         <i class="bi bi-list" style="font-size:1.7rem;"></i>
                     </button>
                 </div>
-                <div class="card mt-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Orders List</span>
+                <div class="card mt-3 shadow-sm">
+                    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                        <span class="fw-semibold"><i class="bi bi-bag-check me-1"></i> Orders List</span>
+                        <form class="d-flex gap-2 flex-wrap align-items-center" method="get" action="orders.php" style="margin-bottom:0;">
+                            <input type="text" class="form-control form-control-sm" name="search" placeholder="Search customer..." value="<?= htmlspecialchars($search) ?>" style="max-width:180px;">
+                            <select class="form-select form-select-sm" name="status">
+                                <option value="">All Status</option>
+                                <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
+                                    <option value="<?= $s ?>" <?= $statusFilter===$s?'selected':'' ?>><?= $s ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select class="form-select form-select-sm" name="payment">
+                                <option value="">All Payments</option>
+                                <option value="Paid" <?= $paymentFilter==='Paid'?'selected':'' ?>>Paid</option>
+                                <option value="Unpaid" <?= $paymentFilter==='Unpaid'?'selected':'' ?>>Unpaid</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+                        </form>
                     </div>
                     <div class="card-body">
                         <?php if (!empty($error)): ?>
                             <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
                         <?php endif; ?>
                         <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
                                     <tr>
-                                        <!-- <th>Order ID</th> --> <!-- Removed Order ID column -->
-                                        <th>Customer Name</th>
+                                        <th>Customer</th>
                                         <th>Date</th>
                                         <th>Total</th>
                                         <th>Street</th>
                                         <th>Barangay</th>
                                         <th>City</th>
-                                        <th>Contact Number</th>
+                                        <th>Contact</th>
                                         <th>Status</th>
                                         <th>Order Status</th>
-                                        <th>Payment Status</th>
+                                        <th>Payment</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($orders as $order): ?>
                                     <tr>
-                                        <!-- Customer Name -->
                                         <td>
-                                            <?= htmlspecialchars($db->getCustomerNameById($order['Customer_ID'])) ?>
+                                            <span class="fw-semibold"><i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($db->getCustomerNameById($order['Customer_ID'])) ?></span>
                                         </td>
-                                        <!-- Order Date -->
-                                        <td><?= date('F j, Y g:i A', strtotime($order['Order_Date'])) ?></td>
-                                        <!-- Total -->
-                                        <td>$<?= number_format($order['Order_Amount'], 2) ?></td>
-                                        <!-- Address and Contact -->
+                                        <td><span class="text-muted small"><i class="bi bi-calendar-event me-1"></i><?= date('M j, Y g:i A', strtotime($order['Order_Date'])) ?></span></td>
+                                        <td><span class="fw-bold text-primary">₱<?= number_format($order['Order_Amount'], 2) ?></span></td>
                                         <td><?= htmlspecialchars($order['Street']) ?></td>
                                         <td><?= htmlspecialchars($order['Barangay']) ?></td>
                                         <td><?= htmlspecialchars($order['City']) ?></td>
                                         <td><?= htmlspecialchars($order['Contact_Number']) ?></td>
-                                        <!-- Derived Display Status -->
-                                        <td><?= htmlspecialchars(admin_display_status($order)) ?></td>
-                                        <!-- Order Status (editable) -->
+                                        <td>
+                                            <?php $disp = admin_display_status($order); ?>
+                                            <span class="badge bg-<?=
+                                                $disp==='Out for delivery'?'primary':
+                                                ($disp==='Preparing'?'info':
+                                                ($disp==='Delivered'?'success':
+                                                ($disp==='Cancelled'?'danger':'secondary')))
+                                            ?>"><?= htmlspecialchars($disp) ?></span>
+                                        </td>
                                         <td>
                                             <form method="post" action="orders.php" style="display:inline;">
                                                 <input type="hidden" name="order_id" value="<?= $order['Order_ID'] ?>">
                                                 <select
                                                     name="order_status"
-                                                    class="form-select order-status-select
+                                                    class="form-select form-select-sm order-status-select
                                                         <?php
                                                             if ($order['order_status'] === 'Pending') echo ' bg-warning text-dark';
                                                             elseif ($order['order_status'] === 'Processing') echo ' bg-info text-dark';
@@ -143,11 +188,10 @@ function admin_display_status($row) {
                                                             elseif ($order['order_status'] === 'Cancelled') echo ' bg-danger text-white';
                                                         ?>"
                                                     onchange="this.form.submit()"
-                                                    style="min-width:150px;"
+                                                    style="min-width:120px;"
                                                 >
                                                     <?php
                                                     $isDelivery = !empty($order['Street']) || !empty($order['City']) || !empty($order['Contact_Number']);
-                                                    // Show different flows: Pick Up vs Delivery
                                                     if ($isDelivery) {
                                                         $options = ['Pending', 'Processing', 'Ready to deliver', 'On the way', 'Delivered', 'Cancelled'];
                                                     } else {
@@ -161,15 +205,13 @@ function admin_display_status($row) {
                                                 </select>
                                             </form>
                                         </td>
-                                        <!-- Payment Status -->
                                         <td>
-                                            <span class="badge <?= ($order['payment_status'] ?? '') === 'Paid' ? 'bg-success' : 'bg-secondary' ?>">
-                                                <?= htmlspecialchars($order['payment_status'] ?? 'Unpaid') ?>
+                                            <span class="badge px-2 py-1 <?= ($order['payment_status'] ?? '') === 'Paid' ? 'bg-success' : 'bg-secondary' ?>">
+                                                <i class="bi bi-cash-coin"></i> <?= htmlspecialchars($order['payment_status'] ?? 'Unpaid') ?>
                                             </span>
                                         </td>
-                                        <!-- Actions -->
                                         <td>
-                                            <a href="#" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>">
+                                            <a href="#" class="btn btn-sm btn-outline-info px-2 py-1" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>" title="View items">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                         </td>
@@ -178,17 +220,19 @@ function admin_display_status($row) {
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Pagination (optional) -->
+                        <!-- Pagination -->
                         <nav>
                             <ul class="pagination justify-content-end">
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                <li class="page-item <?= $page==1?'disabled':'' ?>">
+                                    <a class="page-link" href="?<?= http_build_query(array_merge($_GET,["page"=>$page-1])) ?>">Previous</a>
                                 </li>
-                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                <li class="page-item">
-                                    <a class="page-link" href="#">Next</a>
+                                <?php for($i=1;$i<=$totalPages;$i++): ?>
+                                <li class="page-item <?= $page==$i?'active':'' ?>">
+                                    <a class="page-link" href="?<?= http_build_query(array_merge($_GET,["page"=>$i])) ?>"><?= $i ?></a>
+                                </li>
+                                <?php endfor; ?>
+                                <li class="page-item <?= $page==$totalPages?'disabled':'' ?>">
+                                    <a class="page-link" href="?<?= http_build_query(array_merge($_GET,["page"=>$page+1])) ?>">Next</a>
                                 </li>
                             </ul>
                         </nav>
