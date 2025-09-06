@@ -90,6 +90,36 @@ try {
     $mail->AltBody = "Name: {$name}\nEmail: {$email}\nMessage:\n{$message}\nIP: {$ip}";
 
     if (!$mail->send()) { throw new Exception($mail->ErrorInfo); }
+
+    // Send acknowledgment to the user (separate mail instance for clean headers)
+    try {
+        $ack = new PHPMailer(true);
+        if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; } // keep quiet
+        $ack->isSMTP();
+        $ack->Host       = $host;
+        $ack->SMTPAuth   = true;
+        $ack->Username   = $user;
+        $ack->Password   = $pass;
+        if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
+        else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
+        $ack->CharSet = 'UTF-8';
+
+        $ack->setFrom($from, $fromName);
+        $ack->addAddress($email, $name);
+        $ack->Subject = 'Thank you for contacting ' . $fromName;
+        $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
+            . "<p>Thank you for your message. We've received it and will get back to you shortly.</p>"
+            . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(mb_strimwidth($message,0,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
+            . "<p style='font-size:12px;color:#888'>This is an automated acknowledgement. Please do not reply directly; use the website contact form if needed.</p>";
+        $ack->isHTML(true);
+        $ack->Body    = $ackBody;
+        $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . mb_strimwidth($message,0,500,'...');
+        // Ignore failure of acknowledgment to user (no throw)
+        $ack->send();
+    } catch (Exception $e2) {
+        error_log('Ack mail failed: ' . $e2->getMessage());
+    }
+
     header('Location: index.php?contact=success#contact');
 } catch (Exception $e) {
     error_log('Contact form mail error: ' . $e->getMessage());
