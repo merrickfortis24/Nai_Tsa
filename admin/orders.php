@@ -162,13 +162,13 @@ function admin_display_status($row) {
                                 <tbody>
                                     <?php foreach ($orders as $order): ?>
                                     <?php 
-                                        // Preload items for fallback (acceptable for small page size)
-                                        try { 
-                                            $preItems = $db->fetchOrderItems($order['Order_ID']); 
-                                        } catch (Throwable $e) { 
-                                            $preItems = []; 
+                                        // Preload items (small page size only)
+                                        try {
+                                            $preItems = $db->fetchOrderItems($order['Order_ID']); // ensure this method exists
+                                        } catch (Throwable $e) {
+                                            $preItems = [];
                                         }
-                                        $preItemsJson = htmlspecialchars(json_encode($preItems), ENT_QUOTES, 'UTF-8');
+                                        $preItemsB64 = base64_encode(json_encode($preItems)); // safe for attribute
                                     ?>
                                     <tr>
                                         <td>
@@ -232,7 +232,7 @@ function admin_display_status($row) {
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#orderItemsModal"
                                                 data-order-id="<?= $order['Order_ID'] ?>"
-                                                data-items='<?= $preItemsJson ?>'>
+                                                data-items-b64="<?= $preItemsB64 ?>">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </td>
@@ -297,9 +297,11 @@ function admin_display_status($row) {
   const errEl   = document.getElementById('orderItemsError');
   const sumEl   = document.getElementById('orderItemsSummary');
 
+  function log(){ console.log('[OrderItems]', ...arguments); }
+
   function renderItems(items){
       if(!Array.isArray(items) || !items.length){
-          listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>';
+          listEl.innerHTML = '<li class="text-muted">No items found.</li>';
           return 0;
       }
       listEl.innerHTML = items.map(it => `
@@ -313,50 +315,52 @@ function admin_display_status($row) {
   }
 
   function reset(orderId){
-      titleEl.textContent = 'Order #'+orderId+' Items';
+      titleEl.textContent = 'Order #' + orderId + ' Items';
       listEl.innerHTML = '';
       sumEl.textContent = '';
       errEl.style.display='none'; errEl.textContent='';
       loadEl.style.display='block';
   }
 
-  modalEl.addEventListener('show.bs.modal', function (ev){
+  modalEl.addEventListener('show.bs.modal', function(ev){
       const btn = ev.relatedTarget;
       if(!btn) return;
       const orderId = btn.getAttribute('data-order-id');
-      const preloadRaw = btn.getAttribute('data-items');
       reset(orderId);
 
-      // Preload (cached)
-      if(preloadRaw){
+      // Preloaded (Base64)
+      const b64 = btn.getAttribute('data-items-b64');
+      if(b64){
           try {
-              const pre = JSON.parse(preloadRaw);
+              const pre = JSON.parse(atob(b64));
+              log('Preloaded items', pre);
               if(Array.isArray(pre) && pre.length){
                   const total = renderItems(pre);
-                  sumEl.textContent = 'Line items total: ₱'+total.toFixed(2)+' (cached)';
+                  sumEl.textContent = 'Line items total: ₱' + total.toFixed(2) + ' (cached)';
                   loadEl.style.display='none';
               }
-          } catch(e){ console.warn('Preload parse failed', e); }
+          } catch(e){ log('Preload decode fail', e); }
       }
 
       // Live fetch
       fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
-        .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(r => { log('Fetch status', r.status); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
         .then(data => {
             loadEl.style.display='none';
+            log('API payload', data);
             if(!data.success){
                 errEl.textContent = data.message || 'Failed to load items.';
                 errEl.style.display='block';
                 return;
             }
             const total = renderItems(data.items||[]);
-            sumEl.textContent = 'Line items total: ₱'+total.toFixed(2);
+            sumEl.textContent = 'Line items total: ₱' + total.toFixed(2);
         })
         .catch(err => {
             loadEl.style.display='none';
             errEl.textContent = 'Error: ' + err.message;
             errEl.style.display='block';
-            console.error('Fetch error', err);
+            console.error(err);
         });
   });
 })();
