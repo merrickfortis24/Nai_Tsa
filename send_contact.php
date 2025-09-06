@@ -5,10 +5,25 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Adjust path: PHPMailer-master is located one level above this folder
-require_once __DIR__ . '/../PHPMailer-master/src/Exception.php';
-require_once __DIR__ . '/../PHPMailer-master/src/PHPMailer.php';
-require_once __DIR__ . '/../PHPMailer-master/src/SMTP.php';
+// Attempt to locate PHPMailer library in multiple possible deployment paths
+$phpmailerSrc = null;
+$candidates = [
+    __DIR__ . '/PHPMailer-master/src',          // same directory (if copied inside Nai_Tsa or public_html)
+    __DIR__ . '/../PHPMailer-master/src',       // parent directory (original repo layout)
+    __DIR__ . '/PHPMailer/src',                 // alternative folder name
+    __DIR__ . '/../PHPMailer/src',
+];
+foreach ($candidates as $cand) {
+    if (is_dir($cand) && file_exists($cand . '/PHPMailer.php')) { $phpmailerSrc = $cand; break; }
+}
+if (!$phpmailerSrc) {
+    http_response_code(500);
+    echo 'Mail library missing. Upload PHPMailer-master folder to the same directory (public_html) or parent.';
+    exit;
+}
+require_once $phpmailerSrc . '/Exception.php';
+require_once $phpmailerSrc . '/PHPMailer.php';
+require_once $phpmailerSrc . '/SMTP.php';
 
 // Basic rate limit (per IP) using temp file (simple, not bulletproof)
 function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
