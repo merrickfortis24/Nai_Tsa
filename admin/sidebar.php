@@ -27,28 +27,14 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
                 <span>Admins</span>
             </a>
         </li>
-                <li class="nav-item">
-            <a class="nav-link<?php if($page=='orders')echo' active'; ?>" href="orders_payments.php">
-                <i class="bi bi-cart4"></i>
+        <li class="nav-item">
+            <?php $isCombined = ($page==='orders_payments'); ?>
+            <a class="nav-link<?= $isCombined ? ' active' : '' ?>" href="orders_payments.php">
+                <i class="bi bi-stack"></i>
                 <span>Orders & Payments</span>
                 <?php if (!empty($pendingProcessingCount)) : ?>
-                    <span class="badge rounded-pill bg-warning text-dark float-end"><?= (int)$pendingProcessingCount ?></span>
+                    <span class="badge rounded-pill bg-warning text-dark float-end ms-1"><?= (int)$pendingProcessingCount ?></span>
                 <?php endif; ?>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link<?php if($page=='orders')echo' active'; ?>" href="orders.php">
-                <i class="bi bi-cart4"></i>
-                <span>Orders</span>
-                <?php if (!empty($pendingProcessingCount)) : ?>
-                    <span class="badge rounded-pill bg-warning text-dark float-end"><?= (int)$pendingProcessingCount ?></span>
-                <?php endif; ?>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link<?php if($page=='payments')echo' active'; ?>" href="payments.php">
-                <i class="bi bi-credit-card"></i>
-                <span>Payments</span>
                 <?php if (!empty($unpaidPayments)) : ?>
                     <span class="badge rounded-pill bg-danger float-end"><?= (int)$unpaidPayments ?></span>
                 <?php endif; ?>
