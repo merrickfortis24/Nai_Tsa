@@ -161,7 +161,6 @@ function admin_display_status($row) {
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $orderModals = [];
                                     foreach ($orders as $order): ?>
                                     <?php 
                                         // Preload items (small page size only)
@@ -229,60 +228,18 @@ function admin_display_status($row) {
                                                                                                                         <td>
                                                                                                                                 <button
                                                                                                                                         type="button"
-                                                                                                                                        class="btn btn-sm btn-outline-info px-2 py-1"
+                                                                                                                                        class="btn btn-sm btn-outline-info px-2 py-1 view-order-items-btn"
                                                                                                                                         title="View items"
-                                                                                                                                        data-bs-toggle="modal"
-                                                                                                                                        data-bs-target="#orderItemsModal_<?= $order['Order_ID'] ?>">
+                                                                                                                                        data-order-id="<?= $order['Order_ID'] ?>">
                                                                                                                                         <i class="bi bi-eye"></i>
                                                                                                                                 </button>
                                                                                                                         </td>
                                                                                                                 </tr>
-                                                                                                                <?php
-                                                                                                                // Capture modal HTML outside table for valid markup
-                                                                                                                ob_start(); ?>
-                                                                                                                <div class="modal fade" id="orderItemsModal_<?= $order['Order_ID'] ?>" tabindex="-1" aria-hidden="true">
-                                                                                                                    <div class="modal-dialog modal-dialog-scrollable">
-                                                                                                                        <div class="modal-content">
-                                                                                                                            <div class="modal-header">
-                                                                                                                                <h5 class="modal-title">Order #<?= $order['Order_ID'] ?> Items</h5>
-                                                                                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                                                                                            </div>
-                                                                                                                            <div class="modal-body">
-                                                                                                                                <?php if (empty($preItems)): ?>
-                                                                                                                                        <p class="text-muted mb-0">No items found for this order.</p>
-                                                                                                                                <?php else: ?>
-                                                                                                                                        <ul class="list-unstyled mb-0">
-                                                                                                                                                <?php $lineTotal = 0; foreach($preItems as $it): $qty=(int)($it['Quantity']??1); $price=(float)($it['Price']??0); $lineTotal += $qty*$price; ?>
-                                                                                                                                                        <li class="mb-2 d-flex justify-content-between">
-                                                                                                                                                                <span><?= htmlspecialchars($it['Product_Name']??'Item') ?> <span class="text-muted small">x <?= $qty ?></span></span>
-                                                                                                                                                                <span class="small text-muted">₱<?= number_format($price,2) ?></span>
-                                                                                                                                                        </li>
-                                                                                                                                                <?php endforeach; ?>
-                                                                                                                                        </ul>
-                                                                                                                                <?php endif; ?>
-                                                                                                                            </div>
-                                                                                                                            <div class="modal-footer small justify-content-between">
-                                                                                                                                <span class="text-muted">
-                                                                                                                                        <?php if (!empty($preItems)): ?>
-                                                                                                                                                Total: ₱<?= number_format($lineTotal,2) ?>
-                                                                                                                                        <?php endif; ?>
-                                                                                                                                </span>
-                                                                                                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                                                                                                                            </div>
-                                                                                                                        </div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                                <?php $orderModals[] = ob_get_clean(); ?>
                                                                                                                 <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
-                                                                                        <?php // Output all modals here (outside table for valid HTML)
-                                                                                        if (!empty($orderModals)) {
-                                                                                                echo implode("\n", $orderModals);
-                                                                                        }
-                                                                                        ?>
-                        <!-- Pagination -->
+                                                                                        <!-- Pagination -->
                         <nav>
                             <ul class="pagination justify-content-end">
                                 <li class="page-item <?= $page==1?'disabled':'' ?>">
@@ -303,9 +260,115 @@ function admin_display_status($row) {
             </div>
         </div>
     </div>
-<!-- (Unified dynamic modal removed; using per-order static modals) -->
 <!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- No JS needed for static modals -->
+<script>
+(function(){
+  const modalEl = document.getElementById('orderItemsModal');
+  if(!modalEl){ console.error('[Orders] Modal #orderItemsModal missing'); return; }
+
+  const titleEl = document.getElementById('orderItemsModalTitle');
+  const listEl  = document.getElementById('orderItemsList');
+  const loadEl  = document.getElementById('orderItemsLoading');
+  const errEl   = document.getElementById('orderItemsError');
+  const sumEl   = document.getElementById('orderItemsSummary');
+  const modal   = new bootstrap.Modal(modalEl);
+
+  function reset(orderId){
+    titleEl.textContent = 'Order #' + orderId + ' Items';
+    listEl.innerHTML = '';
+    sumEl.textContent = '';
+    errEl.classList.add('d-none');
+    errEl.textContent = '';
+    loadEl.classList.remove('d-none');
+  }
+
+  function render(items){
+    if(!Array.isArray(items) || !items.length){
+      listEl.innerHTML = '<li class="text-muted">No items found.</li>';
+      sumEl.textContent = '';
+      return;
+    }
+    let total = 0;
+    listEl.innerHTML = items.map(it=>{
+      const qty = Number(it.Quantity)||1;
+      const price = Number(it.Price)||0;
+      total += qty * price;
+      return `<li class="mb-2 d-flex justify-content-between">
+        <span>${(it.Product_Name||'Item').replace(/</g,'&lt;')} <span class="text-muted small">x ${qty}</span></span>
+        <span class="small text-muted">₱${price.toFixed(2)}</span>
+      </li>`;
+    }).join('');
+    sumEl.textContent = 'Line items total: ₱' + total.toFixed(2);
+  }
+
+  function fetchItems(orderId){
+    fetch('order_items_api.php?order_id=' + encodeURIComponent(orderId) + '&t=' + Date.now())
+      .then(r => {
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      })
+      .then(data => {
+        loadEl.classList.add('d-none');
+        if(!data.success){
+          errEl.textContent = data.message || 'Failed to load items.';
+          errEl.classList.remove('d-none');
+          return;
+        }
+        render(data.items||[]);
+      })
+      .catch(err => {
+        loadEl.classList.add('d-none');
+        errEl.textContent = 'Error: ' + err.message;
+        errEl.classList.remove('d-none');
+        console.error('[Orders] fetch error', err);
+      });
+  }
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('.view-order-items-btn');
+    if(!btn) return;
+    const orderId = btn.getAttribute('data-order-id');
+    if(!orderId){ console.warn('[Orders] Missing data-order-id'); return; }
+    reset(orderId);
+    modal.show();
+    fetchItems(orderId);
+  });
+
+  // Diagnostics (optional)
+  window.__ordersDiag = () => ({
+    buttons: document.querySelectorAll('.view-order-items-btn').length,
+    modalExists: !!document.getElementById('orderItemsModal')
+  });
+})();
+</script>
 </body>
 </html>
+<?php
+// filepath: c:\xampp\htdocs\naitsa\Nai_Tsa\admin\order_items_api.php
+session_start();
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['admin_id'])) {
+    echo json_encode(['success'=>false,'message'=>'Unauthorized']); exit;
+}
+
+require_once 'classes/database.php';
+$db = new database();
+
+$orderId = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
+if ($orderId <= 0) {
+    echo json_encode(['success'=>false,'message'=>'Invalid order id']); exit;
+}
+
+// Implement fetchOrderItems in your unified database class if not present
+if (!method_exists($db, 'fetchOrderItems')) {
+    echo json_encode(['success'=>false,'message'=>'fetchOrderItems() not implemented']); exit;
+}
+
+try {
+    $items = $db->fetchOrderItems($orderId); // Must return array of rows with Product_Name, Quantity, Price
+    echo json_encode(['success'=>true,'items'=>$items]);
+} catch (Throwable $e) {
+    echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
+}
