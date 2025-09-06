@@ -773,10 +773,26 @@ async function reverseGeocodeAndFill(lat, lng){
     if (!res.ok) throw new Error('Reverse geocode failed');
     const data = await res.json();
     const addr = data.address || {};
-    // Heuristics for fields (fallbacks empty so we always overwrite)
-    const street = addr.road || addr.pedestrian || addr.footway || addr.residential || addr.neighbourhood || '';
-    const barangay = addr.village || addr.suburb || addr.hamlet || addr.neighbourhood || '';
-    const city = addr.city || addr.town || addr.municipality || addr.county || '';
+    // Heuristics tailored for PH addressing order:
+    // street field: [house/building/block/lot] + road + (subdivision)
+    // barangay field: barangay only
+    // city field: city / municipality only
+    const housePart = addr.house_number || addr.building || '';
+    // Some PH addresses encode block/lot in house_number; if display_name has 'Blk' or 'Lot' tokens early, attempt to capture
+    let blockLot = '';
+    if (!housePart && data.display_name){
+      const m = data.display_name.match(/\b(Blk\.?\s*\d+|Block\s*\d+|Lot\s*\d+[A-Z]?)/i);
+      if (m) blockLot = m[0];
+    }
+    const road = addr.road || addr.pedestrian || addr.footway || addr.residential || '';
+    const subdivision = addr.residential || addr.neighbourhood || addr.quarter || addr.estate || '';
+    // Barangay detection – Nominatim may map it to suburb or village; keep strictly barangay-level (avoid using neighbourhood already used as subdivision)
+    const barangay = addr.barangay || addr.suburb || addr.village || addr.hamlet || '';
+    // City / municipality
+    const city = addr.city || addr.town || addr.municipality || addr.city_district || addr.county || '';
+    // Compose street text
+    const streetParts = [housePart || blockLot, road, subdivision && subdivision !== barangay ? subdivision : ''].filter(Boolean);
+    const street = streetParts.join(', ');
     const form = document.getElementById('paymentForm');
     if (form){
       if (form.street) form.street.value = street;
