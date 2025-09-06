@@ -39,6 +39,7 @@ try {
   $rows = []; $total = 0;
 }
 $totalPages = max(1, (int)ceil($total / $perPage));
+$currentPage = $page; // for pagination snippet compatibility
 
 // Stats reused from individual pages if available
 $unpaidPayments = 0; $pendingProcessingCount = 0;
@@ -204,13 +205,24 @@ ksort($methods);
           </div>
 
           <?php if ($totalPages > 1): ?>
+            <?php
+              // Build base query string without page for cleaner links
+              $baseParams = $_GET; unset($baseParams['page']);
+              $baseQS = $baseParams ? ('&'.http_build_query($baseParams)) : '';
+            ?>
             <nav class="mt-3">
-              <ul class="pagination justify-content-center">
-                <?php for ($i=1;$i<=$totalPages;$i++): ?>
-                  <li class="page-item <?= $i==$page?'active':'' ?>">
-                    <a class="page-link" href="?<?= http_build_query(array_merge($_GET,['page'=>$i])) ?>"><?= $i ?></a>
+              <ul class="pagination justify-content-end">
+                <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
+                  <a class="page-link" href="?page=<?= max(1,$currentPage-1) ?><?= $baseQS ?>">Previous</a>
+                </li>
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                  <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
+                    <a class="page-link" href="?page=<?= $i ?><?= $baseQS ?>"><?= $i ?></a>
                   </li>
                 <?php endfor; ?>
+                <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
+                  <a class="page-link" href="?page=<?= min($totalPages,$currentPage+1) ?><?= $baseQS ?>">Next</a>
+                </li>
               </ul>
             </nav>
           <?php endif; ?>
