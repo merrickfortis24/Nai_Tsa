@@ -752,6 +752,8 @@ if (useMyLocationBtn){
             ensureMapPicker();
           }
         }catch(e){}
+      // Reverse geocode to fill street / barangay / city (phone left for user)
+      reverseGeocodeAndFill(latitude, longitude);
       useMyLocationBtn.disabled = false;
       useMyLocationBtn.textContent = 'Use my current location';
     }, function(err){
@@ -761,6 +763,30 @@ if (useMyLocationBtn){
       useMyLocationBtn.textContent = 'Use my current location';
     }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
   });
+}
+
+// Reverse geocode helper (Nominatim)
+async function reverseGeocodeAndFill(lat, lng){
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1&accept-language=en`; 
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    const addr = data.address || {};
+    // Heuristics for fields
+    const street = addr.road || addr.pedestrian || addr.footway || addr.residential || addr.neighbourhood || '';
+    const barangay = addr.village || addr.suburb || addr.hamlet || addr.neighbourhood || '';
+    // Prefer city / town / municipality
+    const city = addr.city || addr.town || addr.municipality || addr.county || '';
+    const form = document.getElementById('paymentForm');
+    if (form){
+      if (street && form.street) form.street.value = street;
+      if (barangay && form.barangay) form.barangay.value = barangay;
+      if (city && form.city) form.city.value = city;
+    }
+  } catch(err){
+    console.warn('reverseGeocodeAndFill error', err);
+  }
 }
 
 // Helper: geocode current typed address (street/barangay/city) and set lat/lng
