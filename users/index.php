@@ -226,18 +226,16 @@ $all_products = $db->fetchAllProducts();
       $pendingOrders = (int)(($orders_by_status['To Ship'] ?? []) ? count($orders_by_status['To Ship']) : 0) + (int)(($orders_by_status['To Receive'] ?? []) ? count($orders_by_status['To Receive']) : 0);
   }
 ?>
-<!-- Quick Orders Status Floating Button -->
-<a href="#" id="ordersFab" class="cart-fab position-fixed" title="My Orders" aria-label="My Orders" data-bs-toggle="modal" data-bs-target="#myOrdersModal" style="bottom:108px;right:32px;background:var(--soft-orange);display:flex;align-items:center;justify-content:center;">
-  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-list-check" viewBox="0 0 16 16" style="display:block;">
+<!-- Quick Orders Status Floating Button (badge matches cart badge) -->
+<a href="#" id="ordersFab" class="cart-fab position-fixed" title="My Orders" aria-label="My Orders" data-bs-toggle="modal" data-bs-target="#myOrdersModal" style="bottom:108px;right:32px;display:flex;align-items:center;justify-content:center;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" fill="currentColor" class="bi bi-list-check" viewBox="0 0 16 16" style="display:block;">
     <path fill-rule="evenodd" d="M10.854 6.146a.5.5 0 0 0-.708.708L11.293 8l-.647.646a.5.5 0 0 0 .708.708l.646-.647.647.647a.5.5 0 0 0 .708-.708L12.707 8l.647-.646a.5.5 0 0 0-.708-.708L12 7.293l-.646-.647z"/>
     <path d="M4.5 5.5a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5zm0 3a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5zm0 3a.5.5 0 0 0 0 1H9a.5.5 0 0 0 0-1H4.5z"/>
     <path d="M2.5 6.5A.5.5 0 1 1 2.5 7a.5.5 0 0 1 0-1zm0 3A.5.5 0 1 1 2.5 10a.5.5 0 0 1 0-1zm0 3A.5.5 0 1 1 2.5 13a.5.5 0 0 1 0-1z"/>
   </svg>
-  <?php if ($pendingOrders > 0): ?>
-  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
-    <?= $pendingOrders ?>
+  <span id="orders-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:<?= $pendingOrders>0?'inline-block':'none';?>;">
+    <?= (int)$pendingOrders ?>
   </span>
-  <?php endif; ?>
   <span class="visually-hidden">Open My Orders (<?= $totalOrders ?> total)</span>
 </a>
 
@@ -548,7 +546,23 @@ $all_products = $db->fetchAllProducts();
 let cart = [];
 let PENDING_ADD_TO_CART = null; // { productId, productName }
 const cartBadge = document.getElementById('cart-badge');
+const ordersBadge = document.getElementById('orders-badge');
 const cartItemsList = document.getElementById('cart-items-list');
+
+function derivePendingOrders(list){
+  if(!Array.isArray(list)) return 0;
+  const PENDING_SET = new Set(['Pending','Processing','To Ship','To Receive','Ready to deliver','On the way','Ready to pick up']);
+  let c=0; for(const o of list){ const st=(o.order_status||o.ui_status||'').trim(); if(PENDING_SET.has(st)) c++; }
+  return c;
+}
+
+function updateOrdersBadgeFromCache(){
+  if(!ordersBadge) return;
+  const pending = derivePendingOrders(window.ORDERS_CACHE||[]);
+  ordersBadge.textContent = pending;
+  ordersBadge.style.display = pending>0 ? 'inline-block' : 'none';
+}
+window.updateOrdersBadgeFromCache = updateOrdersBadgeFromCache;
 
 function updateCartBadge() {
   const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
@@ -1210,7 +1224,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
         // Prefetch latest orders so My Orders modal immediately shows new order
         fetch('orders_api.php?t=' + Date.now())
           .then(r=> r.ok ? r.json() : [])
-          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; }})
+          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; updateOrdersBadgeFromCache(); }})
           .catch(()=>{});
       });
     } else {
