@@ -217,9 +217,9 @@ function admin_display_status($row) {
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="#" class="btn btn-sm btn-outline-info px-2 py-1" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>" title="View items">
+                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>" title="View items" data-order-id="<?= $order['Order_ID'] ?>">
                                                 <i class="bi bi-eye"></i>
-                                            </a>
+                                            </button>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -246,6 +246,7 @@ function admin_display_status($row) {
                 </div>
             </div>
         </div>
+    </div>
 </div>
 <!-- Order Items Modals -->
 <?php foreach ($orders as $order): ?>
@@ -299,16 +300,18 @@ function admin_display_status($row) {
         });
     });
 
-    // Fallback: ensure modals open even if data attributes fail (e.g., markup mismatch)
+    // Fallback open logic for view items buttons
     document.addEventListener('click', function(e){
-        const trigger = e.target.closest('[data-bs-toggle="modal"][data-bs-target]');
-        if(!trigger) return;
-        const sel = trigger.getAttribute('data-bs-target');
-        if(!sel) return;
-        const modalEl = document.querySelector(sel);
-        if(modalEl){
-            try { new bootstrap.Modal(modalEl).show(); } catch(err) { console.warn('Modal show fallback failed', err); }
+        const btn = e.target.closest('.view-items-btn');
+        if(!btn) return;
+        const targetSel = btn.getAttribute('data-bs-target');
+        if(!targetSel) return;
+        const modalEl = document.querySelector(targetSel);
+        if(!modalEl){
+            console.warn('Order items modal element not found for selector', targetSel);
+            return;
         }
+        try { new bootstrap.Modal(modalEl).show(); } catch(err){ console.warn('Manual modal show failed', err); }
     });
 </script>
 </body>
