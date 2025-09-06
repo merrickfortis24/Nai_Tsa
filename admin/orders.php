@@ -107,9 +107,9 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
                                     <td><?= safe(date('Y-m-d H:i', strtotime($o['Order_Date']))) ?></td>
                                     <td>₱<?= number_format($o['Order_Amount'],2) ?></td>
                                     <td>
-                                        <form method="post" class="d-flex align-items-center mb-0">
+                                        <form method="post" class="status-form mb-0">
                                             <input type="hidden" name="order_id" value="<?= (int)$o['Order_ID'] ?>">
-                                            <select name="order_status" class="form-select form-select-sm me-2">
+                                            <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
                                                 <?php 
                                                     $statuses = [
                                                         'Pending'=>'secondary','Processing'=>'info','Ready to deliver'=>'info','On the way'=>'primary','Delivered'=>'success','Ready to pick up'=>'info','Received'=>'success','Cancelled'=>'danger'
@@ -118,7 +118,6 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
                                                         <option value="<?= safe($st) ?>" <?= $o['order_status']===$st?'selected':'' ?>><?= safe($st) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <button class="btn btn-sm btn-outline-success" title="Update"><i class="bi bi-check2"></i></button>
                                         </form>
                                     </td>
                                     <td>
