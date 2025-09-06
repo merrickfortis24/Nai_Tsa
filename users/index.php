@@ -1904,29 +1904,9 @@ async function openProductDetailsWithAddons(product){
     modal.hide();
   };
 
-  // Fetch add-ons asynchronously and render; on failure keep empty list
-  try{
-    const res = await fetch('get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
-    const data = await res.json();
-    const addons = data.success ? (data.addons||[]) : [];
-    const listEl = document.getElementById('productAddonsList');
-    if (listEl) {
-      listEl.innerHTML = addons.length ? addons.map(a=>`
-        <label class="addon-card">
-          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-          <span class="addon-name">${a.Addon_Name}</span>
-          <span class="addon-price">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
-        </label>
-      `).join('') : '<div class="text-muted">No add-ons available.</div>';
-      // Bind checkbox changes to total update
-      document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
-        cb.addEventListener('change', ()=> updateProductModalTotal(basePrice));
-      });
-      updateProductModalTotal(basePrice);
-    }
-  }catch(err){
-    console.warn('Add-ons fetch failed, continuing without add-ons', err);
-  }
+  // Add-ons feature removed
+  const listEl = document.getElementById('productAddonsList');
+  if (listEl) listEl.innerHTML = '<div class="text-muted">No add-ons available.</div>';
 }
 
 // Hook into existing card click flows to use the new modal
@@ -1986,61 +1966,9 @@ async function openProductDetailsWithAddons(product){
     }
   });
 
-  async function openAddonsModal(productId, productName){
-    PENDING_ADD_TO_CART = { productId, productName };
-    try{
-      const res = await fetch('get_product_addons.php?product_id='+productId+'&t='+Date.now());
-      const data = await res.json();
-      const list = data.success ? (data.addons||[]) : [];
-      const wrap = document.getElementById('addonsList');
-      if (!list.length) {
-        // No add-ons: add directly
-        const found = cart.find(i => i.name === productName);
-        if (found) found.qty += 1; else cart.push({ name: productName, qty: 1, addons: [] });
-        updateCartBadge();
-        renderCartItems();
-        Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-        return;
-      }
-      wrap.innerHTML = list.map(a=>`
-        <label class="d-flex align-items-center justify-content-between border rounded p-2 bg-white">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-            <span>${a.Addon_Name}</span>
-          </div>
-          <span>₱ ${Number(a.Addon_Price).toFixed(2)}</span>
-        </label>
-      `).join('');
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('addonsModal')).show();
-    }catch(err){
-      console.error('addons fetch failed', err);
-      const found = cart.find(i => i.name === productName);
-      if (found) found.qty += 1; else cart.push({ name: productName, qty: 1, addons: [] });
-      updateCartBadge();
-      renderCartItems();
-      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-    }
-  }
+  function openAddonsModal(){ /* deprecated - no add-ons */ }
 
-  document.getElementById('confirmAddonsBtn').addEventListener('click', ()=>{
-    const modalEl = document.getElementById('addonsModal');
-    const checks = Array.from(modalEl.querySelectorAll('input[type="checkbox"]:checked'));
-    const addons = checks.map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
-    if (PENDING_ADD_TO_CART){
-      const found = cart.find(i => i.name === PENDING_ADD_TO_CART.productName);
-      if (found) {
-        found.qty += 1;
-        found.addons = addons; // last selection wins for simplicity
-      } else {
-        cart.push({ name: PENDING_ADD_TO_CART.productName, qty: 1, addons });
-      }
-      updateCartBadge();
-      renderCartItems();
-      Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-    }
-    PENDING_ADD_TO_CART = null;
-    bootstrap.Modal.getInstance(modalEl).hide();
-  });
+  // confirmAddonsBtn no longer used (add-ons removed)
   </script>
 
 </body>
