@@ -226,7 +226,7 @@ function admin_display_status($row) {
                                             </span>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal" title="View items" data-order-id="<?= $order['Order_ID'] ?>" data-items='<?= $preItemsJson ?>'>
+                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" title="View items" data-order-id="<?= $order['Order_ID'] ?>" data-items='<?= $preItemsJson ?>'>
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </td>
@@ -305,13 +305,15 @@ function admin_display_status($row) {
         });
     });
 
-    // Bootstrap show event for modal population
+    // Manual click handler like products edit modal
     (function(){
-        const orderItemsModal = document.getElementById('orderItemsModal');
-        if(!orderItemsModal) return;
-        orderItemsModal.addEventListener('show.bs.modal', function(ev){
-            const btn = ev.relatedTarget;
+        const modalEl = document.getElementById('orderItemsModal');
+        if(!modalEl) return;
+        const bsModal = () => bootstrap.Modal.getOrCreateInstance(modalEl);
+        document.addEventListener('click', function(e){
+            const btn = e.target.closest('.view-items-btn');
             if(!btn) return;
+            e.preventDefault();
             const orderId = btn.getAttribute('data-order-id');
             if(!orderId) return;
             const titleEl = document.getElementById('orderItemsModalTitle');
@@ -343,33 +345,35 @@ function admin_display_status($row) {
                     }
                 } catch(_){}
             }
-            // Live fetch
+            // Show modal immediately
+            bsModal().show();
+            // Live fetch (updates content)
             fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
-              .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-              .then(data=>{
-                if(loadEl) loadEl.style.display='none';
-                if(!data || !data.success){
-                    if(errEl){ errEl.textContent = (data&&data.message)||'Failed to load items.'; errEl.style.display='block'; }
-                    return;
-                }
-                const items = Array.isArray(data.items)?data.items:[];
-                if(!items.length){ listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>'; }
-                else {
-                    listEl.innerHTML = items.map(it => `
-                        <li class="mb-2">
-                            <div class="d-flex justify-content-between">
-                                <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
-                                <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
-                            </div>
-                        </li>`).join('');
-                    const total = items.reduce((s,i)=> s + (Number(i.Price)||0)*(Number(i.Quantity)||1), 0);
-                    if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2);
-                }
-              })
-              .catch(err=>{
-                if(loadEl) loadEl.style.display='none';
-                if(errEl){ errEl.textContent = 'Error loading items: '+ err.message; errEl.style.display='block'; }
-              });
+                .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+                .then(data=>{
+                    if(loadEl) loadEl.style.display='none';
+                    if(!data || !data.success){
+                        if(errEl){ errEl.textContent = (data&&data.message)||'Failed to load items.'; errEl.style.display='block'; }
+                        return;
+                    }
+                    const items = Array.isArray(data.items)?data.items:[];
+                    if(!items.length){ listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>'; }
+                    else {
+                        listEl.innerHTML = items.map(it => `
+                            <li class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
+                                    <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
+                                </div>
+                            </li>`).join('');
+                        const total = items.reduce((s,i)=> s + (Number(i.Price)||0)*(Number(i.Quantity)||1), 0);
+                        if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2);
+                    }
+                })
+                .catch(err=>{
+                    if(loadEl) loadEl.style.display='none';
+                    if(errEl){ errEl.textContent = 'Error loading items: '+ err.message; errEl.style.display='block'; }
+                });
         });
     })();
 </script>
