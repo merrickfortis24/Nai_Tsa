@@ -1138,7 +1138,37 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       }catch(err){ /* ignore; server will fallback */ }
     }
   }
-  // Send data to PHP
+  // If GCash via PayMongo: create source first, then submit order only after returning success (simplified: we create order immediately as pending then redirect)
+  if (paymentMethod === 'GCash') {
+    // Calculate total locally (reuse summary) to send to PayMongo
+    try {
+      const subtotal = cart.reduce((sum,i)=>{
+        const prod = (<?php echo json_encode($all_products); ?>||[]).find(p=>p.Product_Name===i.name);
+        if(!prod) return sum;
+        let base = Number(prod.Price_Amount||0) * (i.qty||1);
+        if (Array.isArray(i.addons)) {
+          i.addons.forEach(ad=>{ base += (Number(ad.price)||0) * (i.qty||1); });
+        }
+        return sum + base;
+      },0);
+      // Rough delivery fee (already computed when modal opened & summary updated) - parse from DOM
+      let deliveryFee = 0; const dfEl = document.getElementById('summaryDelivery');
+      if (dfEl) { const m = dfEl.textContent.match(/([0-9]+(?:\.[0-9]+)?)/); if (m) deliveryFee = parseFloat(m[1])||0; }
+      const grand = subtotal + deliveryFee;
+      // Create PayMongo source
+      const pmRes = await fetch('paymongo_create_source.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:grand})});
+      const pmJson = await pmRes.json();
+      if(!pmJson.success){ throw new Error(pmJson.message||'GCash source error'); }
+      // Redirect user to GCash checkout
+      window.location.href = pmJson.redirect;
+      return; // stop normal order creation until success callback
+    } catch(err){
+      Swal.fire({icon:'error', title:'GCash Error', text: err.message||'Unable to start GCash payment', confirmButtonColor:'#FFB27A'});
+      return;
+    }
+  }
+
+  // Send data to PHP (non-GCash flows)
   fetch('checkout_process.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
