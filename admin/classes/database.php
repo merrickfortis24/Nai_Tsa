@@ -220,6 +220,87 @@ class database {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    
+    /**
+     * Filtered/paginated orders with optional search (by Order_ID exact or Customer_Name partial), status and payment.
+     */
+    function fetchOrdersFiltered($search = '', $status = '', $payment = '', $limit = 10, $offset = 0) {
+        $con = $this->opencon();
+        $where = [];
+        $params = [];
+        $search = trim($search);
+        if ($search !== '') {
+            if (ctype_digit($search)) {
+                $where[] = 'o.Order_ID = :oid OR c.Customer_Name LIKE :sLike';
+                $params[':oid'] = (int)$search;
+                $params[':sLike'] = '%' . $search . '%';
+            } else {
+                $where[] = 'c.Customer_Name LIKE :sLike';
+                $params[':sLike'] = '%' . $search . '%';
+            }
+        }
+        if ($status !== '') {
+            $where[] = 'o.order_status = :status';
+            $params[':status'] = $status;
+        }
+        if ($payment !== '') {
+            $where[] = 'COALESCE(p.payment_status, "Unpaid") = :payment';
+            $params[':payment'] = $payment;
+        }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', array_map(function($w){ return '(' . $w . ')'; }, $where))) : '';
+        $limit = (int)$limit; $offset = (int)$offset;
+        $sql = "SELECT o.*, p.payment_status, o.Driver_Status, c.Customer_Name
+                FROM orders o
+                LEFT JOIN payment p ON o.Order_ID = p.Order_ID
+                LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
+                $whereSql
+                ORDER BY o.Order_Date DESC
+                LIMIT $limit OFFSET $offset";
+        $stmt = $con->prepare($sql);
+        foreach ($params as $k=>$v) {
+            $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($k, $v, $type);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    function countOrdersFiltered($search = '', $status = '', $payment = '') {
+        $con = $this->opencon();
+        $where = [];
+        $params = [];
+        $search = trim($search);
+        if ($search !== '') {
+            if (ctype_digit($search)) {
+                $where[] = 'o.Order_ID = :oid OR c.Customer_Name LIKE :sLike';
+                $params[':oid'] = (int)$search;
+                $params[':sLike'] = '%' . $search . '%';
+            } else {
+                $where[] = 'c.Customer_Name LIKE :sLike';
+                $params[':sLike'] = '%' . $search . '%';
+            }
+        }
+        if ($status !== '') {
+            $where[] = 'o.order_status = :status';
+            $params[':status'] = $status;
+        }
+        if ($payment !== '') {
+            $where[] = 'COALESCE(p.payment_status, "Unpaid") = :payment';
+            $params[':payment'] = $payment;
+        }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', array_map(function($w){ return '(' . $w . ')'; }, $where))) : '';
+        $sql = "SELECT COUNT(*) FROM orders o
+                LEFT JOIN payment p ON o.Order_ID = p.Order_ID
+                LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
+                $whereSql";
+        $stmt = $con->prepare($sql);
+        foreach ($params as $k=>$v) {
+            $type = is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($k, $v, $type);
+        }
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
 
     function fetchOrderItems($order_id) {
         $con = $this->opencon();
