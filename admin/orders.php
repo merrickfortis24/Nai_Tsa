@@ -246,7 +246,6 @@ function admin_display_status($row) {
                 </div>
             </div>
         </div>
-    </div>
 </div>
 <!-- Order Items Modals -->
 <?php foreach ($orders as $order): ?>
@@ -298,6 +297,18 @@ function admin_display_status($row) {
                 select.classList.add('bg-danger', 'text-white');
             }
         });
+    });
+
+    // Fallback: ensure modals open even if data attributes fail (e.g., markup mismatch)
+    document.addEventListener('click', function(e){
+        const trigger = e.target.closest('[data-bs-toggle="modal"][data-bs-target]');
+        if(!trigger) return;
+        const sel = trigger.getAttribute('data-bs-target');
+        if(!sel) return;
+        const modalEl = document.querySelector(sel);
+        if(modalEl){
+            try { new bootstrap.Modal(modalEl).show(); } catch(err) { console.warn('Modal show fallback failed', err); }
+        }
     });
 </script>
 </body>
