@@ -133,8 +133,19 @@ $pendingOrders = $db->countPendingOrProcessingOrders();
                                         <option value="<?= htmlspecialchars($raw) ?>" <?= strtolower($methodFilter)===strtolower($raw)?'selected':'' ?>><?= htmlspecialchars($raw) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <input type="date" class="form-control form-control-sm" name="from" value="<?= htmlspecialchars($from) ?>" title="From date" />
-                                <input type="date" class="form-control form-control-sm" name="to" value="<?= htmlspecialchars($to) ?>" title="To date" />
+                                <div class="d-flex align-items-center gap-1">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">From</span>
+                                        <input type="date" class="form-control" name="from" value="<?= htmlspecialchars($from) ?>" aria-label="From date (start of range)" />
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">To</span>
+                                        <input type="date" class="form-control" name="to" value="<?= htmlspecialchars($to) ?>" aria-label="To date (end of range)" />
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter payments whose payment date is between From (inclusive) and To (inclusive). Leave either blank for an open-ended range.">
+                                        <i class="bi bi-info-circle"></i>
+                                    </button>
+                                </div>
                                 <?php if (isset($_GET['page'])): ?>
                                     <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
                                 <?php endif; ?>
@@ -144,6 +155,17 @@ $pendingOrders = $db->countPendingOrProcessingOrders();
                         </div>
                     </div>
                     <div class="card-body">
+                        <?php if($search || $statusFilter || $methodFilter || $from || $to): ?>
+                            <div class="mb-3 small">
+                                <span class="text-muted me-1">Active filters:</span>
+                                <?php if($search): ?><span class="badge text-bg-primary">Name: <?= htmlspecialchars($search) ?></span> <?php endif; ?>
+                                <?php if($statusFilter): ?><span class="badge text-bg-success">Status: <?= htmlspecialchars($statusFilter) ?></span> <?php endif; ?>
+                                <?php if($methodFilter): ?><span class="badge text-bg-secondary">Method: <?= htmlspecialchars($methodFilter) ?></span> <?php endif; ?>
+                                <?php if($from): ?><span class="badge text-bg-info">From: <?= htmlspecialchars($from) ?></span> <?php endif; ?>
+                                <?php if($to): ?><span class="badge text-bg-info">To: <?= htmlspecialchars($to) ?></span> <?php endif; ?>
+                                <a href="payments.php" class="badge text-bg-light border text-decoration-none">Clear</a>
+                            </div>
+                        <?php endif; ?>
                         <div class="row g-3 mb-3">
                             <div class="col-6 col-md-3">
                                 <div class="p-2 rounded bg-light border small text-center">
