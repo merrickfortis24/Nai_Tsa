@@ -75,23 +75,29 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
 
         <!-- Products List Card -->
         <div class="card mt-3">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Products List</span>
-            <div>
-              <form method="get" class="d-inline">
-                <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
-                  <option value="">All Categories</option>
-                  <?php foreach ($categories_list as $category): ?>
-                    <option value="<?= htmlspecialchars($category['Category_ID']) ?>" <?= (isset($_GET['category']) && $_GET['category'] == $category['Category_ID']) ? 'selected' : '' ?>>
-                      <?= htmlspecialchars($category['Category_Name']) ?>
-                    </option>
-                  <?php endforeach; ?>
-                </select>
-                <?php if (isset($_GET['page'])): ?>
-                  <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
-                <?php endif; ?>
-              </form>
-            </div>
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="fw-semibold">Products List</span>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <form method="get" class="d-flex align-items-center gap-2 mb-0">
+                  <select class="form-select form-select-sm" name="category" onchange="this.form.submit()">
+                    <option value="">All Categories</option>
+                    <?php foreach ($categories_list as $category): ?>
+                      <option value="<?= htmlspecialchars($category['Category_ID']) ?>" <?= (isset($_GET['category']) && $_GET['category'] == $category['Category_ID']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($category['Category_Name']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <?php if (isset($_GET['page'])): ?>
+                    <input type="hidden" name="page" value="<?= (int)$_GET['page'] ?>">
+                  <?php endif; ?>
+                </form>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                  <i class="bi bi-plus-circle me-1"></i> Add Product
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                  <i class="bi bi-cash-coin me-1"></i> Add Price
+                </button>
+              </div>
           </div>
           <div class="card-body">
             <?php if (!empty($error)): ?>
