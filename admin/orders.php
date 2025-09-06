@@ -217,7 +217,7 @@ function admin_display_status($row) {
                                             </span>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal<?= $order['Order_ID'] ?>" title="View items" data-order-id="<?= $order['Order_ID'] ?>">
+                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal" title="View items" data-order-id="<?= $order['Order_ID'] ?>">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </td>
@@ -247,32 +247,28 @@ function admin_display_status($row) {
             </div>
         </div>
     </div>
-</div>
-<!-- Order Items Modals -->
-<?php foreach ($orders as $order): ?>
-<div class="modal fade" id="orderItemsModal<?= $order['Order_ID'] ?>" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Order #<?= $order['Order_ID'] ?> Items</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <ul>
-          <?php
-            $items = $db->fetchOrderItems($order['Order_ID']);
-            foreach ($items as $item):
-          ?>
-            <li>
-              <?= htmlspecialchars($item['Product_Name']) ?> x <?= $item['Quantity'] ?> @ ₱<?= number_format($item['Price'], 2) ?>
-            </li>
-          <?php endforeach; ?>
-        </ul>
-      </div>
+<!-- Unified Order Items Modal -->
+<div class="modal fade" id="orderItemsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderItemsModalTitle">Order Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="orderItemsLoading" class="text-center text-muted py-3" style="display:none;">
+                    <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+                </div>
+                <div id="orderItemsError" class="alert alert-danger py-2 px-3 small" style="display:none;"></div>
+                <ul id="orderItemsList" class="list-unstyled mb-0"></ul>
+            </div>
+            <div class="modal-footer small justify-content-between">
+                <span id="orderItemsSummary" class="text-muted"></span>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
-<?php endforeach; ?>
 <!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -305,13 +301,46 @@ function admin_display_status($row) {
         const btn = e.target.closest('.view-items-btn');
         if(!btn) return;
         const targetSel = btn.getAttribute('data-bs-target');
-        if(!targetSel) return;
-        const modalEl = document.querySelector(targetSel);
-        if(!modalEl){
-            console.warn('Order items modal element not found for selector', targetSel);
-            return;
-        }
-        try { new bootstrap.Modal(modalEl).show(); } catch(err){ console.warn('Manual modal show failed', err); }
+                const orderId = btn.getAttribute('data-order-id');
+                if(!targetSel || !orderId) return;
+                const modalEl = document.querySelector(targetSel);
+                if(!modalEl){ console.warn('Order items modal element not found'); return; }
+                // Populate
+                const titleEl = document.getElementById('orderItemsModalTitle');
+                const listEl = document.getElementById('orderItemsList');
+                const loadEl = document.getElementById('orderItemsLoading');
+                const errEl = document.getElementById('orderItemsError');
+                const sumEl = document.getElementById('orderItemsSummary');
+                if(titleEl) titleEl.textContent = 'Order #' + orderId + ' Items';
+                if(listEl) listEl.innerHTML = '';
+                if(errEl) { errEl.style.display='none'; errEl.textContent=''; }
+                if(sumEl) sumEl.textContent='';
+                if(loadEl) loadEl.style.display='block';
+                fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
+                    .then(r=> r.ok ? r.json() : Promise.reject('HTTP '+r.status))
+                    .then(data => {
+                            if(loadEl) loadEl.style.display='none';
+                            if(!data || !data.success){
+                                 if(errEl){ errEl.textContent = (data&&data.message)||'Failed to load items.'; errEl.style.display='block'; }
+                                 return;
+                            }
+                            const items = Array.isArray(data.items) ? data.items : [];
+                            if(!items.length){ listEl.innerHTML = '<li class="text-muted">No items found.</li>'; }
+                            else {
+                                 listEl.innerHTML = items.map(it => `
+                                     <li class="mb-2 d-flex justify-content-between align-items-center">
+                                         <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
+                                         <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
+                                     </li>`).join('');
+                                 const total = items.reduce((s,i)=> s + (Number(i.Price)||0) * (Number(i.Quantity)||1), 0);
+                                 if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2);
+                            }
+                    })
+                    .catch(err => {
+                            if(loadEl) loadEl.style.display='none';
+                            if(errEl){ errEl.textContent = 'Error loading items: '+ err; errEl.style.display='block'; }
+                    });
+                try { new bootstrap.Modal(modalEl).show(); } catch(err){ console.warn('Modal show failed', err); }
     });
 </script>
 </body>
