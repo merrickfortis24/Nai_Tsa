@@ -1,8 +1,13 @@
 <?php
 require_once "classes/database.php";
+// PHPMailer includes (adjust if PHPMailer folder name differs)
 require_once __DIR__ . '/../PHPMailer-master/src/PHPMailer.php';
 require_once __DIR__ . '/../PHPMailer-master/src/SMTP.php';
 require_once __DIR__ . '/../PHPMailer-master/src/Exception.php';
+// Load mail environment variables (Hostinger SMTP)
+if (file_exists(__DIR__ . '/../.mail.env.php')) {
+  include __DIR__ . '/../.mail.env.php';
+}
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -17,29 +22,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             $token = $result['token'];
-            $resetLink = "http://localhost/Nai_Tsa/users/reset_password.php?token=$token";
+      // Build reset link using configured base URL or current host
+      $baseUrl = getenv('MAIL_BASE_URL');
+      if (!$baseUrl) {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Assume app root is domain root; adjust if deployed under subfolder
+        $baseUrl = $scheme . '://' . $host;
+      }
+      $resetLink = rtrim($baseUrl, '/') . '/users/reset_password.php?token=' . urlencode($token);
 
             $mail = new PHPMailer(true);
             try {
-                $mail->isSMTP();
-                $mail->Host       = 'live.smtp.mailtrap.io';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'api'; // your SMTP username
-                $mail->Password   = 'c8d45abd5fc060ca2c66c324be30ccd6'; // your SMTP password or API token
-                $mail->Port       = 587;
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->isSMTP();
+        $host   = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
+        $port   = (int)(getenv('SMTP_PORT') ?: 587);
+        $secure = strtolower(getenv('SMTP_SECURE') ?: 'tls'); // tls or ssl
+        $user   = getenv('SMTP_USER') ?: '';
+        $pass   = getenv('SMTP_PASS') ?: '';
+        $from   = getenv('MAIL_FROM') ?: $user;
+        $fromName = getenv('MAIL_FROM_NAME') ?: 'Nai Tsa';
 
-                $mail->setFrom('hello@demomailtrap.co', 'Nai Tsa');
-                $mail->addAddress($email);
+        if (!$user || !$pass || !$from) {
+          throw new Exception('SMTP configuration incomplete');
+        }
+        $mail->Host       = $host;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $user;
+        $mail->Password   = $pass;
+        if ($secure === 'ssl' || $secure === 'smtps') {
+          $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+          if ($port === 587) { $port = 465; }
+        } else {
+          $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        }
+        $mail->Port = $port;
+
+        $mail->setFrom($from, $fromName);
+        $mail->addAddress($email);
 
                 $mail->isHTML(true);
-                $mail->Subject = 'Password Reset Request';
-                $mail->Body    = "Hello,<br><br>Click the following link to reset your password:<br><a href='$resetLink'>$resetLink</a><br><br>If you did not request this, please ignore this email.";
+        $mail->Subject = 'Password Reset Request';
+        $escapedLink = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
+        $mail->Body = "<div style='font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#333;line-height:1.5;'>"
+          . "<p>Hello,</p>"
+          . "<p>You recently requested to reset your password. Click the button below to continue:</p>"
+          . "<p style='text-align:center;margin:28px 0;'>"
+          . "<a href='{$escapedLink}' style='display:inline-block;background:#ff7a2f;color:#ffffff !important;text-decoration:none;padding:14px 26px;border-radius:6px;font-weight:600;font-size:16px;font-family:Arial,Helvetica,sans-serif;' target='_blank'>Reset Password</a>"
+          . "</p>"
+          . "<p>If the button doesn't work, copy and paste this link into your browser:<br>"
+          . "<a href='{$escapedLink}' style='color:#ff7a2f;' target='_blank'>{$escapedLink}</a></p>"
+          . "<p style='font-size:13px;color:#777;'>If you did not request this reset, you can safely ignore this email. For security reasons the link will expire shortly.</p>"
+          . "<hr style='border:none;border-top:1px solid #eee;margin:26px 0;'>"
+          . "<p style='font-size:12px;color:#999;margin-top:0;'>© " . date('Y') . " Nai Tsa. All rights reserved.</p>"
+          . "</div>";
+        $mail->AltBody = "Password Reset Request\n\nVisit this link to reset: $resetLink\nIf you didn't request this, ignore the email.";
 
                 $mail->send();
                 $message = "If this email is registered, a password reset link will be sent.";
             } catch (Exception $e) {
-                $message = "Failed to send reset email. Mailer Error: {$mail->ErrorInfo}";
+        error_log('Forgot password mail error: ' . $e->getMessage());
+        $message = "Failed to send reset email.";
             }
         } else {
             $message = "If this email is registered, a password reset link will be sent.";
