@@ -28,6 +28,16 @@ try {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nai Tsa - Coffee & Milk Tea</title>
+  <!-- Favicon / App Icons -->
+  <!-- Place your PNG logo (square) in assets as favicon.png (recommend 512x512) -->
+  <!-- Also optionally create resized versions (32x32, 16x16). Browsers will downscale if only one provided. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon.png?v=1">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=1">
+  <!-- Fallback to existing JPEG logo if PNGs not yet uploaded -->
+  <link rel="alternate icon" type="image/jpeg" href="assets/naitsalogo.jpg">
+  <!-- Manifest (optional, create manifest.webmanifest at project root if using PWA features) -->
+  <!-- <link rel="manifest" href="/manifest.webmanifest"> -->
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Google Fonts: Poppins for modern look -->
