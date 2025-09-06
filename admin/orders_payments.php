@@ -78,19 +78,19 @@ ksort($methods);
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
-          <form method="get" class="row g-2 mb-3">
-            <div class="col-md-3">
-              <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer">
+          <form method="get" class="row g-2 mb-3 align-items-end">
+            <div class="col-6 col-md-3">
+              <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select name="status" class="form-select" title="Order Status">
-                <option value="">All Order Status</option>
+                <option value="">All Status</option>
                 <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
                   <option value="<?=h($s)?>" <?=$status===$s?'selected':''?>><?=h($s)?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select name="payment" class="form-select" title="Payment Status">
                 <option value="">All Payment</option>
                 <?php foreach (["Paid","Unpaid"] as $s): ?>
@@ -98,7 +98,7 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select name="method" class="form-select" title="Payment Method">
                 <option value="">All Methods</option>
                 <?php foreach ($methods as $m=>$_): ?>
@@ -106,16 +106,14 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-2">
-              <label for="date_from" class="form-label mb-0 small">From</label>
-              <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control" title="From date">
+            <div class="col-6 col-md-1">
+              <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control" placeholder="From" aria-label="From date" />
             </div>
-            <div class="col-md-2">
-              <label for="date_to" class="form-label mb-0 small">To</label>
-              <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control" title="To date">
+            <div class="col-6 col-md-1">
+              <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control" placeholder="To" aria-label="To date" />
             </div>
-            <div class="col-md-1 d-grid">
-              <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+            <div class="col-12 col-md-1 d-grid">
+              <button class="btn btn-primary w-100" title="Apply filters"><i class="bi bi-search"></i></button>
             </div>
           </form>
 
