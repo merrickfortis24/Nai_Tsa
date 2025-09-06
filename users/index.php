@@ -1472,6 +1472,9 @@ const CHIP_SEQUENCE = ["All","Pending","Processing","To Ship","To Receive","Deli
 
 let ORDERS_CACHE = [];
 let ACTIVE_STATUS = "All";
+// Pagination state for My Orders modal
+let ORDERS_PAGE = 1;
+const ORDERS_PER_PAGE = 10; // 10 cards per page
 
 function skeletonOrders(count=3){
   return Array.from({length:count}).map(()=>`
@@ -1533,9 +1536,10 @@ function renderStatusChips(){
       </div>`).join('');
   container.querySelectorAll('.status-chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
-      ACTIVE_STATUS = chip.dataset.status;
-      renderStatusChips();
-      renderOrders();
+  ACTIVE_STATUS = chip.dataset.status;
+  ORDERS_PAGE = 1; // reset to first page on filter change
+  renderStatusChips();
+  renderOrders();
     });
   });
 }
@@ -1568,16 +1572,21 @@ function renderOrders(){
     );
   }
 
-  const totalShowing = processed.length;
-  const summary = `${totalShowing} order${totalShowing!==1?'s':''} showing`;
-  document.getElementById('ordersSummaryLine').textContent = summary;
+  const totalFiltered = processed.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / ORDERS_PER_PAGE));
+  if (ORDERS_PAGE > totalPages) ORDERS_PAGE = totalPages; // clamp
+  const startIdx = (ORDERS_PAGE - 1) * ORDERS_PER_PAGE;
+  const pageSlice = processed.slice(startIdx, startIdx + ORDERS_PER_PAGE);
 
-  if(!processed.length){
+  const summary = `${totalFiltered} order${totalFiltered!==1?'s':''} found • Page ${ORDERS_PAGE} of ${totalPages}`;
+  const summaryEl = document.getElementById('ordersSummaryLine');
+  if (summaryEl) summaryEl.textContent = summary;
+
+  if(!totalFiltered){
     listEl.innerHTML = `<div class="text-muted py-4 text-center">No matching orders.</div>`;
     return;
   }
-
-  listEl.innerHTML = processed.map(o => {
+  listEl.innerHTML = pageSlice.map(o => {
   const uiStatus = o.ui_status;
   const badgeClass = (uiStatus==="Delivered"?"bg-success":
              uiStatus==="Ready to deliver"?"bg-primary":
@@ -1610,6 +1619,46 @@ function renderOrders(){
         </div>
       </div>`;
   }).join('');
+
+  renderOrdersPagination(totalPages);
+}
+
+// Render pagination controls (Previous / numbered / Next) inside My Orders modal footer or below list
+function renderOrdersPagination(totalPages){
+  let pagEl = document.getElementById('ordersPagination');
+  if(!pagEl){
+    // Create container just after ordersList
+    const listEl = document.getElementById('ordersList');
+    if(!listEl) return;
+    pagEl = document.createElement('div');
+    pagEl.id = 'ordersPagination';
+    pagEl.className = 'mt-2';
+    listEl.after(pagEl);
+  }
+  if(totalPages <= 1){ pagEl.innerHTML=''; return; }
+  let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0">';
+  const disabledPrev = ORDERS_PAGE === 1 ? ' disabled' : '';
+  html += `<li class="page-item${disabledPrev}"><a class="page-link" data-page="prev" href="#">Previous</a></li>`;
+  for(let i=1;i<=totalPages;i++){
+    const active = i===ORDERS_PAGE ? ' active' : '';
+    html += `<li class="page-item${active}"><a class="page-link" data-page="${i}" href="#">${i}</a></li>`;
+  }
+  const disabledNext = ORDERS_PAGE === totalPages ? ' disabled' : '';
+  html += `<li class="page-item${disabledNext}"><a class="page-link" data-page="next" href="#">Next</a></li>`;
+  html += '</ul></nav>';
+  pagEl.innerHTML = html;
+  pagEl.querySelectorAll('a.page-link').forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const val = a.getAttribute('data-page');
+      if(val==='prev' && ORDERS_PAGE>1){ ORDERS_PAGE--; }
+      else if(val==='next' && ORDERS_PAGE < totalPages){ ORDERS_PAGE++; }
+      else if(/^[0-9]+$/.test(val)){ const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; } }
+      renderOrders();
+      // Scroll to top of modal body for better UX
+      try{ document.querySelector('#myOrdersModal .modal-body').scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+    });
+  });
 }
 
 function actionButtons(status,id){
@@ -1656,6 +1705,7 @@ document.getElementById('myOrdersModal').addEventListener('show.bs.modal', ()=>{
   const listEl = document.getElementById('ordersList');
   if(listEl) listEl.innerHTML = skeletonOrders();
   ACTIVE_STATUS = "All";
+  ORDERS_PAGE = 1;
   fetch('orders_api.php?t=' + Date.now())
     .then(r=> r.ok ? r.json() : Promise.reject(r.status))
     .then(data=>{
