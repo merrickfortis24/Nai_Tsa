@@ -1153,7 +1153,13 @@ document.getElementById('paymentForm').addEventListener('submit', async function
         cart.length = 0;
         updateCartBadge();
         renderCartItems();
-        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+        const payM = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        payM && payM.hide();
+        // Prefetch latest orders so My Orders modal immediately shows new order
+        fetch('orders_api.php?t=' + Date.now())
+          .then(r=> r.ok ? r.json() : [])
+          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; }})
+          .catch(()=>{});
       });
     } else {
       Swal.fire({

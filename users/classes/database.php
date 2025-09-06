@@ -247,16 +247,33 @@ function createPasswordResetToken($email) {
         $contact = null;
     }
 
-    // 1. Get or create customer
-    $stmt = $con->prepare("SELECT Customer_ID FROM customer WHERE Customer_Name=?");
-    $stmt->execute([$customer_name]);
-    $customer = $stmt->fetch();
-    if ($customer) {
-        $customer_id = $customer['Customer_ID'];
-    } else {
-        $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, '', '')");
+    // 1. Determine customer_id using logged-in session when available to avoid mismatches by name
+    if (session_status() === PHP_SESSION_NONE) { @session_start(); }
+    $customer_id = $_SESSION['customer_id'] ?? null;
+    if ($customer_id) {
+        // Verify the customer actually exists; if not, fallback to name-based creation
+        $chk = $con->prepare("SELECT Customer_ID FROM customer WHERE Customer_ID = ? LIMIT 1");
+        $chk->execute([$customer_id]);
+        if (!$chk->fetchColumn()) {
+            $customer_id = null; // force fallback
+        }
+    }
+    if (!$customer_id) {
+        // Fallback: locate by exact name (may not be unique) else create
+        $stmt = $con->prepare("SELECT Customer_ID FROM customer WHERE Customer_Name=? LIMIT 1");
         $stmt->execute([$customer_name]);
-        $customer_id = $con->lastInsertId();
+        $customer = $stmt->fetch();
+        if ($customer) {
+            $customer_id = $customer['Customer_ID'];
+        } else {
+            $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, '', '')");
+            $stmt->execute([$customer_name]);
+            $customer_id = $con->lastInsertId();
+        }
+        // If session was missing, set it now so subsequent APIs (orders_api.php) will see new orders
+        if (!isset($_SESSION['customer_id'])) {
+            $_SESSION['customer_id'] = $customer_id;
+        }
     }
 
     // 2. Calculate total (base products + selected add-ons per item)
@@ -437,7 +454,7 @@ function createPasswordResetToken($email) {
         return ['success' => false, 'message' => 'Payment insert failed: ' . $error[2]];
     }
 
-    return ['success' => true, 'delivery_fee' => $delivery_fee, 'amount' => $total_with_fee, 'distance_km' => $distance_km];
+    return ['success' => true, 'order_id' => (int)$order_id, 'delivery_fee' => $delivery_fee, 'amount' => $total_with_fee, 'distance_km' => $distance_km];
 }
 
 public function getRecommendedProducts($customer_id, $limit = 4) {
