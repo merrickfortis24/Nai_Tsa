@@ -649,39 +649,5 @@ class addons_helper extends database {
         return $stmt->execute([':id' => $id]);
     }
 
-    public function getAllProductsLite(): array {
-        $con = $this->opencon();
-        $stmt = $con->query("SELECT Product_ID, Product_Name FROM product ORDER BY Product_Name ASC");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    public function getProductAddons(int $productId): array {
-        $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Addon_ID FROM product_addons WHERE Product_ID = :pid");
-        $stmt->execute([':pid' => $productId]);
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-    }
-
-    public function setProductAddons(int $productId, array $addonIds): bool {
-        $con = $this->opencon();
-        $con->beginTransaction();
-        try {
-            $del = $con->prepare("DELETE FROM product_addons WHERE Product_ID = :pid");
-            $del->execute([':pid' => $productId]);
-
-            if (!empty($addonIds)) {
-                $ins = $con->prepare("INSERT INTO product_addons (Product_ID, Addon_ID) VALUES (:pid, :aid)");
-                foreach ($addonIds as $aid) {
-                    $aid = (int)$aid;
-                    if ($aid <= 0) continue;
-                    $ins->execute([':pid' => $productId, ':aid' => $aid]);
-                }
-            }
-            $con->commit();
-            return true;
-        } catch (Throwable $e) {
-            $con->rollBack();
-            return false;
-        }
-    }
+    // Product-to-addons mapping removed per request.
 }

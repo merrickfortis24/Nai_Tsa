@@ -16,22 +16,13 @@ function ensureAddonsTables(database $db){
         Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (Addon_ID)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-    // Reference the correct product table name: `product`
-    $con->exec("CREATE TABLE IF NOT EXISTS product_addons (
-        Product_ID INT NOT NULL,
-        Addon_ID   INT NOT NULL,
-        PRIMARY KEY (Product_ID, Addon_ID),
-        CONSTRAINT fk_pa_product FOREIGN KEY (Product_ID) REFERENCES product (Product_ID) ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT fk_pa_addon   FOREIGN KEY (Addon_ID)   REFERENCES addons (Addon_ID)   ON DELETE CASCADE ON UPDATE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 }
 
 try {
     $helper = new addons_helper();
     ensureAddonsTables($helper);
     $addons = $helper->getAllAddons();
-    $products = $helper->getAllProductsLite();
-    echo json_encode(['success'=>true,'addons'=>$addons,'products'=>$products]);
+    echo json_encode(['success'=>true,'addons'=>$addons]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
