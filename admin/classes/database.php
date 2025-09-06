@@ -510,52 +510,31 @@ class database {
         $row = $curStmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) return false;
         $current = $row['order_status'];
-        $isDelivery = !empty($row['Street']) || !empty($row['City']) || !empty($row['Contact_Number']);
+    // Treat as delivery only if address fields present (contact number alone doesn't imply delivery)
+    $isDelivery = !empty($row['Street']) || !empty($row['City']);
 
-        $from = strtolower(trim($current));
-        $to = strtolower(trim($order_status));
+    $targetRaw = trim($order_status);
+    if ($targetRaw === '') return false;
 
-        // Normalize target case (DB uses capitalized words)
-        $normalize = function($s){ return ucwords($s); };
+    // Canonical lists (exact strings used in UI)
+    $deliveryStatuses = ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"];
+    $pickupStatuses   = ["Pending","Processing","Ready to pick up","Received","Cancelled"];
+    $allowedList = $isDelivery ? $deliveryStatuses : $pickupStatuses;
 
-        // Define allowed transitions
-        // Delivery flow: Pending -> Processing -> Ready to deliver -> On the way -> Delivered
-        $forwardDelivery = [
-            'pending'          => ['processing', 'cancelled'],
-            'processing'       => ['ready to deliver', 'cancelled'],
-            'ready to deliver' => ['on the way', 'cancelled'],
-            'on the way'       => ['delivered'],
-            'delivered'        => [],
-            'cancelled'        => [],
-        ];
-        // Pick up flow: Pending -> Processing -> Ready to pick up -> Received
-        $forwardPickup = [
-            'pending'          => ['processing', 'cancelled'],
-            'processing'       => ['ready to pick up', 'cancelled'],
-            'ready to pick up' => ['received', 'cancelled'],
-            'received'         => [],
-            'cancelled'        => [],
-        ];
-        $forward = $isDelivery ? $forwardDelivery : $forwardPickup;
+    // Case-insensitive match to canonical version
+    $lowerMap = [];
+    foreach ($allowedList as $canon) { $lowerMap[strtolower($canon)] = $canon; }
+    $targetLower = strtolower($targetRaw);
+    if (!isset($lowerMap[$targetLower])) return false; // not valid for this order type
+    $target = $lowerMap[$targetLower];
 
-        // Already the same
-        if ($from === $to) return true;
+    if ($current === $target) return true; // already set
 
-        // Cancel only from non-terminal and non-delivered/received
-        if ($to === 'cancelled' && in_array($from, ['delivered','received','cancelled'], true)) {
-            return false;
-        }
-        // Cancelled/delivered are terminal
-        if (in_array($from, ['cancelled','delivered','received'], true)) {
-            return false;
-        }
-        // Forward progression must be allowed
-        if (!in_array($to, $forward[$from] ?? [], true)) {
-            return false;
-        }
+    // Disallow any further changes once terminal
+    if (in_array($current, ["Cancelled","Delivered","Received"], true)) return false;
 
-        $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
-        return $stmt->execute([$normalize($to), $order_id]);
+    $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
+    return $stmt->execute([$target, $order_id]);
     }
 
     function updatePaymentStatusByOrder($order_id, $payment_status) {

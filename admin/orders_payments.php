@@ -163,14 +163,21 @@ ksort($methods);
                     <td><?=h(date('Y-m-d H:i', strtotime($r['Order_Date'])))?></td>
                     <td>₱<?=number_format($r['Order_Amount'],2)?></td>
                     <td>
-                      <form method="post" class="mb-0">
-                        <input type="hidden" name="order_id" value="<?= (int)$r['Order_ID'] ?>">
-                        <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
-                          <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $st): ?>
-                            <option value="<?=h($st)?>" <?=$r['order_status']===$st?'selected':''?>><?=$st?></option>
-                          <?php endforeach; ?>
-                        </select>
-                      </form>
+                        <form method="post" class="mb-0">
+                          <input type="hidden" name="order_id" value="<?= (int)$r['Order_ID'] ?>">
+                          <?php
+                            // Delivery if address fields present (contact number alone not decisive)
+                            $isDelivery = !empty($r['Street']) || !empty($r['City']);
+                            $statusOptions = $isDelivery
+                              ? ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"]
+                              : ["Pending","Processing","Ready to pick up","Received","Cancelled"];
+                          ?>
+                          <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <?php foreach ($statusOptions as $st): ?>
+                              <option value="<?=h($st)?>" <?=$r['order_status']===$st?'selected':''?>><?=$st?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </form>
                     </td>
                     <td>
                       <?php if (!empty($r['Payment_ID'])): ?>
