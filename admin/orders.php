@@ -229,6 +229,8 @@ function admin_display_status($row) {
                                                 type="button"
                                                 class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn"
                                                 title="View items"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#orderItemsModal"
                                                 data-order-id="<?= $order['Order_ID'] ?>"
                                                 data-items='<?= $preItemsJson ?>'>
                                                 <i class="bi bi-eye"></i>
@@ -285,124 +287,78 @@ function admin_display_status($row) {
 <!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Close alerts after 5 seconds
-    setTimeout(() => {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
+(function(){
+  const modalEl = document.getElementById('orderItemsModal');
+  if(!modalEl) return;
 
-    document.querySelectorAll('.order-status-select').forEach(function(select) {
-        select.addEventListener('change', function() {
-            select.classList.remove('bg-warning', 'bg-info', 'bg-success', 'bg-danger', 'text-dark', 'text-white');
-            if (select.value === 'Pending') {
-                select.classList.add('bg-warning', 'text-dark');
-            } else if (select.value === 'Processing') {
-                select.classList.add('bg-info', 'text-dark');
-            } else if (select.value === 'Delivered') {
-                select.classList.add('bg-success', 'text-white');
-            } else if (select.value === 'Cancelled') {
-                select.classList.add('bg-danger', 'text-white');
-            }
-        });
-    });
+  const titleEl = document.getElementById('orderItemsModalTitle');
+  const listEl  = document.getElementById('orderItemsList');
+  const loadEl  = document.getElementById('orderItemsLoading');
+  const errEl   = document.getElementById('orderItemsError');
+  const sumEl   = document.getElementById('orderItemsSummary');
 
-    // Helper to render items
-function renderOrderItems(listEl, items){
-    if(!Array.isArray(items) || !items.length){
-        listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>';
-        return 0;
-    }
-    listEl.innerHTML = items.map(it => `
+  function renderItems(items){
+      if(!Array.isArray(items) || !items.length){
+          listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>';
+          return 0;
+      }
+      listEl.innerHTML = items.map(it => `
         <li class="mb-2">
           <div class="d-flex justify-content-between">
-            <span>${it.Product_Name ?? 'Item'} <span class="text-muted small">x ${it.Quantity ?? 1}</span></span>
-            <span class="small text-muted">₱${Number(it.Price || 0).toFixed(2)}</span>
+            <span>${(it.Product_Name||'Item').replace(/</g,'&lt;')} <span class="text-muted small">x ${it.Quantity||1}</span></span>
+            <span class="small text-muted">₱${Number(it.Price||0).toFixed(2)}</span>
           </div>
         </li>`).join('');
-    return items.reduce((s,i)=> s + (Number(i.Price)||0)*(Number(i.Quantity)||1),0);
-}
+      return items.reduce((s,i)=> s + (Number(i.Price)||0)*(Number(i.Quantity)||1),0);
+  }
 
-(function(){
-    const modalEl = document.getElementById('orderItemsModal');
-    if(!modalEl){
-        console.error('[Orders] Modal element #orderItemsModal not found.');
-        return;
-    }
-    const titleEl = document.getElementById('orderItemsModalTitle');
-    const listEl  = document.getElementById('orderItemsList');
-    const loadEl  = document.getElementById('orderItemsLoading');
-    const errEl   = document.getElementById('orderItemsError');
-    const sumEl   = document.getElementById('orderItemsSummary');
-    const modal   = new bootstrap.Modal(modalEl);
+  function reset(orderId){
+      titleEl.textContent = 'Order #'+orderId+' Items';
+      listEl.innerHTML = '';
+      sumEl.textContent = '';
+      errEl.style.display='none'; errEl.textContent='';
+      loadEl.style.display='block';
+  }
 
-    function resetUI(orderId){
-        if(titleEl) titleEl.textContent = 'Order #' + orderId + ' Items';
-        listEl.innerHTML = '';
-        errEl.style.display='none'; errEl.textContent='';
-        sumEl.textContent='';
-        loadEl.style.display='block';
-    }
+  modalEl.addEventListener('show.bs.modal', function (ev){
+      const btn = ev.relatedTarget;
+      if(!btn) return;
+      const orderId = btn.getAttribute('data-order-id');
+      const preloadRaw = btn.getAttribute('data-items');
+      reset(orderId);
 
-    function fetchLive(orderId){
-        fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
-          .then(r=>{
-              console.log('[Orders] Fetch status', r.status);
-              if(!r.ok) throw new Error('HTTP '+r.status);
-              return r.json();
-          })
-          .then(data=>{
-              console.log('[Orders] API payload', data);
-              loadEl.style.display='none';
-              if(!data.success){
-                  errEl.textContent = data.message || 'Failed to load items.';
-                  errEl.style.display='block';
-                  return;
+      // Preload (cached)
+      if(preloadRaw){
+          try {
+              const pre = JSON.parse(preloadRaw);
+              if(Array.isArray(pre) && pre.length){
+                  const total = renderItems(pre);
+                  sumEl.textContent = 'Line items total: ₱'+total.toFixed(2)+' (cached)';
+                  loadEl.style.display='none';
               }
-              const items = Array.isArray(data.items)? data.items : [];
-              const total = renderOrderItems(listEl, items);
-              sumEl.textContent = 'Line items total: ₱' + total.toFixed(2);
-          })
-          .catch(e=>{
-              loadEl.style.display='none';
-              errEl.textContent = 'Error loading items: ' + e.message;
-              errEl.style.display='block';
-              console.error('[Orders] Fetch error', e);
-          });
-    }
+          } catch(e){ console.warn('Preload parse failed', e); }
+      }
 
-    document.addEventListener('click', function(e){
-        const btn = e.target.closest('.view-items-btn');
-        if(!btn) return;
-        e.preventDefault();
-
-        const orderId = btn.getAttribute('data-order-id');
-        const preloadRaw = btn.getAttribute('data-items');
-        console.log('[Orders] Eye clicked. Order:', orderId);
-
-        resetUI(orderId);
-        modal.show();
-
-        // Preload (cached fallback)
-        if(preloadRaw){
-            try {
-                const preItems = JSON.parse(preloadRaw);
-                console.log('[Orders] Preloaded items', preItems);
-                if(Array.isArray(preItems) && preItems.length){
-                    const total = renderOrderItems(listEl, preItems);
-                    sumEl.textContent = 'Line items total: ₱' + total.toFixed(2) + ' (cached)';
-                    loadEl.style.display='none';
-                }
-            } catch(parseErr){
-                console.warn('[Orders] Preload JSON parse failed', parseErr);
+      // Live fetch
+      fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
+        .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(data => {
+            loadEl.style.display='none';
+            if(!data.success){
+                errEl.textContent = data.message || 'Failed to load items.';
+                errEl.style.display='block';
+                return;
             }
-        }
-
-        // Always attempt live refresh
-        fetchLive(orderId);
-    });
+            const total = renderItems(data.items||[]);
+            sumEl.textContent = 'Line items total: ₱'+total.toFixed(2);
+        })
+        .catch(err => {
+            loadEl.style.display='none';
+            errEl.textContent = 'Error: ' + err.message;
+            errEl.style.display='block';
+            console.error('Fetch error', err);
+        });
+  });
 })();
 </script>
 </body>
