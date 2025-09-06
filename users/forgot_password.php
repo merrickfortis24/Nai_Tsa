@@ -13,6 +13,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 $message = '';
+$alertClass = 'info'; // will switch to success or danger based on result
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -20,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = new database();
         $result = $db->createPasswordResetToken($email);
 
-        if ($result['success']) {
+  if ($result['success']) {
             $token = $result['token'];
       // Build reset link robustly (handles subfolder deployments)
       $baseUrl = getenv('MAIL_BASE_URL'); // If set, assumed to already include any subdirectory
@@ -84,14 +85,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           . "</div>";
         $mail->AltBody = "Password Reset Request\n\nVisit this link to reset: $resetLink\nIf you didn't request this, ignore the email.";
 
-                $mail->send();
-                $message = "If this email is registered, a password reset link will be sent.";
+        $mail->send();
+        $message = "Password reset link sent. Please check your email.";
+    $alertClass = 'success';
             } catch (Exception $e) {
         error_log('Forgot password mail error: ' . $e->getMessage());
-        $message = "Failed to send reset email.";
+    $message = "Failed to send reset email. Please try again later.";
+    $alertClass = 'danger';
             }
         } else {
-            $message = "If this email is registered, a password reset link will be sent.";
+      // Email not found in customer table
+      $message = "Email address not found. Please double-check or create an account.";
+    $alertClass = 'danger';
         }
     }
 }
@@ -106,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="container" style="max-width:400px;margin:40px auto;padding:30px;background:#fff;border-radius:10px;box-shadow:0 0 10px #b2e0df;">
     <h2>Forgot Password</h2>
     <?php if ($message): ?>
-      <div class="alert alert-info"><?= htmlspecialchars($message) ?></div>
+      <div class="alert alert-<?= htmlspecialchars($alertClass) ?>"><?= htmlspecialchars($message) ?></div>
     <?php endif; ?>
     <form method="POST">
       <div class="mb-3">
