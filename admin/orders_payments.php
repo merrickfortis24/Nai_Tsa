@@ -106,11 +106,13 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-md-1">
-              <input type="date" name="from" value="<?=h($from)?>" class="form-control" title="From date">
+            <div class="col-md-2">
+              <label for="date_from" class="form-label mb-0 small">From</label>
+              <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control" title="From date">
             </div>
-            <div class="col-md-1">
-              <input type="date" name="to" value="<?=h($to)?>" class="form-control" title="To date">
+            <div class="col-md-2">
+              <label for="date_to" class="form-label mb-0 small">To</label>
+              <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control" title="To date">
             </div>
             <div class="col-md-1 d-grid">
               <button class="btn btn-primary"><i class="bi bi-search"></i></button>
