@@ -22,15 +22,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             $token = $result['token'];
-      // Build reset link using configured base URL or current host
-      $baseUrl = getenv('MAIL_BASE_URL');
+      // Build reset link robustly (handles subfolder deployments)
+      $baseUrl = getenv('MAIL_BASE_URL'); // If set, assumed to already include any subdirectory
+      $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+      $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
       if (!$baseUrl) {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        // Assume app root is domain root; adjust if deployed under subfolder
-        $baseUrl = $scheme . '://' . $host;
+        $baseUrl = $scheme . '://' . $host; // host only
       }
-      $resetLink = rtrim($baseUrl, '/') . '/users/reset_password.php?token=' . urlencode($token);
+      // Directory of current script (e.g. /users or /subdir/users)
+      $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/users/forgot_password.php');
+      if ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.') { $scriptDir = ''; }
+      // If MAIL_BASE_URL already contains a path segment (beyond host) we don't prepend scriptDir again.
+      $parsedBase = parse_url($baseUrl);
+      $baseHasPath = isset($parsedBase['path']) && trim($parsedBase['path'], '/') !== '';
+      $pathPart = $baseHasPath ? '' : $scriptDir; // avoid duplicating subfolder
+      $resetLink = rtrim($baseUrl, '/') . rtrim($pathPart, '/') . '/reset_password.php?token=' . urlencode($token);
 
             $mail = new PHPMailer(true);
             try {
