@@ -98,25 +98,24 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about">
+  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
     <div class="section-overlay"></div>
     <div class="section-content">
-      <h2 class="section-title" style="font-size:3.2rem;">About Nai Tsa</h2>
+      <h2 class="section-title">About Nai Tsa</h2>
       <p class="section-desc">
-        At Nai Tsa, we blend premium milk tea and coffee with creativity in every cup. From classics to signature blends, enjoy great flavors in a cozy space with friendly baristas. Come for the taste, stay for the vibe.
+        Your next cup is waiting at NaiTsa
+      </p>
       <!-- Location Card with Map and Address -->
       <div class="card shadow-sm mb-3" style="max-width:410px; background:rgba(255,255,255,0.98); border-radius:16px;">
         <div style="border-radius:16px 16px 0 0; overflow:hidden;">
-          <!-- OpenStreetMap Embed for Lipa City, Philippines, Banay-Banay -->
           <iframe
             width="100%"
             height="180"
-            frameborder="0"
             style="border:0; display:block;"
-            src="https://www.openstreetmap.org/export/embed.html?bbox=121.118%2C13.940%2C121.175%2C13.990&layer=mapnik&marker=13.965%2C121.146"
+            loading="lazy"
             allowfullscreen
-            aria-hidden="false"
-            tabindex="0"></iframe>
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d223.12180430306455!2d121.0944898450661!3d13.929589039573633!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd12b3c5bfce1f%3A0x3cd9f9ce0a7759b3!2sPJ%20LIZA%20STORE!5e1!3m2!1sen!2sph!4v1756433717417!5m2!1sen!2sph"></iframe>
         </div>
         <div class="p-3">
           <div class="mb-2" style="font-size:1.08rem; color:#61391D;">
