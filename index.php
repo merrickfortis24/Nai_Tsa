@@ -231,16 +231,18 @@ Open daily from 10AM to midnight..</p>
 <?php elseif (isset($_GET['contact']) && $_GET['contact'] === 'error'): ?>
   <div class="alert alert-danger">Sorry, there was a problem sending your message.</div>
 <?php endif; ?>
-      <form method="POST" action="https://formspree.io/f/xnnvvzvw">
+      <form method="POST" action="send_contact.php" novalidate>
   <div class="row">
     <div class="col-md-6 mb-3">
-      <input type="text" class="form-control" name="name" placeholder="Your Name" required>
+      <input type="text" class="form-control" name="name" placeholder="Your Name" maxlength="100" required>
     </div>
     <div class="col-md-6 mb-3">
-      <input type="email" class="form-control" name="email" placeholder="Your Email" required>
+      <input type="email" class="form-control" name="email" placeholder="Your Email" maxlength="150" required>
     </div>
   </div>
-  <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" required></textarea>
+  <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
+  <!-- Honeypot field to reduce spam -->
+  <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
   <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
 </form>
     </div>
