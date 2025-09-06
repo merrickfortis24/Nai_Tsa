@@ -787,12 +787,32 @@ async function reverseGeocodeAndFill(lat, lng){
     const road = addr.road || addr.pedestrian || addr.footway || addr.residential || '';
     const subdivision = addr.residential || addr.neighbourhood || addr.quarter || addr.estate || '';
     // Barangay detection – Nominatim may map it to suburb or village; keep strictly barangay-level (avoid using neighbourhood already used as subdivision)
-    const barangay = addr.barangay || addr.suburb || addr.village || addr.hamlet || '';
+  let barangay = addr.barangay || addr.suburb || addr.village || addr.hamlet || '';
     // City / municipality
     const city = addr.city || addr.town || addr.municipality || addr.city_district || addr.county || '';
     // Compose street text
     const streetParts = [housePart || blockLot, road, subdivision && subdivision !== barangay ? subdivision : ''].filter(Boolean);
     const street = streetParts.join(', ');
+    // Barangay refinement: if OSM gave a nearby/adjacent barangay (e.g., Pusil) but display_name contains a different known barangay (e.g., Inosloban), prefer the known token.
+    const knownBarangays = [
+      'Inosloban','Pusil','Sabang','San Jose','Santo Toribio','Banaybanay','Mataas na Lupa','Marawoy','Balintawak','Santo Niño','Dagatan','Antipolo del Norte','Antipolo del Sur','Calamias','Cumba','Sico','Sampaguita','Talisay','Lodlod','Pinagtongulan','Balagbag','Bulacnin','Kayumanggi','Latag','Mabini','Malagonlong','Malitlit','Pagolingin East','Pagolingin West','Pangao','Plaridel','Quezon','Rizal','San Benito','San Celestino','San Francisco','San Guillermo','San Isidro','San Lucas','San Salvador','Santa Cruz','Tambo','Tangob','Tipacan'
+    ];
+    const dn = (data.display_name || '').toLowerCase();
+    const currentLower = barangay.toLowerCase();
+    let bestMatch = currentLower ? barangay : '';
+    for (const kb of knownBarangays){
+      const kbLower = kb.toLowerCase();
+      if (dn.includes(kbLower)) {
+        // Prefer if current barangay empty OR current not in display name OR match length is longer / more specific
+        if (!bestMatch || !dn.includes(currentLower) || kbLower.length > bestMatch.toLowerCase().length) {
+          bestMatch = kb;
+        }
+      }
+    }
+    if (bestMatch && bestMatch.toLowerCase() !== currentLower) {
+      barangay = bestMatch; // override with refined match
+    }
+
     const form = document.getElementById('paymentForm');
     if (form){
       if (form.street) form.street.value = street;
