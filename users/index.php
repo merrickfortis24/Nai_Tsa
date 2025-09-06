@@ -1029,6 +1029,8 @@ if (confirmPinBtn){
       if(summary.latInput) summary.latInput.value = String(pos.lat);
       if(summary.lngInput) summary.lngInput.value = String(pos.lng);
       updateOrderSummary();
+  // Auto-fill address fields from pin (phone left for user)
+  reverseGeocodeAndFill(pos.lat, pos.lng);
       Swal.fire({icon:'success', title:'Location set', timer:1000, showConfirmButton:false});
     } else {
       Swal.fire({icon:'info', title:'Drag the pin to your location first', confirmButtonColor:'#FFB27A'});
