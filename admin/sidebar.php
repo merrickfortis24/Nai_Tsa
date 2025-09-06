@@ -27,6 +27,15 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
                 <span>Admins</span>
             </a>
         </li>
+                <li class="nav-item">
+            <a class="nav-link<?php if($page=='orders')echo' active'; ?>" href="orders_payments.php">
+                <i class="bi bi-cart4"></i>
+                <span>Orders & Payments</span>
+                <?php if (!empty($pendingProcessingCount)) : ?>
+                    <span class="badge rounded-pill bg-warning text-dark float-end"><?= (int)$pendingProcessingCount ?></span>
+                <?php endif; ?>
+            </a>
+        </li>
         <li class="nav-item">
             <a class="nav-link<?php if($page=='orders')echo' active'; ?>" href="orders.php">
                 <i class="bi bi-cart4"></i>
