@@ -62,6 +62,10 @@ ksort($methods);
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 .badge-status { font-size:.75rem; }
+.filter-row .short-select { min-width: 120px; }
+@media (max-width: 768px){
+  .filter-row .short-select { min-width: 100%; }
+}
 </style>
 </head>
 <body class="dashboard-page">
@@ -78,42 +82,42 @@ ksort($methods);
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
-          <form method="get" class="row g-2 mb-3 align-items-end">
-            <div class="col-6 col-md-3">
+          <form method="get" class="row g-2 mb-3 align-items-end filter-row">
+            <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
             </div>
-            <div class="col-6 col-md-2">
-              <select name="status" class="form-select" title="Order Status">
+            <div class="col-auto">
+              <select name="status" class="form-select form-select-sm short-select" title="Order Status">
                 <option value="">All Status</option>
                 <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
                   <option value="<?=h($s)?>" <?=$status===$s?'selected':''?>><?=h($s)?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-6 col-md-2">
-              <select name="payment" class="form-select" title="Payment Status">
-                <option value="">All Payment</option>
+            <div class="col-auto">
+              <select name="payment" class="form-select form-select-sm short-select" title="Payment Status">
+                <option value="">All Pay</option>
                 <?php foreach (["Paid","Unpaid"] as $s): ?>
                   <option value="<?=h($s)?>" <?=$payment===$s?'selected':''?>><?=h($s)?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-6 col-md-2">
-              <select name="method" class="form-select" title="Payment Method">
-                <option value="">All Methods</option>
+            <div class="col-auto">
+              <select name="method" class="form-select form-select-sm short-select" title="Payment Method">
+                <option value="">Method</option>
                 <?php foreach ($methods as $m=>$_): ?>
                   <option value="<?=h($m)?>" <?=$method===$m?'selected':''?>><?=h($m)?></option>
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-6 col-md-1">
-              <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control" placeholder="From" aria-label="From date" />
+            <div class="col-auto">
+              <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control form-control-sm short-select" placeholder="From" aria-label="From date" />
             </div>
-            <div class="col-6 col-md-1">
-              <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control" placeholder="To" aria-label="To date" />
+            <div class="col-auto">
+              <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control form-control-sm short-select" placeholder="To" aria-label="To date" />
             </div>
-            <div class="col-12 col-md-1 d-grid">
-              <button class="btn btn-primary w-100" title="Apply filters"><i class="bi bi-search"></i></button>
+            <div class="col-auto d-grid">
+              <button class="btn btn-primary btn-sm" title="Apply filters"><i class="bi bi-search"></i></button>
             </div>
           </form>
 
