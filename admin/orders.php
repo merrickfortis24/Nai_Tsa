@@ -162,6 +162,15 @@ function admin_display_status($row) {
                                 </thead>
                                 <tbody>
                                     <?php foreach ($orders as $order): ?>
+                                    <?php 
+                                        // Preload items for fallback (acceptable for small page size)
+                                        try { 
+                                            $preItems = $db->fetchOrderItems($order['Order_ID']); 
+                                        } catch (Throwable $e) { 
+                                            $preItems = []; 
+                                        }
+                                        $preItemsJson = htmlspecialchars(json_encode($preItems), ENT_QUOTES, 'UTF-8');
+                                    ?>
                                     <tr>
                                         <td>
                                             <span class="fw-semibold"><i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($db->getCustomerNameById($order['Customer_ID'])) ?></span>
@@ -217,7 +226,7 @@ function admin_display_status($row) {
                                             </span>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal" title="View items" data-order-id="<?= $order['Order_ID'] ?>">
+                                            <button type="button" class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn" data-bs-toggle="modal" data-bs-target="#orderItemsModal" title="View items" data-order-id="<?= $order['Order_ID'] ?>" data-items='<?= $preItemsJson ?>'>
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </td>
@@ -315,7 +324,27 @@ function admin_display_status($row) {
                 if(listEl) listEl.innerHTML = '';
                 if(errEl) { errEl.style.display='none'; errEl.textContent=''; }
                 if(sumEl) sumEl.textContent='';
-                if(loadEl) loadEl.style.display='block';
+        if(loadEl) loadEl.style.display='block';
+
+        // Immediate fallback render from preloaded data-items attribute (no network delay)
+        const preloadRaw = btn.getAttribute('data-items');
+        if(preloadRaw){
+            try {
+                const preItems = JSON.parse(preloadRaw);
+                if(Array.isArray(preItems) && preItems.length){
+                    listEl.innerHTML = preItems.map(it => `
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
+                                <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
+                            </div>
+                        </li>`).join('');
+                    const total = preItems.reduce((s,i)=> s + (Number(i.Price)||0) * (Number(i.Quantity)||1), 0);
+                    if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2) + ' (cached)';
+                    if(loadEl) loadEl.style.display='none';
+                }
+            } catch(_) { /* ignore JSON parse error */ }
+        }
                 fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
                     .then(r=> {
                         console.log('[OrderItems] HTTP status', r.status);
