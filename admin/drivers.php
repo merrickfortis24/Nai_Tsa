@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
-require_once '../users/classes/database.php';
+require_once '../admin/classes/database.php';
 $db = new database();
 $con = $db->opencon();
 
