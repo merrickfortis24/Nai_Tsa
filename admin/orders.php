@@ -229,8 +229,6 @@ function admin_display_status($row) {
                                                 type="button"
                                                 class="btn btn-sm btn-outline-info px-2 py-1 view-items-btn"
                                                 title="View items"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#orderItemsModal"
                                                 data-order-id="<?= $order['Order_ID'] ?>"
                                                 data-items='<?= $preItemsJson ?>'>
                                                 <i class="bi bi-eye"></i>
@@ -313,15 +311,15 @@ function admin_display_status($row) {
 
     // Helper to render items
 function renderOrderItems(listEl, items){
-    if(!items.length){
+    if(!Array.isArray(items) || !items.length){
         listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>';
         return 0;
     }
     listEl.innerHTML = items.map(it => `
         <li class="mb-2">
           <div class="d-flex justify-content-between">
-            <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
-            <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
+            <span>${it.Product_Name ?? 'Item'} <span class="text-muted small">x ${it.Quantity ?? 1}</span></span>
+            <span class="small text-muted">₱${Number(it.Price || 0).toFixed(2)}</span>
           </div>
         </li>`).join('');
     return items.reduce((s,i)=> s + (Number(i.Price)||0)*(Number(i.Quantity)||1),0);
@@ -329,48 +327,41 @@ function renderOrderItems(listEl, items){
 
 (function(){
     const modalEl = document.getElementById('orderItemsModal');
-    if(!modalEl) return;
+    if(!modalEl){
+        console.error('[Orders] Modal element #orderItemsModal not found.');
+        return;
+    }
     const titleEl = document.getElementById('orderItemsModalTitle');
     const listEl  = document.getElementById('orderItemsList');
     const loadEl  = document.getElementById('orderItemsLoading');
     const errEl   = document.getElementById('orderItemsError');
     const sumEl   = document.getElementById('orderItemsSummary');
+    const modal   = new bootstrap.Modal(modalEl);
 
-    modalEl.addEventListener('show.bs.modal', function (ev){
-        const trigger = ev.relatedTarget;
-        if(!trigger) return;
-        const orderId = trigger.getAttribute('data-order-id');
-        const preloadRaw = trigger.getAttribute('data-items');
-
-        // Reset UI
+    function resetUI(orderId){
         if(titleEl) titleEl.textContent = 'Order #' + orderId + ' Items';
         listEl.innerHTML = '';
         errEl.style.display='none'; errEl.textContent='';
         sumEl.textContent='';
         loadEl.style.display='block';
+    }
 
-        // Preloaded fallback
-        if(preloadRaw){
-            try {
-                const preItems = JSON.parse(preloadRaw);
-                if(Array.isArray(preItems) && preItems.length){
-                    const total = renderOrderItems(listEl, preItems);
-                    sumEl.textContent = 'Line items total: ₱' + total.toFixed(2) + ' (cached)';
-                    loadEl.style.display='none';
-                }
-            } catch(_) {}
-        }
-
-        // Live fetch
+    function fetchLive(orderId){
         fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
-          .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+          .then(r=>{
+              console.log('[Orders] Fetch status', r.status);
+              if(!r.ok) throw new Error('HTTP '+r.status);
+              return r.json();
+          })
           .then(data=>{
+              console.log('[Orders] API payload', data);
               loadEl.style.display='none';
               if(!data.success){
-                  errEl.textContent = data.message || 'Failed to load items.'; errEl.style.display='block';
+                  errEl.textContent = data.message || 'Failed to load items.';
+                  errEl.style.display='block';
                   return;
               }
-              const items = Array.isArray(data.items)?data.items:[];
+              const items = Array.isArray(data.items)? data.items : [];
               const total = renderOrderItems(listEl, items);
               sumEl.textContent = 'Line items total: ₱' + total.toFixed(2);
           })
@@ -378,7 +369,39 @@ function renderOrderItems(listEl, items){
               loadEl.style.display='none';
               errEl.textContent = 'Error loading items: ' + e.message;
               errEl.style.display='block';
+              console.error('[Orders] Fetch error', e);
           });
+    }
+
+    document.addEventListener('click', function(e){
+        const btn = e.target.closest('.view-items-btn');
+        if(!btn) return;
+        e.preventDefault();
+
+        const orderId = btn.getAttribute('data-order-id');
+        const preloadRaw = btn.getAttribute('data-items');
+        console.log('[Orders] Eye clicked. Order:', orderId);
+
+        resetUI(orderId);
+        modal.show();
+
+        // Preload (cached fallback)
+        if(preloadRaw){
+            try {
+                const preItems = JSON.parse(preloadRaw);
+                console.log('[Orders] Preloaded items', preItems);
+                if(Array.isArray(preItems) && preItems.length){
+                    const total = renderOrderItems(listEl, preItems);
+                    sumEl.textContent = 'Line items total: ₱' + total.toFixed(2) + ' (cached)';
+                    loadEl.style.display='none';
+                }
+            } catch(parseErr){
+                console.warn('[Orders] Preload JSON parse failed', parseErr);
+            }
+        }
+
+        // Always attempt live refresh
+        fetchLive(orderId);
     });
 })();
 </script>
