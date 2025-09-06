@@ -317,28 +317,42 @@ function admin_display_status($row) {
                 if(sumEl) sumEl.textContent='';
                 if(loadEl) loadEl.style.display='block';
                 fetch('order_items_api.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now())
-                    .then(r=> r.ok ? r.json() : Promise.reject('HTTP '+r.status))
-                    .then(data => {
-                            if(loadEl) loadEl.style.display='none';
-                            if(!data || !data.success){
-                                 if(errEl){ errEl.textContent = (data&&data.message)||'Failed to load items.'; errEl.style.display='block'; }
-                                 return;
-                            }
-                            const items = Array.isArray(data.items) ? data.items : [];
-                            if(!items.length){ listEl.innerHTML = '<li class="text-muted">No items found.</li>'; }
-                            else {
-                                 listEl.innerHTML = items.map(it => `
-                                     <li class="mb-2 d-flex justify-content-between align-items-center">
-                                         <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
-                                         <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
-                                     </li>`).join('');
-                                 const total = items.reduce((s,i)=> s + (Number(i.Price)||0) * (Number(i.Quantity)||1), 0);
-                                 if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2);
-                            }
+                    .then(r=> {
+                        console.log('[OrderItems] HTTP status', r.status);
+                        if(!r.ok) throw new Error('HTTP '+r.status);
+                        return r.text();
+                    })
+                    .then(txt => {
+                        let data;
+                        try { data = JSON.parse(txt); }
+                        catch(parseErr){
+                            console.warn('[OrderItems] Non-JSON response', txt);
+                            throw new Error('Invalid JSON from server');
+                        }
+                        if(loadEl) loadEl.style.display='none';
+                        console.log('[OrderItems] Payload', data);
+                        if(!data || !data.success){
+                            if(errEl){ errEl.textContent = (data&&data.message)||'Failed to load items.'; errEl.style.display='block'; }
+                            return;
+                        }
+                        const items = Array.isArray(data.items) ? data.items : [];
+                        if(!items.length){ listEl.innerHTML = '<li class="text-muted">No items found for this order.</li>'; }
+                        else {
+                            listEl.innerHTML = items.map(it => `
+                                <li class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>${it.Product_Name} <span class="text-muted small">x ${it.Quantity}</span></span>
+                                        <span class="small text-muted">₱${Number(it.Price).toFixed(2)}</span>
+                                    </div>
+                                </li>`).join('');
+                            const total = items.reduce((s,i)=> s + (Number(i.Price)||0) * (Number(i.Quantity)||1), 0);
+                            if(sumEl) sumEl.textContent = 'Line items total: ₱'+ total.toFixed(2);
+                        }
                     })
                     .catch(err => {
                             if(loadEl) loadEl.style.display='none';
-                            if(errEl){ errEl.textContent = 'Error loading items: '+ err; errEl.style.display='block'; }
+                            if(errEl){ errEl.textContent = 'Error loading items: '+ err.message; errEl.style.display='block'; }
+                            console.error('[OrderItems] Fetch error', err);
                     });
                 try { new bootstrap.Modal(modalEl).show(); } catch(err){ console.warn('Modal show failed', err); }
     });
