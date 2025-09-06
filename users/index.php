@@ -773,16 +773,15 @@ async function reverseGeocodeAndFill(lat, lng){
     if (!res.ok) throw new Error('Reverse geocode failed');
     const data = await res.json();
     const addr = data.address || {};
-    // Heuristics for fields
+    // Heuristics for fields (fallbacks empty so we always overwrite)
     const street = addr.road || addr.pedestrian || addr.footway || addr.residential || addr.neighbourhood || '';
     const barangay = addr.village || addr.suburb || addr.hamlet || addr.neighbourhood || '';
-    // Prefer city / town / municipality
     const city = addr.city || addr.town || addr.municipality || addr.county || '';
     const form = document.getElementById('paymentForm');
     if (form){
-      if (street && form.street) form.street.value = street;
-      if (barangay && form.barangay) form.barangay.value = barangay;
-      if (city && form.city) form.city.value = city;
+      if (form.street) form.street.value = street;
+      if (form.barangay) form.barangay.value = barangay;
+      if (form.city) form.city.value = city;
     }
   } catch(err){
     console.warn('reverseGeocodeAndFill error', err);
