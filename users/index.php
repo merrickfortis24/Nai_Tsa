@@ -549,10 +549,13 @@ const cartBadge = document.getElementById('cart-badge');
 const ordersBadge = document.getElementById('orders-badge');
 const cartItemsList = document.getElementById('cart-items-list');
 
+// Count ONLY strictly 'Pending' orders (exclude Processing, To Ship, etc.)
 function derivePendingOrders(list){
   if(!Array.isArray(list)) return 0;
-  const PENDING_SET = new Set(['Pending','Processing','To Ship','To Receive','Ready to deliver','On the way','Ready to pick up']);
-  let c=0; for(const o of list){ const st=(o.order_status||o.ui_status||'').trim(); if(PENDING_SET.has(st)) c++; }
+  let c=0; for(const o of list){
+    const st=(o.order_status||o.ui_status||'').trim();
+    if(st === 'Pending') c++;
+  }
   return c;
 }
 
@@ -1221,6 +1224,14 @@ document.getElementById('paymentForm').addEventListener('submit', async function
         renderCartItems();
         const payM = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
         payM && payM.hide();
+        // Optimistic badge update so user sees the new pending order instantly (before orders_api fetch completes)
+        try {
+          if (typeof ordersBadge !== 'undefined' && ordersBadge) {
+            const currentPending = parseInt(ordersBadge.textContent || '0', 10) || 0;
+            ordersBadge.textContent = currentPending + 1;
+            ordersBadge.style.display = 'inline-block';
+          }
+        } catch(e) { /* ignore */ }
         // Prefetch latest orders so My Orders modal immediately shows new order
         fetch('orders_api.php?t=' + Date.now())
           .then(r=> r.ok ? r.json() : [])
