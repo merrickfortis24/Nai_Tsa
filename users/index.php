@@ -1301,7 +1301,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+      <img src="../admin/uploads/products/${product.Product_Image || ''}" alt="${product.Product_Name}"
+        onerror="this.onerror=null;this.src='assets/no-image.png';">
             <div class="allergen-icon-group">${allergenIconsHtml}</div>
           </div>
           <div class="menu-card-content">
@@ -1378,7 +1379,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+      <img src="../admin/uploads/products/${product.Product_Image || ''}" alt="${product.Product_Name}"
+        onerror="this.onerror=null;this.src='assets/no-image.png';">
             <div class="allergen-icon-group">${allergenIconsHtml}</div>
           </div>
           <div class="menu-card-content">
@@ -1674,7 +1676,7 @@ function renderOrders(){
              uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
     const itemsPreview = o.items.slice(0,3).map(it=>`
       <div class="d-inline-flex align-items-center me-2 mb-1" style="font-size:.75rem;">
-        <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
+  <img src="../admin/uploads/products/${it.Product_Image || ''}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;" onerror="this.onerror=null;this.src='assets/no-image.png';">
         <span>${it.Product_Name} x ${it.Quantity}</span>
       </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
 
@@ -1837,7 +1839,8 @@ function openReviewModalByOrderId(orderId){
       <div class="card product-review-card mb-3" data-product-id="${pid}" data-rating="0" data-locked="0"
            style="border-radius:16px; overflow:hidden;">
         <div class="card-body d-flex align-items-start">
-          <img src="../admin/uploads/products/${it.Product_Image}" alt="${it.Product_Name}"
+    <img src="../admin/uploads/products/${it.Product_Image || ''}" alt="${it.Product_Name}"
+      onerror="this.onerror=null;this.src='assets/no-image.png';"
                style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
           <div class="ms-3 flex-grow-1">
             <div class="d-flex justify-content-between align-items-start">
@@ -2028,7 +2031,8 @@ function buildProductModalHtml(product, addons){
     <div class="product-details-grid">
       <div>
         <div class="product-hero">
-          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+    <img src="../admin/uploads/products/${product.Product_Image || ''}" alt="${product.Product_Name}"
+      onerror="this.onerror=null;this.src='assets/no-image.png';">
         </div>
         <div class="mt-3">
           <div class="d-flex justify-content-between align-items-start">
