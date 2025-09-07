@@ -453,7 +453,8 @@ $all_products = $db->fetchAllProducts();
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between align-items-center" style="background:var(--beige);">
-          <div class="fw-semibold">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+          <!-- Footer total mirrors dynamic modal total; separate id to avoid duplicate -->
+          <div class="fw-semibold">Total: <span id="productWithAddonsFooterTotal">₱0.00</span></div>
           <div>
             <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Close</button>
             <button type="button" class="btn btn-soft-orange" id="modalAddToCartBtn">Add to Cart</button>
@@ -2085,24 +2086,16 @@ function updateProductModalTotal(basePrice){
     addonsTotal += price * aQty; // independent of productQty
   });
   const baseSubtotal = (Number(basePrice||0) * productQty);
-  // Shipping preview (does NOT get added to item total). Show 0 for pickup, estimate for delivery if coords, else placeholder.
+  // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
   let shippingFeeDisplay = '—';
   try {
-    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value || '';
-    if(orderTypeSel === 'Pickup') {
-      shippingFeeDisplay = '₱0.00';
-    } else if(orderTypeSel === 'Delivery') {
-      if(summary?.latInput?.value && summary?.lngInput?.value){
-        const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
-        if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
-          const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
-            const fee = computeDeliveryFee(dist);
-            if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2); else shippingFeeDisplay = 'Estimating…';
-        } else {
-          shippingFeeDisplay = 'Set in checkout';
-        }
-      } else {
-        shippingFeeDisplay = 'Set in checkout';
+    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value;
+    if(orderTypeSel === 'Delivery' && summary?.latInput?.value && summary?.lngInput?.value){
+      const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
+      if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
+        const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+        const fee = computeDeliveryFee(dist);
+        if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2);
       }
     }
   } catch(e) { /* ignore */ }
@@ -2112,18 +2105,12 @@ function updateProductModalTotal(basePrice){
   const addonsEl = document.getElementById('productAddonsSubtotal');
   const shipEl = document.getElementById('productShippingFee');
   const totalEl = document.getElementById('productWithAddonsTotal');
+  const footerTotalEl = document.getElementById('productWithAddonsFooterTotal');
   if(baseEl) baseEl.textContent = '₱' + baseSubtotal.toFixed(2);
   if(addonsEl) addonsEl.textContent = '₱' + addonsTotal.toFixed(2);
   if(shipEl) shipEl.textContent = shippingFeeDisplay; // not included in item total
   if(totalEl) totalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
-}
-
-// If product modal is visible re-run totals (used when address/order type changes outside modal)
-function recalcProductModalIfOpen(){
-  const m = document.getElementById('productDetailsModal');
-  if(!m) return; if(!m.classList.contains('show')) return; 
-  const bp = Number(m.dataset.basePrice||0); 
-  updateProductModalTotal(bp);
+  if(footerTotalEl) footerTotalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
 }
 
 async function openProductDetailsWithAddons(product){
@@ -2134,18 +2121,12 @@ async function openProductDetailsWithAddons(product){
 
   // Bind qty +/- and total updates for this render
   const basePrice = Number(product.Price_Amount||0);
-  const modalElPersist = document.getElementById('productDetailsModal');
-  if(modalElPersist) modalElPersist.dataset.basePrice = String(basePrice);
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
   minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
   plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
   qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
-  // Also react to orderType radio changes while modal is open
-  document.querySelectorAll('input[name="orderType"]').forEach(r=>{
-    r.addEventListener('change', ()=> updateProductModalTotal(basePrice));
-  });
   updateProductModalTotal(basePrice);
 
   // Add to Cart handler
