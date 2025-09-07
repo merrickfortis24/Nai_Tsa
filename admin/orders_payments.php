@@ -182,7 +182,7 @@ ksort($methods);
                   <tr>
                     <td><?=h($r['Order_ID'])?></td>
                     <td><?=h($r['Customer_Name'] ?? 'Unknown')?></td>
-                    <td><?=h(date('Y-m-d H:i', strtotime($r['Order_Date'])))?></td>
+                    <td><?=h(date('F j,Y g:i A', strtotime($r['Order_Date'])))?></td>
                     <td>₱<?=number_format($r['Order_Amount'],2)?></td>
                     <td>
                         <form method="post" class="mb-0">
