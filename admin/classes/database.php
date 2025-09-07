@@ -439,6 +439,36 @@ class database {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Extended: fetch items plus any stored add-ons for each item
+    function fetchOrderItemsWithAddons($order_id) {
+        $con = $this->opencon();
+        $stmt = $con->prepare("
+            SELECT oi.*, p.Product_Name, p.Product_Image
+            FROM order_item oi
+            JOIN product p ON oi.Product_ID = p.Product_ID
+            WHERE oi.Order_ID = ?
+        ");
+        $stmt->execute([$order_id]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$items) return [];
+
+        $by = [];
+        foreach ($items as $k=>$row) { $items[$k]['addons'] = []; $by[$row['Order_Item_ID']] = &$items[$k]; }
+
+        $stmtA = $con->prepare("
+            SELECT Order_Item_ID, Addon_Name, Addon_Price, Quantity
+            FROM order_item_addons
+            WHERE Order_ID = ?
+            ORDER BY Order_Item_ID, Addon_Name
+        ");
+        $stmtA->execute([$order_id]);
+        while ($ad = $stmtA->fetch(PDO::FETCH_ASSOC)) {
+            $oid = $ad['Order_Item_ID'];
+            if (isset($by[$oid])) { $by[$oid]['addons'][] = $ad; }
+        }
+        return $items;
+    }
+
     function updateAdmin($admin_id, $admin_name, $admin_email, $admin_role, $status, $new_password = '', $confirm_password = '') {
         if (empty($admin_id)) {
             throw new Exception("Admin ID is missing");

@@ -233,7 +233,7 @@ ksort($methods);
         </div>
       </div>
 
-  <?php foreach ($rows as $r): try { $items = $db->fetchOrderItems($r['Order_ID']); } catch(Throwable $e) { $items=[]; } ?>
+  <?php foreach ($rows as $r): try { $items = $db->fetchOrderItemsWithAddons($r['Order_ID']); } catch(Throwable $e) { $items=[]; } ?>
       <div class="modal fade" id="itemsModal<?=h($r['Order_ID'])?>" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable">
           <div class="modal-content">
@@ -296,6 +296,15 @@ ksort($methods);
                         $qty   = (int)($it['Quantity'] ?? 0); 
                         $price = (float)($it['Price'] ?? 0); 
                         $line  = $qty * $price; 
+                        $addonTotal = 0; 
+                        if (!empty($it['addons']) && is_array($it['addons'])) {
+                          foreach ($it['addons'] as $ad) {
+                            $addonQty = (int)($ad['Quantity'] ?? 1);
+                            $addonPrice = (float)($ad['Addon_Price'] ?? 0);
+                            $addonTotal += $addonPrice * $addonQty * max(1,$qty); // stored as per unit addon
+                          }
+                        }
+                        $lineWithAddons = $line + $addonTotal;
                         $subtotal += $line; 
                         // Attempt to locate an image field from common column names
                         $img = $it['Image']
@@ -326,21 +335,33 @@ ksort($methods);
                           }
                         }
                   ?>
-                    <li class="list-group-item d-flex">
-                      <div class="me-3" style="width:56px;">
-                        <?php if($imgFile): ?>
-                          <img src="<?=h($imgFile)?>" alt="Item" class="img-fluid rounded" style="height:56px; width:56px; object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling?.classList.remove('d-none');">
-                          <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted d-none" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
-                        <?php else: ?>
-                          <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
-                        <?php endif; ?>
-                      </div>
-                      <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between">
-                          <span class="fw-semibold"><?=h($it['Product_Name'] ?? 'Item')?></span>
-                          <span class="fw-semibold text-nowrap">₱<?=number_format($line,2)?></span>
+                    <li class="list-group-item d-flex flex-column">
+                      <div class="d-flex w-100">
+                        <div class="me-3" style="width:56px;">
+                          <?php if($imgFile): ?>
+                            <img src="<?=h($imgFile)?>" alt="Item" class="img-fluid rounded" style="height:56px; width:56px; object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling?.classList.remove('d-none');">
+                            <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted d-none" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
+                          <?php else: ?>
+                            <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
+                          <?php endif; ?>
                         </div>
-                        <small class="text-muted">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?> = <strong>₱<?=number_format($line,2)?></strong></small>
+                        <div class="flex-grow-1">
+                          <div class="d-flex justify-content-between">
+                            <span class="fw-semibold"><?=h($it['Product_Name'] ?? 'Item')?></span>
+                            <span class="fw-semibold text-nowrap">₱<?=number_format($lineWithAddons,2)?></span>
+                          </div>
+                          <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?> = ₱<?=number_format($line,2)?></small>
+                          <?php if($addonTotal>0): ?>
+                            <div class="mt-1 small">
+                              <em>Add-ons:</em>
+                              <ul class="mb-0 ps-3">
+                                <?php foreach($it['addons'] as $ad): $adLine=(float)$ad['Addon_Price'] * (int)$ad['Quantity'] * max(1,$qty); ?>
+                                  <li><?=h($ad['Addon_Name'])?> x <?= (int)$ad['Quantity'] ?>: ₱<?=number_format($adLine,2)?></li>
+                                <?php endforeach; ?>
+                              </ul>
+                            </div>
+                          <?php endif; ?>
+                        </div>
                       </div>
                     </li>
                   <?php endforeach; ?>
