@@ -254,6 +254,12 @@ ksort($methods);
               ?>
               <div class="mb-3">
                 <h6 class="fw-semibold mb-1">Order Location / Contact</h6>
+                <?php 
+                  // Derive order type; fall back based on delivery presence if not set
+                  $rawType = $r['order_type'] ?? '';
+                  $orderType = $rawType !== '' ? ucfirst(strtolower($rawType)) : ($isDelivery ? 'Delivery' : 'Pickup');
+                ?>
+                <div class="small mb-1"><strong>Order Type:</strong> <?= h($orderType); ?></div>
                 <?php if ($isDelivery): ?>
                   <div class="small"><strong>Contact #:</strong> <?= h($contactNum ?: '—'); ?></div>
                   <?php if ($hasCoords): ?>
