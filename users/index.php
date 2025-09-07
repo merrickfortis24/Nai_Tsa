@@ -1992,7 +1992,7 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
 })();
 
 function buildProductModalHtml(product, addons){
-  const allergens = product.Product_allergens || 'None';
+ 
   const basePrice = Number(product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
@@ -2025,7 +2025,6 @@ function buildProductModalHtml(product, addons){
             <h4 class="product-title mb-1">${product.Product_Name}</h4>
             <div class="product-price" aria-label="Base price">${priceDisplay}</div>
           </div>
-          <div class="product-meta small">Allergens: ${allergens}</div>
           <p class="mt-2 mb-0">${product.Product_desc || ''}</p>
         </div>
       </div>
