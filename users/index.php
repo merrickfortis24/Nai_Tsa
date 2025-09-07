@@ -2065,7 +2065,6 @@ function buildProductModalHtml(product, addons){
           <div class="ms-auto text-end modal-total-line small" style="min-width:200px;">
             <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
             <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
-            <div>Shipping: <span id="productShippingFee">—</span></div>
             <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
           </div>
         </div>
@@ -2086,16 +2085,24 @@ function updateProductModalTotal(basePrice){
     addonsTotal += price * aQty; // independent of productQty
   });
   const baseSubtotal = (Number(basePrice||0) * productQty);
-  // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
+  // Shipping preview (does NOT get added to item total). Show 0 for pickup, estimate for delivery if coords, else placeholder.
   let shippingFeeDisplay = '—';
   try {
-    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value;
-    if(orderTypeSel === 'Delivery' && summary?.latInput?.value && summary?.lngInput?.value){
-      const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
-      if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
-        const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
-        const fee = computeDeliveryFee(dist);
-        if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2);
+    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value || '';
+    if(orderTypeSel === 'Pickup') {
+      shippingFeeDisplay = '₱0.00';
+    } else if(orderTypeSel === 'Delivery') {
+      if(summary?.latInput?.value && summary?.lngInput?.value){
+        const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
+        if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
+          const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+            const fee = computeDeliveryFee(dist);
+            if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2); else shippingFeeDisplay = 'Estimating…';
+        } else {
+          shippingFeeDisplay = 'Set in checkout';
+        }
+      } else {
+        shippingFeeDisplay = 'Set in checkout';
       }
     }
   } catch(e) { /* ignore */ }
@@ -2125,6 +2132,10 @@ async function openProductDetailsWithAddons(product){
   minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
   plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
   qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  // Also react to orderType radio changes while modal is open
+  document.querySelectorAll('input[name="orderType"]').forEach(r=>{
+    r.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  });
   updateProductModalTotal(basePrice);
 
   // Add to Cart handler
