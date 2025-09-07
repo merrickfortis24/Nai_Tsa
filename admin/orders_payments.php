@@ -242,6 +242,33 @@ ksort($methods);
               <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+              <?php
+                $street = $r['Street'] ?? '';
+                $city   = $r['City'] ?? '';
+                $contactNum = $r['Contact_Number'] ?? '';
+                $isDelivery = !empty($street) || !empty($city);
+                $fullAddress = trim($street . ( ($street && $city)?', ':'') . $city);
+              ?>
+              <div class="mb-3">
+                <h6 class="fw-semibold mb-1">Order Type & Delivery</h6>
+                <?php if ($isDelivery): ?>
+                  <div class="small"><strong>Address:</strong> <?= h($fullAddress) ?: '—'; ?></div>
+                  <div class="small"><strong>Contact #:</strong> <?= h($contactNum ?: '—'); ?></div>
+                  <?php if ($fullAddress): $mapQ = urlencode($fullAddress); ?>
+                    <div class="ratio ratio-16x9 mt-2" style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
+                      <iframe
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        src="https://www.google.com/maps?q=<?=$mapQ?>&output=embed">
+                      </iframe>
+                    </div>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <div class="small text-muted">Pickup order – no delivery address.</div>
+                <?php endif; ?>
+              </div>
+              <hr class="my-3">
+              <h6 class="fw-semibold mb-2">Items</h6>
               <?php if(!$items): ?>
                 <p class="text-muted mb-0">No items.</p>
               <?php else: $subtotal=0; ?>
