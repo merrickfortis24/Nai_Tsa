@@ -10,10 +10,27 @@ function h($v){ return htmlspecialchars((string)$v, ENT_QUOTES,'UTF-8'); }
 // --- Handle inline updates (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['order_id'], $_POST['order_status'])) {
-    try { $db->updateOrderStatus((int)$_POST['order_id'], $_POST['order_status']); } catch (Throwable $e) { /* ignore */ }
+    try {
+      $oid = (int)$_POST['order_id'];
+      if ($db->updateOrderStatus($oid, $_POST['order_status'])) {
+        // Attempt to insert sales if terminal + paid
+        // Need admin id for attribution
+        $adminId = (int)($_SESSION['admin_id'] ?? 0);
+        $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
+      }
+    } catch (Throwable $e) { /* ignore */ }
   }
   if (isset($_POST['payment_id'], $_POST['payment_status'])) {
-    try { $db->updatePaymentStatus((int)$_POST['payment_id'], $_POST['payment_status']); } catch (Throwable $e) { /* ignore */ }
+    try {
+      $pid = (int)$_POST['payment_id'];
+      if ($db->updatePaymentStatus($pid, $_POST['payment_status'])) {
+        $oid = $db->getOrderIdByPaymentId($pid);
+        if ($oid) {
+          $adminId = (int)($_SESSION['admin_id'] ?? 0);
+          $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
+        }
+      }
+    } catch (Throwable $e) { /* ignore */ }
   }
   $qs = $_GET; unset($qs['page']);
   header('Location: orders_payments.php' . ($qs ? ('?' . http_build_query($qs)) : ''));

@@ -532,6 +532,15 @@ class database {
         return $stmt->execute([$payment_status, $payment_id]);
     }
 
+    // Helper: fetch Order_ID from a Payment_ID
+    public function getOrderIdByPaymentId(int $payment_id): ?int {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT Order_ID FROM payment WHERE Payment_ID = ? LIMIT 1");
+        $stmt->execute([$payment_id]);
+        $val = $stmt->fetchColumn();
+        return $val !== false ? (int)$val : null;
+    }
+
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
         // Fetch current status and infer order type
