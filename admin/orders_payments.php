@@ -327,10 +327,10 @@ document.addEventListener('click', async function(e){
   const mapsUrl  = `https://www.google.com/maps?q=${encodeURIComponent(lat+','+lng)}`;
   const text = `Order #${orderId}\nCustomer: ${customer}\nContact: ${contact}\nAddress: ${address}\nLocation: ${lat}, ${lng}\nMap: ${mapsUrl}`;
 
-  // Try Web Share API first (mobile friendly)
+  // Try Web Share API first (omit separate url so platforms include full text incl. contact)
   if (navigator.share) {
     try {
-      await navigator.share({ title: `Order #${orderId} Delivery Info`, text, url: mapsUrl });
+      await navigator.share({ title: `Order #${orderId} Delivery Info`, text });
       toast('Shared via device dialog.', 'success');
       return;
     } catch(err){ /* fall through to custom share menu */ }
