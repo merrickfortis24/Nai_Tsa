@@ -2118,6 +2118,14 @@ function updateProductModalTotal(basePrice){
   if(totalEl) totalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
 }
 
+// If product modal is visible re-run totals (used when address/order type changes outside modal)
+function recalcProductModalIfOpen(){
+  const m = document.getElementById('productDetailsModal');
+  if(!m) return; if(!m.classList.contains('show')) return; 
+  const bp = Number(m.dataset.basePrice||0); 
+  updateProductModalTotal(bp);
+}
+
 async function openProductDetailsWithAddons(product){
   // Build initial shell (no add-ons yet), show modal immediately
   document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, []);
@@ -2126,6 +2134,8 @@ async function openProductDetailsWithAddons(product){
 
   // Bind qty +/- and total updates for this render
   const basePrice = Number(product.Price_Amount||0);
+  const modalElPersist = document.getElementById('productDetailsModal');
+  if(modalElPersist) modalElPersist.dataset.basePrice = String(basePrice);
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
