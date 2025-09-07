@@ -2065,7 +2065,6 @@ function buildProductModalHtml(product, addons){
           <div class="ms-auto text-end modal-total-line small" style="min-width:180px;">
             <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
             <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
-            <div>Shipping: <span id="productShippingFee">—</span></div>
             <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
           </div>
         </div>
