@@ -2062,7 +2062,12 @@ function buildProductModalHtml(product, addons){
             <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
             <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
           </div>
-          <div class="ms-auto modal-total-line">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+          <div class="ms-auto text-end modal-total-line small" style="min-width:180px;">
+            <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
+            <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
+            <div>Shipping: <span id="productShippingFee">—</span></div>
+            <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -2080,9 +2085,30 @@ function updateProductModalTotal(basePrice){
     const price = Number(chk.getAttribute('data-price'))||0;
     addonsTotal += price * aQty; // independent of productQty
   });
-  const total = (Number(basePrice||0) * productQty) + addonsTotal;
+  const baseSubtotal = (Number(basePrice||0) * productQty);
+  // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
+  let shippingFeeDisplay = '—';
+  try {
+    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value;
+    if(orderTypeSel === 'Delivery' && summary?.latInput?.value && summary?.lngInput?.value){
+      const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
+      if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
+        const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+        const fee = computeDeliveryFee(dist);
+        if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2);
+      }
+    }
+  } catch(e) { /* ignore */ }
+
+  // Update breakdown elements
+  const baseEl = document.getElementById('productBaseSubtotal');
+  const addonsEl = document.getElementById('productAddonsSubtotal');
+  const shipEl = document.getElementById('productShippingFee');
   const totalEl = document.getElementById('productWithAddonsTotal');
-  if (totalEl) totalEl.textContent = '₱' + total.toFixed(2);
+  if(baseEl) baseEl.textContent = '₱' + baseSubtotal.toFixed(2);
+  if(addonsEl) addonsEl.textContent = '₱' + addonsTotal.toFixed(2);
+  if(shipEl) shipEl.textContent = shippingFeeDisplay; // not included in item total
+  if(totalEl) totalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
 }
 
 async function openProductDetailsWithAddons(product){
