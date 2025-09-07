@@ -58,6 +58,18 @@ class database {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     }
 
+    // Add this helper (place near ensureOrderItemAddons)
+    private function ensureOrderItemInstruction(PDO $con): void {
+        try {
+            $res = $con->query("SHOW COLUMNS FROM order_item LIKE 'Instruction'");
+            if (!$res || $res->rowCount() === 0) {
+                $con->exec("ALTER TABLE order_item ADD COLUMN Instruction TEXT NULL AFTER Price");
+            }
+        } catch (Throwable $e) {
+            // ignore if no privilege
+        }
+    }
+
     // Insert order and return the new order ID
     function insertOrder($data) {
         $con = $this->opencon();
@@ -230,8 +242,9 @@ function createPasswordResetToken($email) {
 }
 
     function processCheckout($data, $customer_name) {
-    $con = $this->opencon();
+        $con = $this->opencon();
         $this->ensureOrderItemAddons($con);
+        $this->ensureOrderItemInstruction($con); // ensure Instruction column
 
     $orderType = $data['orderType'] ?? '';
     $street = $data['street'] ?? '';
@@ -410,7 +423,14 @@ function createPasswordResetToken($email) {
         'Unpaid'
     ]);
 
-    // Insert each cart item into order_item, then insert selected add-ons
+    // Insert each cart item into order_item, then add-ons
+    // Detect if Instruction column exists (avoid failure if ALTER not allowed)
+    $hasInstructionCol = false;
+    try {
+        $ci = $con->query("SHOW COLUMNS FROM order_item LIKE 'Instruction'");
+        $hasInstructionCol = $ci && $ci->rowCount() > 0;
+    } catch (Throwable $e) {}
+
     foreach ($cart as $item) {
         $stmt = $con->prepare("SELECT Product_ID, Price_ID FROM product WHERE Product_Name=?");
         $stmt->execute([$item['name']]);
@@ -419,8 +439,17 @@ function createPasswordResetToken($email) {
             $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
             $stmt2->execute([$product['Price_ID']]);
             $price = $stmt2->fetchColumn();
-            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-            $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price]);
+
+            $instruction = isset($item['instruction']) && $item['instruction'] !== '' ? $item['instruction'] : null;
+
+            if ($hasInstructionCol) {
+                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction) VALUES (?, ?, ?, ?, ?)");
+                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price, $instruction]);
+            } else {
+                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
+                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price]);
+            }
+
             $orderItemId = $con->lastInsertId();
 
             // Persist selected add-ons for this item
