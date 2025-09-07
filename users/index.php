@@ -683,9 +683,10 @@ function getProductPriceByName(name){
 }
 
 function computeCartSubtotal(){
+  // Base product total plus independent addon totals (addon qty not multiplied by product qty)
   return cart.reduce((sum, item)=>{
     const base = getProductPriceByName(item.name) * (item.qty||1);
-    const addons = (item.addons||[]).reduce((s,a)=> s + (Number(a.price)||0) * (a.qty||1) * (item.qty||1), 0);
+    const addons = (item.addons||[]).reduce((s,a)=> s + (Number(a.price)||0) * (a.qty||1), 0);
     return sum + base + addons;
   }, 0);
 }
@@ -2017,10 +2018,21 @@ function buildProductModalHtml(product, addons){
   const basePrice = Number(product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
-    <label class="addon-card">
-      <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-      <span class="addon-name">${a.Addon_Name}</span>
-      <span class="addon-price">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+    <label class="addon-card d-block py-1 px-2 border rounded">
+      <div class="d-flex align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+          <span class="addon-name">${a.Addon_Name}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="addon-qty-wrap input-group input-group-sm" style="width:110px; display:none;" data-price="${a.Addon_Price}">
+            <button class="btn btn-outline-secondary addon-minus" type="button">-</button>
+            <input type="number" class="form-control text-center addon-qty" value="1" min="1">
+            <button class="btn btn-outline-secondary addon-plus" type="button">+</button>
+          </div>
+          <span class="addon-price small text-nowrap">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+        </div>
+      </div>
     </label>
   `).join('') || '<div class="text-muted">No add-ons available.</div>';
 
@@ -2059,10 +2071,16 @@ function buildProductModalHtml(product, addons){
 // Compute and display the modal total based on base price, selected add-ons, and quantity
 function updateProductModalTotal(basePrice){
   const qtyEl = document.getElementById('pdQty');
-  const qty = Math.max(1, Number(qtyEl?.value || 1));
-  const checks = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'));
-  const extra = checks.reduce((sum,c)=> sum + (Number(c.getAttribute('data-price'))||0), 0);
-  const total = (Number(basePrice||0) + extra) * qty;
+  const productQty = Math.max(1, Number(qtyEl?.value || 1));
+  let addonsTotal = 0;
+  document.querySelectorAll('#productAddonsList .addon-choice:checked').forEach(chk=>{
+    const wrap = chk.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+    const qtyInput = wrap?.querySelector('.addon-qty');
+    const aQty = Math.max(1, Number(qtyInput?.value||1));
+    const price = Number(chk.getAttribute('data-price'))||0;
+    addonsTotal += price * aQty; // independent of productQty
+  });
+  const total = (Number(basePrice||0) * productQty) + addonsTotal;
   const totalEl = document.getElementById('productWithAddonsTotal');
   if (totalEl) totalEl.textContent = '₱' + total.toFixed(2);
 }
@@ -2086,13 +2104,22 @@ async function openProductDetailsWithAddons(product){
   // Add to Cart handler
   document.getElementById('modalAddToCartBtn').onclick = ()=>{
     const selected = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'))
-      .map(c=>({ id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty:1 }));
+      .map(c=>{
+        const wrap = c.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+        const qtyInput = wrap?.querySelector('.addon-qty');
+        return { id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty: Math.max(1, Number(qtyInput?.value||1)) };
+      });
+    const productQty = Math.max(1, Number(document.getElementById('pdQty').value||1));
     const found = cart.find(i => i.name === product.Product_Name);
     if (found) {
-      found.qty += Number(document.getElementById('pdQty').value||1);
-      found.addons = selected;
+      found.qty += productQty; // only product quantity increments existing entry
+      // Merge addons: if same addon id exists, add quantities
+      selected.forEach(sa=>{
+        const ex = (found.addons||[]).find(a=>a.id===sa.id);
+        if (ex) { ex.qty += sa.qty; } else { (found.addons||[]).push(sa); }
+      });
     } else {
-      cart.push({ name: product.Product_Name, qty: Math.max(1, Number(document.getElementById('pdQty').value||1)), addons: selected });
+      cart.push({ name: product.Product_Name, qty: productQty, addons: selected });
     }
     updateCartBadge();
     renderCartItems();
@@ -2108,15 +2135,50 @@ async function openProductDetailsWithAddons(product){
     const listEl = document.getElementById('productAddonsList');
     if (listEl) {
       listEl.innerHTML = addons.length ? addons.map(a=>`
-        <label class="addon-card">
-          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-          <span class="addon-name">${a.Addon_Name}</span>
-          <span class="addon-price">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+        <label class="addon-card d-block py-1 px-2 border rounded">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+              <span class="addon-name">${a.Addon_Name}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="addon-qty-wrap input-group input-group-sm" style="width:110px; display:none;" data-price="${a.Addon_Price}">
+                <button class="btn btn-outline-secondary addon-minus" type="button">-</button>
+                <input type="number" class="form-control text-center addon-qty" value="1" min="1">
+                <button class="btn btn-outline-secondary addon-plus" type="button">+</button>
+              </div>
+              <span class="addon-price small text-nowrap">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+            </div>
+          </div>
         </label>
       `).join('') : '<div class="text-muted">No add-ons available.</div>';
-      // Bind checkbox changes to total update
+
+      // Bind checkbox + qty controls
       document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
-        cb.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+        cb.addEventListener('change', ()=>{
+          const wrap = cb.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+          if (wrap) wrap.style.display = cb.checked ? 'flex' : 'none';
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-minus').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const wrap = btn.closest('.addon-qty-wrap');
+          const inp = wrap.querySelector('.addon-qty');
+          inp.value = Math.max(1, Number(inp.value||1)-1);
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-plus').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const wrap = btn.closest('.addon-qty-wrap');
+          const inp = wrap.querySelector('.addon-qty');
+          inp.value = Math.max(1, Number(inp.value||1)+1);
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-qty').forEach(inp=>{
+        inp.addEventListener('change', ()=>{ if (Number(inp.value)<1) inp.value = 1; updateProductModalTotal(basePrice); });
       });
       updateProductModalTotal(basePrice);
     }
