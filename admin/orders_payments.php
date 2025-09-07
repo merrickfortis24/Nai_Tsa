@@ -290,7 +290,7 @@ ksort($methods);
               <h6 class="fw-semibold mb-2">Items</h6>
               <?php if(!$items): ?>
                 <p class="text-muted mb-0">No items.</p>
-              <?php else: $subtotal=0; ?>
+              <?php else: $subtotal=0; $addonsSubtotal=0; ?>
                 <ul class="list-group mb-3">
                   <?php foreach ($items as $it): 
                         $qty   = (int)($it['Quantity'] ?? 0); 
@@ -306,6 +306,7 @@ ksort($methods);
                         }
                         $lineWithAddons = $line + $addonTotal;
                         $subtotal += $line; 
+                        $addonsSubtotal += $addonTotal; 
                         // Attempt to locate an image field from common column names
                         $img = $it['Image']
                           ?? $it['Product_Image']
@@ -346,19 +347,20 @@ ksort($methods);
                           <?php endif; ?>
                         </div>
                         <div class="flex-grow-1">
-                          <div class="d-flex justify-content-between">
-                            <span class="fw-semibold"><?=h($it['Product_Name'] ?? 'Item')?></span>
-                            <span class="fw-semibold text-nowrap">₱<?=number_format($lineWithAddons,2)?></span>
+                          <div class="d-flex justify-content-between align-items-start">
+                            <span class="fw-semibold me-2" style="max-width:60%;"><?=h($it['Product_Name'] ?? 'Item')?></span>
+                            <div class="text-end small">
+                              <div><span class="text-muted">Item:</span> ₱<?=number_format($line,2)?></div>
+                              <?php if($addonTotal>0): ?><div><span class="text-muted">Add-ons:</span> ₱<?=number_format($addonTotal,2)?></div><?php endif; ?>
+                              <div class="fw-semibold border-top mt-1 pt-1">₱<?=number_format($lineWithAddons,2)?></div>
+                            </div>
                           </div>
-                          <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?> = ₱<?=number_format($line,2)?></small>
+                          <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?></small>
                           <?php if($addonTotal>0): ?>
-                            <div class="mt-1 small">
-                              <em>Add-ons:</em>
-                              <ul class="mb-0 ps-3">
-                                <?php foreach($it['addons'] as $ad): $adLine=(float)$ad['Addon_Price'] * (int)$ad['Quantity'] * max(1,$qty); ?>
-                                  <li><?=h($ad['Addon_Name'])?> x <?= (int)$ad['Quantity'] ?>: ₱<?=number_format($adLine,2)?></li>
-                                <?php endforeach; ?>
-                              </ul>
+                            <div class="mt-1 small text-muted">
+                              <?php foreach($it['addons'] as $ad): $adLine=(float)$ad['Addon_Price'] * (int)$ad['Quantity'] * max(1,$qty); ?>
+                                <div>• <?=h($ad['Addon_Name'])?> x <?= (int)$ad['Quantity'] ?> = ₱<?=number_format($adLine,2)?></div>
+                              <?php endforeach; ?>
                             </div>
                           <?php endif; ?>
                         </div>
@@ -366,7 +368,16 @@ ksort($methods);
                     </li>
                   <?php endforeach; ?>
                 </ul>
-                <div class="d-flex justify-content-between border-top pt-2"><strong>Items Total</strong><strong>₱<?=number_format($subtotal,2)?></strong></div>
+                <?php 
+                  $deliveryFee = (float)($r['Delivery_Fee'] ?? 0); 
+                  $grandTotal = $subtotal + $addonsSubtotal + $deliveryFee; 
+                ?>
+                <div class="border-top pt-2 small">
+                  <div class="d-flex justify-content-between"><span>Products Subtotal</span><strong>₱<?=number_format($subtotal,2)?></strong></div>
+                  <div class="d-flex justify-content-between"><span>Add-ons Total</span><strong>₱<?=number_format($addonsSubtotal,2)?></strong></div>
+                  <div class="d-flex justify-content-between"><span>Shipping Fee</span><strong>₱<?=number_format($deliveryFee,2)?></strong></div>
+                  <div class="d-flex justify-content-between mt-1 border-top pt-1 fw-semibold"><span>Total</span><span>₱<?=number_format($grandTotal,2)?></span></div>
+                </div>
               <?php endif; ?>
             </div>
             <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
