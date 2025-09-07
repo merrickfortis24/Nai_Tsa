@@ -246,25 +246,33 @@ ksort($methods);
                 $street = $r['Street'] ?? '';
                 $city   = $r['City'] ?? '';
                 $contactNum = $r['Contact_Number'] ?? '';
-                $isDelivery = !empty($street) || !empty($city);
-                $fullAddress = trim($street . ( ($street && $city)?', ':'') . $city);
+                // Prefer stored customer coordinates over textual address
+                $lat = $r['customer_lat'] ?? $r['Customer_Lat'] ?? null;
+                $lng = $r['customer_lng'] ?? $r['Customer_Lng'] ?? null;
+                $hasCoords = is_numeric($lat) && is_numeric($lng);
+                $isDelivery = $hasCoords || !empty($street) || !empty($city);
               ?>
               <div class="mb-3">
-                <h6 class="fw-semibold mb-1">Order Type & Delivery</h6>
+                <h6 class="fw-semibold mb-1">Order Location / Contact</h6>
                 <?php if ($isDelivery): ?>
-                  <div class="small"><strong>Address:</strong> <?= h($fullAddress) ?: '—'; ?></div>
                   <div class="small"><strong>Contact #:</strong> <?= h($contactNum ?: '—'); ?></div>
-                  <?php if ($fullAddress): $mapQ = urlencode($fullAddress); ?>
+                  <?php if ($hasCoords): ?>
+                    <div class="small"><strong>Latitude:</strong> <?= h($lat) ?> &nbsp; <strong>Longitude:</strong> <?= h($lng) ?></div>
                     <div class="ratio ratio-16x9 mt-2" style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
                       <iframe
                         loading="lazy"
                         referrerpolicy="no-referrer-when-downgrade"
-                        src="https://www.google.com/maps?q=<?=$mapQ?>&output=embed">
+                        src="https://www.google.com/maps?q=<?=urlencode($lat . ',' . $lng)?>&z=15&output=embed">
                       </iframe>
                     </div>
+                    <div class="mt-2 small">
+                      <a href="https://www.google.com/maps?q=<?=urlencode($lat . ',' . $lng)?>" target="_blank" rel="noopener">Open in Google Maps</a>
+                    </div>
+                  <?php else: ?>
+                    <div class="small text-muted">No stored coordinates for this delivery.</div>
                   <?php endif; ?>
                 <?php else: ?>
-                  <div class="small text-muted">Pickup order – no delivery address.</div>
+                  <div class="small text-muted">Pickup order – no delivery location needed.</div>
                 <?php endif; ?>
               </div>
               <hr class="my-3">
