@@ -292,13 +292,34 @@ ksort($methods);
                 <p class="text-muted mb-0">No items.</p>
               <?php else: $subtotal=0; ?>
                 <ul class="list-group mb-3">
-                  <?php foreach ($items as $it): $qty=(int)$it['Quantity']; $price=(float)$it['Price']; $line=$qty*$price; $subtotal+=$line; ?>
-                    <li class="list-group-item d-flex justify-content-between">
-                      <div>
-                        <div class="fw-semibold"><?=h($it['Product_Name'])?></div>
-                        <small class="text-muted">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?></small>
+                  <?php foreach ($items as $it): 
+                        $qty   = (int)($it['Quantity'] ?? 0); 
+                        $price = (float)($it['Price'] ?? 0); 
+                        $line  = $qty * $price; 
+                        $subtotal += $line; 
+                        // Attempt to locate an image field from common column names
+                        $img = $it['Image']
+                          ?? $it['Product_Image']
+                          ?? $it['product_image']
+                          ?? $it['Image_URL']
+                          ?? $it['image']
+                          ?? '';
+                  ?>
+                    <li class="list-group-item d-flex">
+                      <div class="me-3" style="width:56px;">
+                        <?php if($img): ?>
+                          <img src="<?=h($img)?>" alt="Item" class="img-fluid rounded" style="height:56px; width:56px; object-fit:cover;">
+                        <?php else: ?>
+                          <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
+                        <?php endif; ?>
                       </div>
-                      <span class="fw-semibold">₱<?=number_format($line,2)?></span>
+                      <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between">
+                          <span class="fw-semibold"><?=h($it['Product_Name'] ?? 'Item')?></span>
+                          <span class="fw-semibold text-nowrap">₱<?=number_format($line,2)?></span>
+                        </div>
+                        <small class="text-muted">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?> = <strong>₱<?=number_format($line,2)?></strong></small>
+                      </div>
                     </li>
                   <?php endforeach; ?>
                 </ul>
