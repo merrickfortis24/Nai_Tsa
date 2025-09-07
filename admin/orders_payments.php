@@ -333,16 +333,71 @@ document.addEventListener('click', async function(e){
       await navigator.share({ title: `Order #${orderId} Delivery Info`, text, url: mapsUrl });
       toast('Shared via device dialog.', 'success');
       return;
-    } catch(err){ /* fall through to clipboard */ }
+    } catch(err){ /* fall through to custom share menu */ }
   }
-  // Clipboard fallback
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('Delivery info copied to clipboard.', 'success');
-  } catch(err){
-    alert('Unable to copy/share delivery info.');
+  // Show custom share menu (SMS / Messenger / Copy)
+  showShareMenu(btn, { text, mapsUrl });
+});
+
+// Dismiss floating share menu when clicking outside
+document.addEventListener('click', function(e){
+  const menu = document.getElementById('shareMenuFloating');
+  if(menu && !e.target.closest('#shareMenuFloating') && !e.target.closest('.share-delivery-btn')){
+    menu.remove();
   }
 });
+
+function showShareMenu(anchorEl, data){
+  const existing = document.getElementById('shareMenuFloating');
+  if(existing) existing.remove();
+  const { text, mapsUrl } = data;
+  const smsLink = 'sms:?&body=' + encodeURIComponent(text);
+  // Messenger deep link (device app); fallback to web
+  const messengerDeep = 'fb-messenger://share?link=' + encodeURIComponent(mapsUrl);
+  const messengerWeb  = 'https://m.me/?link=' + encodeURIComponent(mapsUrl);
+  const copyId = 'copyShare_'+Date.now();
+  const html = `
+    <div id="shareMenuFloating" class="card shadow-sm border-0" style="position:absolute; z-index:2000; width:230px;">
+      <div class="card-body p-2 small">
+        <div class="fw-semibold mb-2">Share Delivery Info</div>
+        <a href="${smsLink}" class="d-flex align-items-center gap-2 text-decoration-none py-1 px-2 rounded hover-bg" style="white-space:nowrap;">
+          <i class="bi bi-chat-dots"></i><span>SMS / Messages</span>
+        </a>
+        <a href="${messengerDeep}" target="_blank" rel="noopener" class="d-flex align-items-center gap-2 text-decoration-none py-1 px-2 rounded hover-bg messenger-link" data-fallback="${messengerWeb}" style="white-space:nowrap;">
+          <i class="bi bi-send"></i><span>Messenger</span>
+        </a>
+        <button id="${copyId}" type="button" class="w-100 btn btn-sm btn-outline-secondary mt-2">Copy Text</button>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  const menu = document.getElementById('shareMenuFloating');
+  // Position near anchor
+  const rect = anchorEl.getBoundingClientRect();
+  const top = window.scrollY + rect.bottom + 6;
+  let left = window.scrollX + rect.left;
+  if(left + 250 > window.innerWidth) left = window.innerWidth - 250 - 8;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+  // Messenger fallback: open deep link; after short delay open web (if app not installed user stays on web)
+  menu.querySelectorAll('.messenger-link').forEach(a => {
+    a.addEventListener('click', function(){
+      const fallback = a.getAttribute('data-fallback');
+      setTimeout(()=>{ window.open(fallback, '_blank'); }, 900);
+    });
+  });
+  // Copy text handler
+  document.getElementById(copyId).addEventListener('click', async ()=>{
+    try { await navigator.clipboard.writeText(text); toast('Copied to clipboard.', 'success'); } catch(e){ alert('Copy failed'); }
+    menu.remove();
+  });
+  // Inject minimal hover style once
+  if(!document.getElementById('shareMenuStyle')){
+    const style = document.createElement('style');
+    style.id = 'shareMenuStyle';
+    style.textContent = '.hover-bg:hover{background:#f5f5f5;}';
+    document.head.appendChild(style);
+  }
+}
 
 // Lightweight toast helper (Bootstrap 5 independent minimal)
 function toast(message, type){
