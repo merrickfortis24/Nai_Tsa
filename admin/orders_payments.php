@@ -378,6 +378,9 @@ ksort($methods);
                               <div class="fw-semibold border-top mt-1 pt-1">₱<?=number_format($lineWithAddons,2)?></div>
                             </div>
                           </div>
+                          <?php if(isset($it['Instruction']) && trim((string)$it['Instruction']) !== ''): ?>
+                            <div class="small fst-italic mt-1"><span class="text-muted">Instruction:</span> <?=h($it['Instruction'])?></div>
+                          <?php endif; ?>
                           <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?></small>
                           <?php if($addonTotal>0): ?>
                             <div class="mt-1 small text-muted">
