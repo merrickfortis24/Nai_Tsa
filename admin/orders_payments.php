@@ -257,7 +257,8 @@ ksort($methods);
                 <?php if ($isDelivery): ?>
                   <div class="small"><strong>Contact #:</strong> <?= h($contactNum ?: '—'); ?></div>
                   <?php if ($hasCoords): ?>
-                    
+                    <?php $addressParts = array_filter([$street, $city]); $fullAddress = $addressParts ? implode(', ', $addressParts) : '—'; ?>
+                    <div class="small"><strong>Address:</strong> <?= h($fullAddress) ?></div>
                     <div class="ratio ratio-16x9 mt-2" style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
                       <iframe
                         loading="lazy"
