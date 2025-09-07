@@ -1270,14 +1270,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const showBestsellersBtn = document.getElementById('showBestsellersBtn');
   const menuSearchInput = document.getElementById('menuSearchInput');
 
-  // Allergen icons (ensure only one definition)
-  const allergenIcons = {
-    Milk: "assets/milk.png",
-    Eggs: "assets/boiled-egg.png",
-    Peanuts: "assets/peanut.png",
-    Soy: "assets/soy-sauce.png"
-  };
-  console.log('allergenIcons initialized', allergenIcons);
+  // Allergen icons removed per latest requirement (no allergen display).
 
   function renderRecommendedCards(productsArr) {
     if (!recommendedCardsDiv) return;
@@ -1287,14 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Cap to 4 suggestions
     const list = productsArr.slice(0, 4);
-    recommendedCardsDiv.innerHTML = list.map(product => {
-      let allergenIconsHtml = '';
-      if (product.Product_allergens) {
-        allergenIconsHtml = product.Product_allergens.split(',').map(a => a.trim()).map(allergen => {
-          const icon = allergenIcons[allergen];
-          return icon ? `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">` : '';
-        }).join('');
-      }
+  recommendedCardsDiv.innerHTML = list.map(product => {
       const pid = product.Product_ID;
       const avgInfo = avgRatings[pid];
       const avgVal = avgInfo ? avgInfo.avg : '0.0';
@@ -1304,7 +1290,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
             <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
-            <div class="allergen-icon-group">${allergenIconsHtml}</div>
           </div>
           <div class="menu-card-content">
             <div class="menu-card-header">
@@ -1363,14 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
       menuCardsDiv.innerHTML = `<div class="text-center text-muted" style="padding:1.5rem;">No products found.</div>`;
       return;
     }
-    menuCardsDiv.innerHTML = productsArr.map(product => {
-      let allergenIconsHtml = '';
-      if (product.Product_allergens) {
-        allergenIconsHtml = product.Product_allergens.split(',').map(a => a.trim()).map(allergen => {
-          const icon = allergenIcons[allergen];
-          return icon ? `<img src="${icon}" class="allergen-icon" title="${allergen}" alt="${allergen}">` : '';
-        }).join('');
-      }
+  menuCardsDiv.innerHTML = productsArr.map(product => {
       const pid = product.Product_ID;
       const avgInfo = avgRatings[pid];
       const avgVal = avgInfo ? avgInfo.avg : '0.0';
@@ -1381,7 +1359,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
             <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
-            <div class="allergen-icon-group">${allergenIconsHtml}</div>
           </div>
           <div class="menu-card-content">
             <div class="menu-card-header">
