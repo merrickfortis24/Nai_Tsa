@@ -2062,9 +2062,10 @@ function buildProductModalHtml(product, addons){
             <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
             <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
           </div>
-          <div class="ms-auto text-end modal-total-line small" style="min-width:180px;">
+          <div class="ms-auto text-end modal-total-line small" style="min-width:200px;">
             <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
             <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
+            <div>Shipping: <span id="productShippingFee">—</span></div>
             <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
           </div>
         </div>
