@@ -304,11 +304,33 @@ ksort($methods);
                           ?? $it['Image_URL']
                           ?? $it['image']
                           ?? '';
+                        // Normalize to admin relative path if it's just a filename
+                        $imgFile = '';
+                        if ($img) {
+                          $trim = trim($img);
+                          // If it already looks like a URL or already has uploads/products keep as is
+                          if (preg_match('~^https?://~i', $trim)) {
+                            $imgFile = $trim;
+                          } else {
+                            // If no directory segment, prepend uploads/products/
+                            if (strpos($trim,'/') === false && strpos($trim,'\\') === false) {
+                              $imgFile = 'uploads/products/' . $trim; // we're already in /admin/
+                            } else {
+                              // If it does contain path but not starting with uploads/products, force basename
+                              if (stripos($trim, 'uploads/products/') === 0) {
+                                $imgFile = $trim;
+                              } else {
+                                $imgFile = 'uploads/products/' . basename($trim);
+                              }
+                            }
+                          }
+                        }
                   ?>
                     <li class="list-group-item d-flex">
                       <div class="me-3" style="width:56px;">
-                        <?php if($img): ?>
-                          <img src="<?=h($img)?>" alt="Item" class="img-fluid rounded" style="height:56px; width:56px; object-fit:cover;">
+                        <?php if($imgFile): ?>
+                          <img src="<?=h($imgFile)?>" alt="Item" class="img-fluid rounded" style="height:56px; width:56px; object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling?.classList.remove('d-none');">
+                          <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted d-none" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
                         <?php else: ?>
                           <div class="bg-light border rounded d-flex align-items-center justify-content-center text-muted" style="height:56px; width:56px; font-size:.65rem;">No Img</div>
                         <?php endif; ?>
