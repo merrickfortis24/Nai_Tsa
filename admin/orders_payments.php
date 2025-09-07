@@ -266,8 +266,18 @@ ksort($methods);
                         src="https://www.google.com/maps?q=<?=urlencode($lat . ',' . $lng)?>&z=15&output=embed">
                       </iframe>
                     </div>
-                    <div class="mt-2 small">
-                      <a href="https://www.google.com/maps?q=<?=urlencode($lat . ',' . $lng)?>" target="_blank" rel="noopener">Open in Google Maps</a>
+                    <div class="mt-2 d-flex flex-wrap align-items-center gap-3 small">
+                      <a href="https://www.google.com/maps?q=<?=urlencode($lat . ',' . $lng)?>" target="_blank" rel="noopener" class="text-decoration-none">Open in Google Maps</a>
+                      <button type="button"
+                              class="btn btn-sm btn-outline-primary share-delivery-btn"
+                              data-order="<?=h($r['Order_ID'])?>"
+                              data-customer="<?=h($r['Customer_Name'] ?? 'Customer')?>"
+                              data-contact="<?=h($contactNum ?: '')?>"
+                              data-lat="<?=h($lat)?>"
+                              data-lng="<?=h($lng)?>"
+                              data-address="<?=h($fullAddress)?>">
+                        <i class="bi bi-share"></i> Share Info
+                      </button>
                     </div>
                   <?php else: ?>
                     <div class="small text-muted">No stored coordinates for this delivery.</div>
@@ -304,5 +314,45 @@ ksort($methods);
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('click', async function(e){
+  const btn = e.target.closest('.share-delivery-btn');
+  if(!btn) return;
+  const orderId  = btn.getAttribute('data-order');
+  const customer = btn.getAttribute('data-customer') || 'Customer';
+  const contact  = btn.getAttribute('data-contact') || 'N/A';
+  const lat      = btn.getAttribute('data-lat');
+  const lng      = btn.getAttribute('data-lng');
+  const address  = btn.getAttribute('data-address') || 'N/A';
+  const mapsUrl  = `https://www.google.com/maps?q=${encodeURIComponent(lat+','+lng)}`;
+  const text = `Order #${orderId}\nCustomer: ${customer}\nContact: ${contact}\nAddress: ${address}\nLocation: ${lat}, ${lng}\nMap: ${mapsUrl}`;
+
+  // Try Web Share API first (mobile friendly)
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: `Order #${orderId} Delivery Info`, text, url: mapsUrl });
+      toast('Shared via device dialog.', 'success');
+      return;
+    } catch(err){ /* fall through to clipboard */ }
+  }
+  // Clipboard fallback
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Delivery info copied to clipboard.', 'success');
+  } catch(err){
+    alert('Unable to copy/share delivery info.');
+  }
+});
+
+// Lightweight toast helper (Bootstrap 5 independent minimal)
+function toast(message, type){
+  let box = document.createElement('div');
+  box.className = 'position-fixed top-0 end-0 p-3';
+  box.style.zIndex = 1080;
+  box.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0">${message}</div>`;
+  document.body.appendChild(box);
+  setTimeout(()=>{ box.remove(); }, 2500);
+}
+</script>
 </body>
 </html>
