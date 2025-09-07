@@ -2045,6 +2045,11 @@ function buildProductModalHtml(product, addons){
             <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
           </div>
         </div>
+        <!-- Order instruction textarea -->
+        <div class="mt-3">
+          <label for="pdInstructions" class="form-label small mb-1">Order Instruction (optional)</label>
+          <textarea id="pdInstructions" class="form-control form-control-sm" rows="2" placeholder="e.g., reduce sugar content, no ice, extra spicy"></textarea>
+        </div>
       </div>
     </div>`;
 }
@@ -2114,6 +2119,7 @@ async function openProductDetailsWithAddons(product){
         return { id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty: Math.max(1, Number(qtyInput?.value||1)) };
       });
     const productQty = Math.max(1, Number(document.getElementById('pdQty').value||1));
+    const instruction = document.getElementById('pdInstructions')?.value?.trim() || '';
     const found = cart.find(i => i.name === product.Product_Name);
     if (found) {
       found.qty += productQty; // only product quantity increments existing entry
@@ -2122,8 +2128,12 @@ async function openProductDetailsWithAddons(product){
         const ex = (found.addons||[]).find(a=>a.id===sa.id);
         if (ex) { ex.qty += sa.qty; } else { (found.addons||[]).push(sa); }
       });
+      // If new instruction provided append / merge (simple concatenation if different)
+      if (instruction) {
+        if (!found.instruction) found.instruction = instruction; else if (!found.instruction.includes(instruction)) found.instruction += ' | ' + instruction;
+      }
     } else {
-      cart.push({ name: product.Product_Name, qty: productQty, addons: selected });
+      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction });
     }
     updateCartBadge();
     renderCartItems();
