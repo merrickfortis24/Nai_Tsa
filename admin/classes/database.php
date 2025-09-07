@@ -430,7 +430,7 @@ class database {
     function fetchOrderItems($order_id) {
         $con = $this->opencon();
         $stmt = $con->prepare("
-            SELECT oi.*, p.Product_Name 
+            SELECT oi.*, p.Product_Name, p.Product_Image 
             FROM order_item oi
             JOIN product p ON oi.Product_ID = p.Product_ID
             WHERE oi.Order_ID = ?
