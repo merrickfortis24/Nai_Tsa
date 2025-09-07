@@ -669,21 +669,22 @@ function getCustomerNameById($customer_id) {
         $stmt->execute([$order_id]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Count as sale when either: Delivery completed (Delivered) OR Pickup completed (Received), and payment is Paid
         if (
             isset($order['order_status'], $order['payment_status']) &&
-            $order['order_status'] === 'Delivered' &&
+            in_array($order['order_status'], ['Delivered','Received'], true) &&
             $order['payment_status'] === 'Paid'
         ) {
-            // Check if already in sales to avoid duplicates
+            // Prevent duplicate insertion
             $check = $con->prepare("SELECT COUNT(*) FROM sales WHERE Order_ID = ?");
             $check->execute([$order_id]);
             if ($check->fetchColumn() == 0) {
-                // Insert each item in the order into sales
                 $items = $this->fetchOrderItems($order_id);
                 foreach ($items as $item) {
-                    $stmt = $con->prepare("INSERT INTO sales (Order_ID, Product_ID, Quantity, Total_Amount, Sale_Date, Admin_ID)
+                    $stmtIns = $con->prepare("INSERT INTO sales (Order_ID, Product_ID, Quantity, Total_Amount, Sale_Date, Admin_ID)
                         VALUES (?, ?, ?, ?, NOW(), ?)");
-                    $stmt->execute([
+                    // NOTE: Using overall Order_Amount per line as in original logic. If per-item totals needed, adjust here.
+                    $stmtIns->execute([
                         $order_id,
                         $item['Product_ID'],
                         $item['Quantity'],
