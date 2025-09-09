@@ -1540,12 +1540,14 @@ const STATUS_DISPLAY = {
   All: "All",
   Pending:"Pending",
   Processing:"Processing",
-  "To Ship":"To Ship",
-  "To Receive":"To Receive",
+  "Ready to deliver":"Ready to deliver",
+  "On the way":"On the way",
+  "Ready to pick up":"Ready to pick up",
+  Received:"Received",
   Delivered:"Delivered",
   Cancelled:"Cancelled"
 };
-const CHIP_SEQUENCE = ["All","Pending","Processing","To Ship","To Receive","Delivered","Cancelled"];
+const CHIP_SEQUENCE = ["All","Pending","Processing","Ready to deliver","On the way","Ready to pick up","Received","Delivered","Cancelled"];
 
 let ORDERS_CACHE = [];
 let ACTIVE_STATUS = "All";
@@ -1568,30 +1570,53 @@ function skeletonOrders(count=3){
 
 // Map backend combination -> UI status (adjust if your real logic differs)
 function deriveUiStatus(o){
-  const type = o.order_type || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
-  if (o.order_status === 'Cancelled') return 'Cancelled';
-  if (type === 'Pickup') {
-    // Normalize pickup statuses
-    if (o.order_status === 'Pending') return 'Pending';
-    if (o.order_status === 'Processing') return 'Processing';
-    if (o.order_status === 'Ready to pick up') return 'Ready to pick up';
-    if (o.order_status === 'Received' || o.order_status === 'Delivered') return 'Received';
-  // Legacy to-ship/receive should not appear for pickup, fallback
-    return 'Pending';
-  } else {
-    // Delivery: consider driver live states
-    if (o.Driver_Status === 'on_the_way') return 'On the way';
-    if (o.Driver_Status === 'picked_up') return 'On the way';
-    if (o.order_status === 'Pending') return 'Pending';
-    if (o.order_status === 'Processing') return 'Processing';
-  // Legacy statuses mapping
-  if (o.order_status === 'To Ship') return 'Ready to deliver';
-  if (o.order_status === 'To Receive') return 'On the way';
-    if (o.order_status === 'Ready to deliver') return 'Ready to deliver';
-    if (o.order_status === 'On the way') return 'On the way';
-    if (o.order_status === 'Delivered') return 'Delivered';
+  // Derive order type heuristically (fallback to Delivery if address-like fields exist)
+  const type = (o.order_type || '').trim() || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
+  const raw = (o.order_status || '').trim();
+  const driver = (o.Driver_Status || '').trim();
+
+  // Normalize driver live states first (these override some backend textual states)
+  if (driver === 'on_the_way' || driver === 'picked_up') {
+    // If already delivered/received/cancelled don't override
+    if (['Delivered','Received','Cancelled'].includes(raw)) {
+      return raw === 'Received' ? 'Received' : raw; // Delivered or Cancelled as-is
+    }
+    return 'On the way';
+  }
+
+  // Canonical list of statuses we expect from admin/backend
+  // Pending, Processing, Ready to deliver, On the way, Delivered, Ready to pick up, Received, Cancelled
+  // Legacy / alias forms we translate:
+  //   To Ship -> Ready to deliver
+  //   To Receive -> On the way
+  //   Preparing -> Processing (if ever used)
+
+  // Map legacy/alias to canonical
+  let canonical = raw;
+  if (raw === 'To Ship') canonical = 'Ready to deliver';
+  else if (raw === 'To Receive') canonical = 'On the way';
+  else if (raw === 'Preparing') canonical = 'Processing';
+  else if (raw === 'Ready for pickup') canonical = 'Ready to pick up';
+
+  // Pickup specific terminal status normalization
+  if (/pickup/i.test(type) || type === 'Pickup') {
+    if (canonical === 'Delivered') canonical = 'Received'; // unify delivered -> received for pickup flow
+  }
+
+  // Guard: if order got both Received and Delivered flags historically, prioritize Received
+  if (canonical === 'Delivered' && raw === 'Received') canonical = 'Received';
+
+  // Final allow-list; if not in allow-list fallback to Pending but log once (per status)
+  const ALLOW = new Set(['Pending','Processing','Ready to deliver','On the way','Delivered','Ready to pick up','Received','Cancelled']);
+  if (!ALLOW.has(canonical)) {
+    if (!window.__UNKNOWN_ORDER_STATUS_LOG) window.__UNKNOWN_ORDER_STATUS_LOG = {};
+    if (!window.__UNKNOWN_ORDER_STATUS_LOG[canonical]) {
+      console.warn('[orders] Unmapped status encountered ->', canonical, 'raw=', raw, 'type=', type, 'order_id=', o.Order_ID);
+      window.__UNKNOWN_ORDER_STATUS_LOG[canonical] = true;
+    }
     return 'Pending';
   }
+  return canonical;
 }
 
 function buildStatusCounts(rawList){
@@ -1824,7 +1849,11 @@ async function loadOrdersGrouped(){
   }
 }
 
-document.getElementById('myOrdersModal').addEventListener('show.bs.modal', loadOrdersGrouped);
+document.getElementById('myOrdersModal').addEventListener('show.bs.modal', () => {
+  if(!CHIP_SEQUENCE.includes(ACTIVE_STATUS)) ACTIVE_STATUS = 'All';
+  ACTIVE_STATUS = 'All'; // always reset to show everything when reopening
+  loadOrdersGrouped();
+});
 
 // ---- Lightweight background status polling (updates existing renderedcards) ----
 let ORDER_STATUS_POLL_TIMER = null;

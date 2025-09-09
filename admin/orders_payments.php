@@ -13,8 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       $oid = (int)$_POST['order_id'];
       if ($db->updateOrderStatus($oid, $_POST['order_status'])) {
-        // Attempt to insert sales if terminal + paid
-        // Need admin id for attribution
         $adminId = (int)($_SESSION['admin_id'] ?? 0);
         $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
       }
@@ -178,7 +176,7 @@ ksort($methods);
                 <?php if(!$rows): ?>
                   <tr><td colspan="8" class="text-center text-muted py-4">No records found.</td></tr>
                 <?php endif; ?>
-                <?php foreach ($rows as $r): ?>
+                  <?php foreach ($rows as $r): ?>
                   <tr>
                     <td><?=h($r['Order_ID'])?></td>
                     <td><?=h($r['Customer_Name'] ?? 'Unknown')?></td>
