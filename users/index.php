@@ -637,6 +637,8 @@ cartModalEl.addEventListener('show.bs.modal', function () {
 });
 cartModalEl.addEventListener('hidden.bs.modal', function () {
   cartFab.classList.remove('hide');
+  // Auto refresh entire page after cart modal closes per request
+  try { setTimeout(()=>{ window.location.reload(); }, 80); } catch(e){}
 });
 
 document.getElementById('checkoutBtn').addEventListener('click', function() {
