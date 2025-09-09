@@ -1573,7 +1573,23 @@ function deriveUiStatus(o){
   // Derive order type heuristically (fallback to Delivery if address-like fields exist)
   const type = (o.order_type || '').trim() || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
   let raw = (o.order_status || '').trim();
-  // If backend forgot to normalize but grouping fields exist, infer from known flags
+  const rawLower = raw.toLowerCase();
+  const RAW_MAP = {
+    'pending':'Pending',
+    'processing':'Processing',
+    'ready to deliver':'Ready to deliver',
+    'on the way':'On the way',
+    'delivered':'Delivered',
+    'ready to pick up':'Ready to pick up',
+    'ready for pickup':'Ready to pick up',
+    'received':'Received',
+    'cancelled':'Cancelled',
+    'canceled':'Cancelled',
+    'to ship':'Ready to deliver',
+    'to receive':'On the way',
+    'preparing':'Processing'
+  };
+  if (RAW_MAP[rawLower]) raw = RAW_MAP[rawLower];
   if(!raw && o.ToShipFlag) raw = 'Ready to deliver';
   if(!raw && o.ToReceiveFlag) raw = 'On the way';
   const driver = (o.Driver_Status || '').trim();
@@ -1595,11 +1611,7 @@ function deriveUiStatus(o){
   //   Preparing -> Processing (if ever used)
 
   // Map legacy/alias to canonical
-  let canonical = raw;
-  if (raw === 'To Ship') canonical = 'Ready to deliver';
-  else if (raw === 'To Receive') canonical = 'On the way';
-  else if (raw === 'Preparing') canonical = 'Processing';
-  else if (raw === 'Ready for pickup') canonical = 'Ready to pick up';
+  let canonical = raw; // legacy mapped already above
 
   // Pickup specific terminal status normalization
   if (/pickup/i.test(type) || type === 'Pickup') {
@@ -1832,6 +1844,7 @@ async function loadOrdersGrouped(){
     }
     // Prefer flattened list for existing rendering logic
     ORDERS_CACHE = Array.isArray(payload.flat) ? payload.flat : [];
+  try { const uniqueRaw = [...new Set(ORDERS_CACHE.map(o => (o.order_status||'').toString().trim()))]; console.log('[orders] raw statuses fetched:', uniqueRaw); } catch(_e) {}
     renderStatusChips();
     renderOrders();
     // Update orders badge using counts if available

@@ -42,44 +42,81 @@ try {
         $orders_by_status = ['To Ship'=>[], 'To Receive'=>[], 'Delivered'=>[]];
     }
 
-    // Build flattened list
+    // Build flattened list from grouped (legacy three buckets)
     $flat = [];
+    $seenIds = [];
     foreach ($orders_by_status as $grp => $arr) {
         if (!is_array($arr)) continue;
         foreach ($arr as $o) {
-            // Ensure a consistent 'order_status' field exists. Some older code may rely only on grouping.
+            if (!isset($o['Order_ID'])) continue;
+            $oid = (int)$o['Order_ID'];
             if (!isset($o['order_status']) || $o['order_status'] === '' || $o['order_status'] === null) {
-                // Map legacy group names to canonical statuses (delivery flow)
                 switch ($grp) {
-                    case 'To Ship':
-                        $o['order_status'] = 'Ready to deliver';
-                        break;
-                    case 'To Receive':
-                        $o['order_status'] = 'On the way';
-                        break;
-                    default:
-                        $o['order_status'] = $grp; // Delivered or others
+                    case 'To Ship': $o['order_status'] = 'Ready to deliver'; break;
+                    case 'To Receive': $o['order_status'] = 'On the way'; break;
+                    default: $o['order_status'] = $grp; break; // Delivered
                 }
-            } elseif ($o['order_status'] === 'To Ship') {
-                $o['order_status'] = 'Ready to deliver';
-            } elseif ($o['order_status'] === 'To Receive') {
-                $o['order_status'] = 'On the way';
             }
+            if ($o['order_status'] === 'To Ship') $o['order_status'] = 'Ready to deliver';
+            if ($o['order_status'] === 'To Receive') $o['order_status'] = 'On the way';
             $flat[] = $o;
+            $seenIds[$oid] = true;
         }
     }
 
-    // Derive counts (pending heuristic: order_status == Pending or Processing)
+    // Supplement with all other orders (any status) so statuses like Processing / Ready to pick up appear
+    $con = $db->opencon();
+    $allStmt = $con->prepare("SELECT * FROM orders WHERE Customer_ID = ? ORDER BY Order_Date DESC");
+    $allStmt->execute([$user_id]);
+    $allOrders = $allStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($allOrders as $row) {
+        $oid = (int)$row['Order_ID'];
+        if (isset($seenIds[$oid])) continue; // already included
+        // Normalize legacy statuses to canonical
+        $raw = $row['order_status'] ?? '';
+        if ($raw === 'To Ship') $row['order_status'] = 'Ready to deliver';
+        elseif ($raw === 'To Receive') $row['order_status'] = 'On the way';
+        elseif ($raw === 'Ready for pickup') $row['order_status'] = 'Ready to pick up';
+        // Attach items (lightweight)
+        try {
+            $row['items'] = $orderObj->getOrderItems($oid);
+        } catch (Throwable $e) { $row['items'] = []; }
+        $flat[] = $row;
+    }
+
+    // Recompute simple grouped structure (optional) so legacy keys still exist even if empty
+    // We keep original $orders_by_status; but ensure delivered bucket includes any Delivered not previously grouped
+    foreach ($flat as $o) {
+        $st = $o['order_status'] ?? '';
+        if ($st === 'Delivered' && !in_array($o, $orders_by_status['Delivered'], true)) {
+            $orders_by_status['Delivered'][] = $o;
+        }
+    }
+
+    // Derive counts across key statuses
     $counts = [
         'total' => count($flat),
-        'to_ship' => count($orders_by_status['To Ship'] ?? []),
-        'to_receive' => count($orders_by_status['To Receive'] ?? []),
-        'delivered' => count($orders_by_status['Delivered'] ?? []),
-        'pending' => 0
+        'pending' => 0,
+        'processing' => 0,
+        'ready_to_deliver' => 0,
+        'on_the_way' => 0,
+        'ready_to_pick_up' => 0,
+        'received' => 0,
+        'delivered' => 0,
+        'cancelled' => 0
     ];
     foreach ($flat as $o) {
-        $st = $o['order_status'] ?? $o['Order_Status'] ?? $o['Order_Status'] ?? '';
-        if (in_array($st, ['Pending','Processing'], true)) $counts['pending']++;
+        $st = $o['order_status'] ?? '';
+        switch ($st) {
+            case 'Pending': $counts['pending']++; break;
+            case 'Processing': $counts['processing']++; break;
+            case 'Ready to deliver': $counts['ready_to_deliver']++; break;
+            case 'On the way': $counts['on_the_way']++; break;
+            case 'Ready to pick up': $counts['ready_to_pick_up']++; break;
+            case 'Received': $counts['received']++; break;
+            case 'Delivered': $counts['delivered']++; break;
+            case 'Cancelled': $counts['cancelled']++; break;
+        }
     }
 
     echo json_encode([
