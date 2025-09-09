@@ -398,6 +398,14 @@ $all_products = $db->fetchAllProducts();
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body" style="background:var(--beige);">
+          <style>
+            /* Stabilize My Orders modal height to prevent jump when switching filters */
+            #myOrdersModal .orders-scroll-region{max-height:55vh;min-height:300px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;}
+            #myOrdersModal .orders-scroll-region::-webkit-scrollbar{width:8px;}
+            #myOrdersModal .orders-scroll-region::-webkit-scrollbar-track{background:rgba(0,0,0,0.05);border-radius:4px;}
+            #myOrdersModal .orders-scroll-region::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.25);border-radius:4px;}
+            @media (max-height:620px){#myOrdersModal .orders-scroll-region{max-height:48vh;}}
+          </style>
           <div id="orderStatusChips" class="order-status-filter d-flex flex-wrap gap-2 mb-3">
             <!-- Chips injected by JS -->
           </div>
@@ -411,7 +419,9 @@ $all_products = $db->fetchAllProducts();
             </select>
           </div>
           <div id="ordersSummaryLine" class="small mb-2 text-muted"></div>
-          <div id="ordersList"></div>
+          <div class="orders-scroll-region">
+            <div id="ordersList"></div>
+          </div>
         </div>
       </div>
     </div>
