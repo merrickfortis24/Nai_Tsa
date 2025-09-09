@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 session_start();
-require_once "classes/database.php";
+require_once "/../classes/database.php";
 $db = new database();
 
 header('Content-Type: application/json');

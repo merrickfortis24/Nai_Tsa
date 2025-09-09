@@ -1203,7 +1203,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
   }
 
   // Send data to PHP (non-GCash flows)
-  fetch('checkout_process.php', {
+  fetch('ajax/checkout_process.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
