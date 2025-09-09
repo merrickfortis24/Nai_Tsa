@@ -1,53 +1,60 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// Ensure no BOM / whitespace before this tag. This endpoint must output ONLY JSON.
+// Disable direct display of warnings/notices to avoid breaking JSON; log them instead.
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
+
 session_start();
-require_once "/../classes/database.php";
-$db = new database();
+header('Content-Type: application/json; charset=UTF-8');
 
-header('Content-Type: application/json');
+// Robust include using absolute path relative to this file (users/ajax/ -> users/classes/)
+require_once __DIR__ . '/../classes/database.php';
 
-$data = json_decode(file_get_contents('php://input'), true);
-$customer_name = $_SESSION['customer_name'] ?? 'Guest';
-
-$result = $db->processCheckout($data, $customer_name);
-
-echo json_encode($result);
-exit;
-?>
-<script>
-fetch('ajax/checkout_process.php', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({
-    orderType,
-    paymentMethod,
-    street,
-    barangay,
-    city,
-    contact,
-    cart
-  })
-})
-.then(async res => {
-  const text = await res.text();
-  console.log('Raw response:', text);
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    throw new Error('Invalid JSON: ' + text);
+try {
+  // Read and decode JSON body
+  $raw = file_get_contents('php://input');
+  if ($raw === false) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Unable to read input stream']);
+    exit;
   }
-})
-.then(data => {
-  // ...existing SweetAlert logic...
-})
-.catch(err => {
-  Swal.fire({
-    icon: 'error',
-    title: 'Order Failed',
-    text: err.message || 'A network or server error occurred.',
-    confirmButtonColor: '#FFB27A'
-  });
-});
-</script>
+
+  $data = json_decode($raw, true);
+  if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+    http_response_code(400);
+    echo json_encode([
+      'success' => false,
+      'message' => 'Invalid JSON payload',
+      'json_error' => json_last_error_msg(),
+      'raw_sample' => substr($raw,0,200)
+    ]);
+    exit;
+  }
+
+  if (!isset($_SESSION['customer_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
+  }
+
+  $customer_name = $_SESSION['customer_name'] ?? 'Guest';
+  $db = new database();
+
+  $result = $db->processCheckout($data, $customer_name);
+
+  // Guarantee success flag presence
+  if (!isset($result['success'])) {
+    $result['success'] = ($result['status'] ?? '') === 'ok' || isset($result['order_id']);
+  }
+  echo json_encode($result);
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode([
+    'success' => false,
+    'message' => 'Server error during checkout',
+    'error' => $e->getMessage()
+  ]);
+}
+// No trailing output.
+exit;
