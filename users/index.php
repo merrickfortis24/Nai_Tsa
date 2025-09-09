@@ -637,6 +637,21 @@ cartModalEl.addEventListener('show.bs.modal', function () {
 });
 cartModalEl.addEventListener('hidden.bs.modal', function () {
   cartFab.classList.remove('hide');
+  // Refresh orders badge via AJAX without reloading the entire page
+  if (typeof refreshOrdersAjax === 'function') {
+    refreshOrdersAjax({ open:false });
+  } else {
+    // Fallback to lightweight endpoint if helper not yet defined
+    fetch('ajax/refresh_new_order.php?t=' + Date.now())
+      .then(r=>r.ok?r.json():null)
+      .then(j=>{
+        if(j && j.success && Array.isArray(j.orders)) {
+          window.ORDERS_CACHE = j.orders;
+          if (typeof updateOrdersBadgeFromCache === 'function') updateOrdersBadgeFromCache();
+        }
+      })
+      .catch(()=>{});
+  }
 });
 
 document.getElementById('checkoutBtn').addEventListener('click', function() {
