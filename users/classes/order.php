@@ -119,7 +119,7 @@ class Order {
 
     function getOrderItems($order_id) {
         $stmt = $this->con->prepare("
-            SELECT oi.*, p.Product_Name 
+            SELECT oi.*, p.Product_Name, p.Product_Image
             FROM order_item oi
             JOIN product p ON oi.Product_ID = p.Product_ID
             WHERE oi.Order_ID = ?
