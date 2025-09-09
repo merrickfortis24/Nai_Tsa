@@ -560,12 +560,12 @@ const cartBadge = document.getElementById('cart-badge');
 const ordersBadge = document.getElementById('orders-badge');
 const cartItemsList = document.getElementById('cart-items-list');
 
-// Count ONLY strictly 'Pending' orders (exclude Processing, To Ship, etc.)
+// Badge: count all active (not yet completed) orders excluding Delivered & Cancelled
 function derivePendingOrders(list){
   if(!Array.isArray(list)) return 0;
   let c=0; for(const o of list){
-    const st=(o.order_status||o.ui_status||'').trim();
-    if(st === 'Pending') c++;
+    const st=(o.order_status||o.ui_status||'').trim().toLowerCase();
+  if(st && st !== 'delivered' && st !== 'cancelled' && st !== 'received') c++;
   }
   return c;
 }
