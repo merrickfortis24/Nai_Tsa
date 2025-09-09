@@ -2,14 +2,19 @@
 session_start();
 header('Content-Type: application/json');
 
-// Require authenticated customer
+// Optional: suppress HTML error output so JSON parsing isn't broken
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+// Auth check
 if (!isset($_SESSION['customer_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
 
-require_once __DIR__ . '/classes/database.php';
+// Correct relative path (file is in users/ajax/, classes is ../classes)
+require_once __DIR__ . '/../classes/database.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -18,7 +23,20 @@ try {
         exit;
     }
 
-    $orderId = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
+    // Accept either form-data / x-www-form-urlencoded or raw JSON
+    $orderId = 0;
+    if (isset($_POST['order_id'])) {
+        $orderId = (int)$_POST['order_id'];
+    } else {
+        $raw = file_get_contents('php://input');
+        if ($raw) {
+            $json = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($json['order_id'])) {
+                $orderId = (int)$json['order_id'];
+            }
+        }
+    }
+
     if ($orderId <= 0) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Invalid order ID']);
@@ -29,51 +47,60 @@ try {
     $con = $db->opencon();
     $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Ensure the order belongs to the current user and is still Pending
-    $check = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid LIMIT 1");
-    $check->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
-    $status = $check->fetchColumn();
-    if ($status === false) {
+    // Fetch current status ensuring ownership
+    $stmt = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid LIMIT 1");
+    $stmt->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
+    $currentStatus = $stmt->fetchColumn();
+
+    if ($currentStatus === false) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Order not found']);
         exit;
     }
-    if (trim(strtolower($status)) !== 'pending') {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Only pending orders can be cancelled']);
+
+    if (trim(strtolower($currentStatus)) !== 'pending') {
+        http_response_code(409); // Conflict
+        echo json_encode([
+            'success' => false,
+            'message' => 'Only pending orders can be cancelled',
+            'order_id' => $orderId,
+            'status' => $currentStatus
+        ]);
         exit;
     }
 
-    // Perform the cancellation (case-insensitive + trim guard on current status)
-    $upd = $con->prepare("UPDATE orders SET order_status = 'Cancelled' WHERE Order_ID = :oid AND Customer_ID = :cid AND TRIM(LOWER(order_status)) = 'pending'");
+    // Attempt guarded update
+    $upd = $con->prepare("UPDATE orders SET order_status='Cancelled' WHERE Order_ID=:oid AND Customer_ID=:cid AND TRIM(LOWER(order_status))='pending'");
     $upd->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
-    $rows_guarded = $upd->rowCount();
+    $affected = $upd->rowCount();
 
-    if ($rows_guarded === 0) {
-        // Fallback: if our pre-check says it's pending but the guarded update didn't match (e.g., collation/whitespace quirks), try without the status guard
-        $upd2 = $con->prepare("UPDATE orders SET order_status = 'Cancelled' WHERE Order_ID = :oid AND Customer_ID = :cid");
-        $upd2->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
-        $rows_fallback = $upd2->rowCount();
-        if ($rows_fallback > 0) {
-            // Verify final status
-            $post = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid");
-            $post->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
-            $status_after = $post->fetchColumn();
-            echo json_encode(['success' => true, 'note' => 'Fallback update applied', 'status_before' => $status, 'rows_guarded' => $rows_guarded, 'rows_fallback' => $rows_fallback, 'status_after' => $status_after]);
-            exit;
-        }
-    }
-
-    if ($rows_guarded > 0) {
-        $post = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid");
-        $post->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
-        $status_after = $post->fetchColumn();
-        echo json_encode(['success' => true, 'status_before' => $status, 'rows_guarded' => $rows_guarded, 'status_after' => $status_after]);
-    } else {
+    if ($affected === 0) {
+        // Double-check status (race condition?)
+        $stmt2 = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid LIMIT 1");
+        $stmt2->execute([':oid' => $orderId, ':cid' => $_SESSION['customer_id']]);
+        $afterCheck = $stmt2->fetchColumn();
         http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Unable to cancel at this stage', 'status_before' => $status, 'rows_guarded' => $rows_guarded]);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Unable to cancel (status may have changed)',
+            'order_id' => $orderId,
+            'status' => $afterCheck
+        ]);
+        exit;
     }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Order cancelled',
+        'order_id' => $orderId,
+        'previous_status' => $currentStatus,
+        'new_status' => 'Cancelled'
+    ]);
 } catch (Throwable $e) {
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error', 'detail' => $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Server error',
+        'error' => $e->getMessage()
+    ]);
 }
