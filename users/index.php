@@ -1885,7 +1885,7 @@ document.getElementById('myOrdersModal').addEventListener('click', e=>{
       .then(async r=>{ 
         if(r.isConfirmed){ 
           try{
-            const resp = await fetch('cancel_order.php', {
+            const resp = await fetch('ajax/cancel_order.php', {
               method:'POST',
               headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','Accept':'application/json'},
               body: new URLSearchParams({order_id: id}).toString()
