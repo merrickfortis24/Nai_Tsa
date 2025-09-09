@@ -141,19 +141,19 @@ ksort($methods);
             <div class="col-6 col-md-3">
               <div class="p-2 border rounded bg-light text-center">
                 <div class="text-muted">Total Records</div>
-                <div class="fw-semibold"><?=number_format($total)?></div>
+                <div class="fw-semibold" id="statTotal"><?=number_format($total)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
               <div class="p-2 border rounded bg-light text-center">
                 <div class="text-muted">Unpaid Payments</div>
-                <div class="fw-semibold text-danger"><?=number_format($unpaidPayments)?></div>
+                <div class="fw-semibold text-danger" id="statUnpaid"><?=number_format($unpaidPayments)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
               <div class="p-2 border rounded bg-light text-center">
                 <div class="text-muted">Pending / Processing Orders</div>
-                <div class="fw-semibold text-warning"><?=number_format($pendingProcessingCount)?></div>
+                <div class="fw-semibold text-warning" id="statPendingProc"><?=number_format($pendingProcessingCount)?></div>
               </div>
             </div>
           </div>
@@ -507,6 +507,60 @@ function toast(message, type){
   document.body.appendChild(box);
   setTimeout(()=>{ box.remove(); }, 2500);
 }
+
+// ---- Realtime new orders polling ----
+(function(){
+  const tbody = document.querySelector('table tbody');
+  if(!tbody) return;
+  let lastId = 0;
+  // Initialize lastId from current rows
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const first = tr.querySelector('td');
+    if(first){ const val = parseInt(first.textContent.trim(),10); if(val>lastId) lastId = val; }
+  });
+
+  async function poll(){
+    try {
+      const res = await fetch('ajax/orders_payments_updates.php?last_id=' + lastId + '&t=' + Date.now(), {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if(data.success && Array.isArray(data.rows) && data.rows.length){
+        data.rows.forEach(r=>{
+          const tr = document.createElement('tr');
+          // Decide status options similar to PHP side for consistency
+          const isDelivery = !!(r.Street || r.City);
+          const statusOptions = isDelivery ? ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"] : ["Pending","Processing","Ready to pick up","Received","Cancelled"];
+          const statusSelect = statusOptions.map(st => `<option value="${st}" ${r.order_status===st? 'selected':''}>${st}</option>`).join('');
+          const paySelect = `<select name=\"payment_status\" class=\"form-select form-select-sm\" onchange=\"this.form.submit()\"><option value=\"Paid\" ${r.Payment_Status==='Paid'?'selected':''}>Paid</option><option value=\"Unpaid\" ${r.Payment_Status==='Unpaid'?'selected':''}>Unpaid</option></select>`;
+          tr.innerHTML = `
+            <td>${r.Order_ID}</td>
+            <td>${(r.Customer_Name||'Unknown').replace(/</g,'&lt;')}</td>
+            <td>${r.Order_Date}</td>
+            <td>₱${Number(r.Order_Amount||0).toFixed(2)}</td>
+            <td>
+              <form method=\"post\" class=\"mb-0\">
+                <input type=\"hidden\" name=\"order_id\" value=\"${r.Order_ID}\">
+                <select name=\"order_status\" class=\"form-select form-select-sm\" onchange=\"this.form.submit()\">${statusSelect}</select>
+              </form>
+            </td>
+            <td>${ r.Payment_ID ? `<form method=\"post\" class=\"mb-0\"><input type=\"hidden\" name=\"payment_id\" value=\"${r.Payment_ID}\">${paySelect}</form>` : '<span class=\"badge bg-warning text-dark\">Unpaid</span>' }</td>
+            <td>${ r.Payment_Method ? r.Payment_Method : '<span class=\"text-muted\">-</span>' }</td>
+            <td><span class=\"badge bg-info text-dark\">New</span></td>`;
+          tbody.prepend(tr);
+          if(r.Order_ID > lastId) lastId = r.Order_ID;
+        });
+      }
+      if(data.stats){
+        const fmt = n => new Intl.NumberFormat().format(n||0);
+        if(document.getElementById('statTotal')) document.getElementById('statTotal').textContent = fmt(data.stats.total);
+        if(document.getElementById('statUnpaid')) document.getElementById('statUnpaid').textContent = fmt(data.stats.unpaid);
+        if(document.getElementById('statPendingProc')) document.getElementById('statPendingProc').textContent = fmt(data.stats.pending_processing);
+      }
+    } catch(e){ /* silent */ }
+    finally { setTimeout(poll, 15000); }
+  }
+  poll();
+})();
 </script>
 </body>
 </html>

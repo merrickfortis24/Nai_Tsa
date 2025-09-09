@@ -1800,20 +1800,81 @@ function renderOrdersPagination(totalPages){
 }
 
 function actionButtons(status,id){
-  // Look up order to decide if review should be enabled
+  // Normalize status passed in (already canonical via deriveUiStatus)
   const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(id));
   const allReviewed = order?.items?.length ? order.items.every(it => !!it.Already_Reviewed) : false;
+  const type = (order?.order_type||'').toLowerCase();
+  const isPickup = type.includes('pick');
+  const isDelivery = type.includes('deliver') || (!isPickup && (order?.Street || order?.City || order?.Contact_Number));
+
+  // Decide if confirm button should show
+  // Backend allows: (Pickup) Pending, Processing, Ready to pick up -> Received
+  //                  (Delivery) Pending, Processing, Ready to deliver, On the way -> Delivered
+  // For better UX only show once order is beyond Pending (except allow manual early confirm if desired?)
+  let showConfirm = false;
+  if(isPickup){
+    showConfirm = ['Ready to pick up','Processing','Pending'].includes(status) && !['Received','Cancelled'].includes(status);
+  } else if(isDelivery){
+    showConfirm = ['Ready to deliver','On the way','Processing','Pending'].includes(status) && !['Delivered','Cancelled'].includes(status);
+  }
+  // Avoid showing confirm after already finalized
+  if(['Delivered','Received','Cancelled'].includes(status)) showConfirm = false;
+
   switch(status){
-    case "Pending":
-      return `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`;
-    case "To Receive":
-      return `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm Received</button>`;
-    case "Delivered":
+    case 'Pending':
+      // Offer cancel; optionally confirm (if user wants to prematurely mark). We'll keep only cancel to reduce mistakes.
+      return `<div class="d-flex gap-1">`+
+        `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`+
+        (showConfirm && status!=='Pending' ? `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm</button>`:'')+
+        `</div>`;
+    case 'Ready to deliver':
+    case 'On the way':
+    case 'Ready to pick up':
+      return showConfirm ? `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm ${isPickup?'Pickup':'Delivery'}</button>` : '';
+    case 'Delivered':
+      return allReviewed
+        ? `<button class="btn btn-secondary btn-sm" data-action="review" data-id="${id}" disabled>Reviewed</button>`
+        : `<button class="btn btn-soft-orange btn-sm" data-action="review" data-id="${id}">Review Items</button>`;
+    case 'Received':
       return allReviewed
         ? `<button class="btn btn-secondary btn-sm" data-action="review" data-id="${id}" disabled>Reviewed</button>`
         : `<button class="btn btn-soft-orange btn-sm" data-action="review" data-id="${id}">Review Items</button>`;
     default:
       return '';
+  }
+}
+
+// Confirm order helper (calls ajax/confirm_order.php)
+async function confirmOrder(orderId){
+  const btn = document.querySelector(`#myOrdersModal [data-action="confirm"][data-id="${orderId}"]`);
+  if(btn){
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Confirming';
+    try {
+      const res = await fetch('ajax/confirm_order.php', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','Accept':'application/json'},
+        body: new URLSearchParams({order_id: orderId}).toString()
+      });
+      const data = await res.json().catch(()=>({success:false,message:'Invalid response'}));
+      console.log('confirm_order.php response', res.status, data);
+      if(res.ok && data.success){
+        // Update cache
+        const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
+        if(idx!==-1){ ORDERS_CACHE[idx].order_status = data.final_status; }
+        renderStatusChips();
+        renderOrders();
+        Swal.fire({icon:'success', title: isNaN(orderId)?'Confirmed':'Order confirmed', timer:1200, showConfirmButton:false});
+      } else {
+        Swal.fire({icon:'error', title:data.message||'Unable to confirm', timer:1800, showConfirmButton:false});
+        if(btn){ btn.disabled = false; btn.textContent = original; }
+      }
+    } catch(err){
+      Swal.fire({icon:'error', title:'Network error', text:String(err).slice(0,160), confirmButtonColor:'#FFB27A'});
+      if(btn){ btn.disabled = false; btn.textContent = original; }
+    }
+    return;
   }
 }
 
@@ -2069,8 +2130,8 @@ document.getElementById('myOrdersModal').addEventListener('click', e=>{
         }
       });
   } else if(action==="confirm"){
-    Swal.fire({title:'Confirm receipt?',icon:'question',showCancelButton:true,confirmButtonColor:'#FFB27A'})
-      .then(r=>{ if(r.isConfirmed){ Swal.fire({icon:'success',title:'Thank you!',timer:1200,showConfirmButton:false}); }});
+    Swal.fire({title:'Confirm this order?',icon:'question',showCancelButton:true,confirmButtonColor:'#FFB27A'})
+      .then(r=>{ if(r.isConfirmed){ confirmOrder(id); } });
   }
 });
 
