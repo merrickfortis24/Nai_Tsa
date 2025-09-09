@@ -550,39 +550,6 @@ const cartBadge = document.getElementById('cart-badge');
 const ordersBadge = document.getElementById('orders-badge');
 const cartItemsList = document.getElementById('cart-items-list');
 
-// --- Orders quick refresh (AJAX) ---
-let ORDERS_CACHE = window.ORDERS_CACHE || [];
-function refreshOrdersAjax(opts={open:false,focusOrderId:null}){
-  fetch('orders_api.php?t=' + Date.now(), {cache:'no-store'})
-    .then(r=> r.ok ? r.json(): [])
-    .then(list=>{
-      if(Array.isArray(list)){
-        ORDERS_CACHE = list; window.ORDERS_CACHE = list; updateOrdersBadgeFromCache();
-        if(opts.open){
-          const modalEl = document.getElementById('myOrdersModal');
-          if(modalEl){ bootstrap.Modal.getOrCreateInstance(modalEl).show(); }
-        }
-        if(opts.focusOrderId){
-          setTimeout(()=>{
-            document.querySelectorAll('#ordersList .card').forEach(c=>{
-              if(c.innerHTML.includes('Order #' + opts.focusOrderId)){
-                c.classList.add('order-flash');
-                setTimeout(()=> c.classList.remove('order-flash'), 2500);
-              }
-            });
-          },300);
-        }
-      }
-    })
-    .catch(()=>{});
-}
-if(!document.getElementById('orderFlashStyle')){
-  const st=document.createElement('style');
-  st.id='orderFlashStyle';
-  st.textContent='.order-flash{outline:3px solid #ffb27a;box-shadow:0 0 0 4px rgba(255,178,122,.35);}';
-  document.head.appendChild(st);
-}
-
 // Count ONLY strictly 'Pending' orders (exclude Processing, To Ship, etc.)
 function derivePendingOrders(list){
   if(!Array.isArray(list)) return 0;
@@ -1267,8 +1234,11 @@ document.getElementById('paymentForm').addEventListener('submit', async function
             ordersBadge.style.display = 'inline-block';
           }
         } catch(e) { /* ignore */ }
-  // Quick view: refresh orders via AJAX & open modal highlighting new order
-  refreshOrdersAjax({open:true, focusOrderId: data.order_id || null});
+        // Prefetch latest orders so My Orders modal immediately shows new order
+        fetch('orders_api.php?t=' + Date.now())
+          .then(r=> r.ok ? r.json() : [])
+          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; updateOrdersBadgeFromCache(); }})
+          .catch(()=>{});
       });
     } else {
       Swal.fire({
