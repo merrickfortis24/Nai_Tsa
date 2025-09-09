@@ -550,6 +550,39 @@ const cartBadge = document.getElementById('cart-badge');
 const ordersBadge = document.getElementById('orders-badge');
 const cartItemsList = document.getElementById('cart-items-list');
 
+// --- Orders quick refresh (AJAX) ---
+let ORDERS_CACHE = window.ORDERS_CACHE || [];
+function refreshOrdersAjax(opts={open:false,focusOrderId:null}){
+  fetch('orders_api.php?t=' + Date.now(), {cache:'no-store'})
+    .then(r=> r.ok ? r.json(): [])
+    .then(list=>{
+      if(Array.isArray(list)){
+        ORDERS_CACHE = list; window.ORDERS_CACHE = list; updateOrdersBadgeFromCache();
+        if(opts.open){
+          const modalEl = document.getElementById('myOrdersModal');
+          if(modalEl){ bootstrap.Modal.getOrCreateInstance(modalEl).show(); }
+        }
+        if(opts.focusOrderId){
+          setTimeout(()=>{
+            document.querySelectorAll('#ordersList .card').forEach(c=>{
+              if(c.innerHTML.includes('Order #' + opts.focusOrderId)){
+                c.classList.add('order-flash');
+                setTimeout(()=> c.classList.remove('order-flash'), 2500);
+              }
+            });
+          },300);
+        }
+      }
+    })
+    .catch(()=>{});
+}
+if(!document.getElementById('orderFlashStyle')){
+  const st=document.createElement('style');
+  st.id='orderFlashStyle';
+  st.textContent='.order-flash{outline:3px solid #ffb27a;box-shadow:0 0 0 4px rgba(255,178,122,.35);}';
+  document.head.appendChild(st);
+}
+
 // Count ONLY strictly 'Pending' orders (exclude Processing, To Ship, etc.)
 function derivePendingOrders(list){
   if(!Array.isArray(list)) return 0;
@@ -1234,11 +1267,8 @@ document.getElementById('paymentForm').addEventListener('submit', async function
             ordersBadge.style.display = 'inline-block';
           }
         } catch(e) { /* ignore */ }
-        // Prefetch latest orders so My Orders modal immediately shows new order
-        fetch('orders_api.php?t=' + Date.now())
-          .then(r=> r.ok ? r.json() : [])
-          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; updateOrdersBadgeFromCache(); }})
-          .catch(()=>{});
+  // Quick view: refresh orders via AJAX & open modal highlighting new order
+  refreshOrdersAjax({open:true, focusOrderId: data.order_id || null});
       });
     } else {
       Swal.fire({
@@ -1258,29 +1288,6 @@ document.getElementById('paymentForm').addEventListener('submit', async function
     });
   });
 });
-
-// === Quick Orders AJAX Refresh ===
-async function refreshOrdersAjax(opts={open:false,focusOrderId:null}) {
-  try {
-    const r = await fetch('ajax/refresh_new_order.php?t='+Date.now(), {cache:'no-store'});
-    const json = await r.json();
-    if(!json.success) return;
-    const list = json.orders||[];
-    if(Array.isArray(list)) {
-      ORDERS_CACHE = list;
-      updateOrdersBadgeFromCache && updateOrdersBadgeFromCache();
-      if(opts.open){
-        const modalEl = document.getElementById('myOrdersModal');
-        if(modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      }
-      const modalShown = document.getElementById('myOrdersModal')?.classList.contains('show');
-      if(modalShown || opts.open){
-        renderStatusChips && renderStatusChips();
-        renderOrders && renderOrders();
-      }
-    }
-  } catch(e){ console.warn('refreshOrdersAjax failed', e); }
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   const allProducts = <?php echo json_encode($all_products); ?>;
@@ -1318,7 +1325,30 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="menu-card-header">
               <h3 class="menu-card-title">${product.Product_Name}</h3>
               <span class="menu-card-price">${priceDisplay}</span>
-            </
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // Add-to-cart (recommended) -> open product details modal with add-ons
     recommendedCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.preventDefault();
