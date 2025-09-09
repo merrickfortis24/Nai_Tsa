@@ -283,7 +283,7 @@ function createPasswordResetToken($email) {
             $stmt->execute([$customer_name]);
             $customer_id = $con->lastInsertId();
         }
-        // If session was missing, set it now so subsequent APIs (orders_api.php) will see new orders
+    // If session was missing, set it now so subsequent APIs (fetch_orders.php) will see new orders
         if (!isset($_SESSION['customer_id'])) {
             $_SESSION['customer_id'] = $customer_id;
         }

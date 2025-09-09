@@ -1249,10 +1249,16 @@ document.getElementById('paymentForm').addEventListener('submit', async function
             ordersBadge.style.display = 'inline-block';
           }
         } catch(e) { /* ignore */ }
-        // Prefetch latest orders so My Orders modal immediately shows new order
-        fetch('orders_api.php?t=' + Date.now())
-          .then(r=> r.ok ? r.json() : [])
-          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; updateOrdersBadgeFromCache(); }})
+        // Prefetch latest orders via new grouped endpoint so My Orders modal shows new order
+        fetch('ajax/fetch_orders.php?t=' + Date.now())
+          .then(r=> r.ok ? r.json() : {success:false})
+          .then(payload=>{ if(payload && payload.success){
+              ORDERS_CACHE = Array.isArray(payload.flat) ? payload.flat : [];
+              if(payload.counts && typeof payload.counts.pending==='number'){
+                ordersBadge.textContent = payload.counts.pending;
+                ordersBadge.style.display = payload.counts.pending>0? 'inline-block':'none';
+              } else { updateOrdersBadgeFromCache(); }
+          }})
           .catch(()=>{});
       });
     } else {
@@ -1783,28 +1789,42 @@ function actionButtons(status,id){
 })();
 
 // On modal open fetch orders (with success handling)
-document.getElementById('myOrdersModal').addEventListener('show.bs.modal', ()=>{
+// Helper: load orders via grouped endpoint (fetch_orders.php)
+async function loadOrdersGrouped(){
   const listEl = document.getElementById('ordersList');
   if(listEl) listEl.innerHTML = skeletonOrders();
   ACTIVE_STATUS = "All";
   ORDERS_PAGE = 1;
-  fetch('orders_api.php?t=' + Date.now())
-    .then(r=> r.ok ? r.json() : Promise.reject(r.status))
-    .then(data=>{
-      ORDERS_CACHE = Array.isArray(data) ? data : [];
-      renderStatusChips();
-      renderOrders();
-      // Auto-start tracking for active delivery orders (first page only to save resources)
-      try {
-        const forTrack = ORDERS_CACHE.filter(o => ((o.order_type||'').toLowerCase().includes('deliver') || o.Street || o.City) && !['Delivered','Received','Cancelled'].includes(deriveUiStatus(o)) ).slice(0,5);
-        forTrack.forEach(o => startDeliveryTracking(o.Order_ID));
-      } catch(e) { console.warn('auto track init failed', e); }
-    })
-    .catch((err)=>{
-      if(listEl) listEl.innerHTML = `<div class="text-danger">Failed to load orders.</div>`;
-      console.error('orders_api failed', err);
-    });
-});
+  try {
+    const res = await fetch('ajax/fetch_orders.php?t=' + Date.now(), {headers:{'Accept':'application/json'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const payload = await res.json();
+    if(!payload.success){
+      throw new Error(payload.message || 'Failed');
+    }
+    // Prefer flattened list for existing rendering logic
+    ORDERS_CACHE = Array.isArray(payload.flat) ? payload.flat : [];
+    renderStatusChips();
+    renderOrders();
+    // Update orders badge using counts if available
+    if(payload.counts && typeof payload.counts.pending === 'number'){
+      ordersBadge.textContent = payload.counts.pending;
+      ordersBadge.style.display = payload.counts.pending>0 ? 'inline-block':'none';
+    } else {
+      updateOrdersBadgeFromCache();
+    }
+    // Auto-start tracking for active delivery orders (first page only to save resources)
+    try {
+      const forTrack = ORDERS_CACHE.filter(o => ((o.order_type||'').toLowerCase().includes('deliver') || o.Street || o.City) && !['Delivered','Received','Cancelled'].includes(deriveUiStatus(o)) ).slice(0,5);
+      forTrack.forEach(o => startDeliveryTracking(o.Order_ID));
+    } catch(e) { console.warn('auto track init failed', e); }
+  } catch(err){
+    if(listEl) listEl.innerHTML = `<div class="text-danger">Failed to load orders.</div>`;
+    console.error('fetch_orders failed', err);
+  }
+}
+
+document.getElementById('myOrdersModal').addEventListener('show.bs.modal', loadOrdersGrouped);
 
 // Search / date filter
 document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
