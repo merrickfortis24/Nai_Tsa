@@ -1671,6 +1671,16 @@ function renderOrders(){
         <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
         <span>${it.Product_Name} x ${it.Quantity}</span>
       </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
+    const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
+    const needsTracking = isDelivery && !['Delivered','Received','Cancelled'].includes(uiStatus);
+    const trackingHtml = needsTracking ? `
+      <div class="mt-3 p-2 border rounded bg-white" style="border-radius:12px;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="small">Delivery status: <span id="track-status-${o.Order_ID}" class="fw-semibold">Loading…</span></div>
+          <button type="button" class="btn btn-outline-soft-orange btn-sm" data-track="${o.Order_ID}">Track</button>
+        </div>
+        <div id="track-map-${o.Order_ID}" class="mt-2" style="height:160px;border-radius:10px;overflow:hidden;display:none;"></div>
+      </div>` : '';
 
     return `
       <div class="card mb-2" style="border-radius:16px;">
@@ -1687,6 +1697,7 @@ function renderOrders(){
             ${actionButtons(uiStatus,o.Order_ID)}
           </div>
           <div class="mt-2 fw-semibold">Total: ₱${parseFloat(o.Order_Amount).toFixed(2)}</div>
+          ${trackingHtml}
         </div>
       </div>`;
   }).join('');
@@ -1783,6 +1794,11 @@ document.getElementById('myOrdersModal').addEventListener('show.bs.modal', ()=>{
       ORDERS_CACHE = Array.isArray(data) ? data : [];
       renderStatusChips();
       renderOrders();
+      // Auto-start tracking for active delivery orders (first page only to save resources)
+      try {
+        const forTrack = ORDERS_CACHE.filter(o => ((o.order_type||'').toLowerCase().includes('deliver') || o.Street || o.City) && !['Delivered','Received','Cancelled'].includes(deriveUiStatus(o)) ).slice(0,5);
+        forTrack.forEach(o => startDeliveryTracking(o.Order_ID));
+      } catch(e) { console.warn('auto track init failed', e); }
     })
     .catch((err)=>{
       if(listEl) listEl.innerHTML = `<div class="text-danger">Failed to load orders.</div>`;
@@ -2243,6 +2259,76 @@ async function openProductDetailsWithAddons(product){
   const origRenderRecommended = (typeof renderRecommendedCards === 'function') ? renderRecommendedCards : null;
   const origRenderMenu = (typeof renderMenuCards === 'function') ? renderMenuCards : null;
 })();
+  </script>
+
+  <script>
+  // ===== Delivery Tracking Logic =====
+  const ACTIVE_TRACKERS = {}; // order_id -> interval id
+  function startDeliveryTracking(orderId){
+    orderId = String(orderId);
+    if (ACTIVE_TRACKERS[orderId]) return; // already tracking
+    const statusEl = document.getElementById('track-status-'+orderId);
+    const mapEl = document.getElementById('track-map-'+orderId);
+    if(mapEl) mapEl.style.display = 'block';
+    let map, marker;
+    function ensureLeaflet(cb){
+      if (window.L) return cb();
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+      s.onload = cb; document.head.appendChild(s);
+      if(!document.querySelector('link[href*="leaflet.css"]')){
+        const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(l);
+      }
+    }
+    async function tick(){
+      try {
+        const r = await fetch('ajax/delivery_tracking.php?order_id='+encodeURIComponent(orderId)+'&t='+Date.now());
+        const j = await r.json();
+        if(!j.success){ throw new Error(j.message||'fetch failed'); }
+        if(statusEl) statusEl.textContent = j.derived_status || j.order_status || '—';
+        if(j.lat && j.lng && mapEl){
+          ensureLeaflet(()=>{
+            if(!map){
+              map = L.map(mapEl).setView([j.lat,j.lng], 15);
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OSM'}).addTo(map);
+              marker = L.marker([j.lat,j.lng]).addTo(map);
+              setTimeout(()=>{ try{ map.invalidateSize(); }catch(_){} }, 400);
+            } else {
+              marker.setLatLng([j.lat,j.lng]);
+              map.panTo([j.lat,j.lng]);
+            }
+          });
+        }
+        if(j.terminal){ stopDeliveryTracking(orderId); }
+      } catch(err){
+        if(statusEl) statusEl.textContent = 'Tracking error';
+        console.warn('tracking error', err);
+      }
+    }
+    tick();
+    ACTIVE_TRACKERS[orderId] = setInterval(tick, 10000); // 10s
+  }
+  function stopDeliveryTracking(orderId){
+    orderId = String(orderId);
+    if(ACTIVE_TRACKERS[orderId]){ clearInterval(ACTIVE_TRACKERS[orderId]); delete ACTIVE_TRACKERS[orderId]; }
+  }
+  function stopAllTracking(){ Object.keys(ACTIVE_TRACKERS).forEach(stopDeliveryTracking); }
+  window.startDeliveryTracking = startDeliveryTracking;
+  window.stopDeliveryTracking = stopDeliveryTracking;
+  window.stopAllTracking = stopAllTracking;
+
+  // Delegate click for Track buttons
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-track]');
+    if(!btn) return;
+    const oid = btn.getAttribute('data-track');
+    startDeliveryTracking(oid);
+  });
+
+  // Stop tracking when modal hidden
+  document.getElementById('myOrdersModal').addEventListener('hidden.bs.modal', () => {
+    stopAllTracking();
+  });
   </script>
 
   <script>
