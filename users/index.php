@@ -637,8 +637,6 @@ cartModalEl.addEventListener('show.bs.modal', function () {
 });
 cartModalEl.addEventListener('hidden.bs.modal', function () {
   cartFab.classList.remove('hide');
-  // Auto refresh entire page after cart modal closes per request
-  try { setTimeout(()=>{ window.location.reload(); }, 80); } catch(e){}
 });
 
 document.getElementById('checkoutBtn').addEventListener('click', function() {
@@ -1236,10 +1234,11 @@ document.getElementById('paymentForm').addEventListener('submit', async function
             ordersBadge.style.display = 'inline-block';
           }
         } catch(e) { /* ignore */ }
-        // Quick view: refresh orders via lightweight endpoint & open modal
-        if (typeof refreshOrdersAjax === 'function') {
-          refreshOrdersAjax({ open:true, focusOrderId: data.order_id || null });
-        }
+        // Prefetch latest orders so My Orders modal immediately shows new order
+        fetch('orders_api.php?t=' + Date.now())
+          .then(r=> r.ok ? r.json() : [])
+          .then(list=>{ if(Array.isArray(list)){ ORDERS_CACHE = list; updateOrdersBadgeFromCache(); }})
+          .catch(()=>{});
       });
     } else {
       Swal.fire({
@@ -1260,36 +1259,975 @@ document.getElementById('paymentForm').addEventListener('submit', async function
   });
 });
 
-// === Quick Orders AJAX Refresh ===
-if(typeof refreshOrdersAjax==='undefined'){
-  async function refreshOrdersAjax(opts={open:false,focusOrderId:null}) {
-    try {
-      const r = await fetch('ajax/refresh_new_order.php?t='+Date.now(), {cache:'no-store'});
-      const json = await r.json();
-      if(!json.success) return;
-      const list = json.orders||[];
-      if(Array.isArray(list)) {
-        ORDERS_CACHE = list;
-        if(typeof updateOrdersBadgeFromCache==='function') updateOrdersBadgeFromCache();
-        if(opts.open){
-          const modalEl = document.getElementById('myOrdersModal');
-          if(modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
-        }
-        const modalShown = document.getElementById('myOrdersModal')?.classList.contains('show');
-        if(modalShown || opts.open){
-          if(typeof renderStatusChips==='function') renderStatusChips();
-          if(typeof renderOrders==='function') renderOrders();
-        }
+document.addEventListener('DOMContentLoaded', () => {
+  const allProducts = <?php echo json_encode($all_products); ?>;
+  const recommended = <?php echo json_encode($recommended); ?>;
+  const bestsellers = <?php echo json_encode($bestsellers); ?>;
+  const avgRatings = <?php echo json_encode($avg_ratings); ?>;
+  const menuCardsDiv = document.getElementById('menuCards');
+  const recommendedWrap = document.getElementById('recommendedWrap');
+  const recommendedCardsDiv = document.getElementById('recommendedCards');
+  const showBestsellersBtn = document.getElementById('showBestsellersBtn');
+  const menuSearchInput = document.getElementById('menuSearchInput');
+
+  // Allergen icons removed per latest requirement (no allergen display).
+
+  function renderRecommendedCards(productsArr) {
+    if (!recommendedCardsDiv) return;
+    if (!Array.isArray(productsArr) || productsArr.length === 0) {
+      recommendedWrap && recommendedWrap.classList.add('d-none');
+      return;
+    }
+    // Cap to 4 suggestions
+    const list = productsArr.slice(0, 4);
+  recommendedCardsDiv.innerHTML = list.map(product => {
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
+      return `
+        <div class="menu-card" data-product-id="${pid}">
+          <div class="menu-card-image">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+          </div>
+          <div class="menu-card-content">
+            <div class="menu-card-header">
+              <h3 class="menu-card-title">${product.Product_Name}</h3>
+              <span class="menu-card-price">${priceDisplay}</span>
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // Add-to-cart (recommended) -> open product details modal with add-ons
+    recommendedCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productName = btn.getAttribute('data-product');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (!prod) return;
+    await openProductDetailsWithAddons(prod);
+      });
+    });
+
+  // Card click -> modal (recommended) with add-ons
+    recommendedCardsDiv.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return;
+        const pid = card.dataset.productId;
+        const product = allProducts.find(p => p.Product_ID == pid) || list.find(p => p.Product_ID == pid);
+        if (!product) return;
+    openProductDetailsWithAddons(product);
+      });
+    });
+  }
+
+  function renderMenuCards(productsArr) {
+    if (!productsArr || !productsArr.length) {
+      menuCardsDiv.innerHTML = `<div class="text-center text-muted" style="padding:1.5rem;">No products found.</div>`;
+      return;
+    }
+  menuCardsDiv.innerHTML = productsArr.map(product => {
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
+
+      return `
+        <div class="menu-card" data-product-id="${pid}">
+          <div class="menu-card-image">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+          </div>
+          <div class="menu-card-content">
+            <div class="menu-card-header">
+              <h3 class="menu-card-title">${product.Product_Name}</h3>
+              <span class="menu-card-price">${priceDisplay}</span>
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // Add-to-cart -> open product details modal with add-ons
+    menuCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productName = btn.getAttribute('data-product');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (!prod) return;
+    await openProductDetailsWithAddons(prod);
+      });
+    });
+
+  // Card click -> modal with add-ons
+    menuCardsDiv.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return;
+        const pid = card.dataset.productId;
+        const product = allProducts.find(p => p.Product_ID == pid);
+        if (!product) return;
+    openProductDetailsWithAddons(product);
+      });
+    });
+  }
+
+  // CATEGORY + SEARCH FILTERS
+  let currentCategory = null;
+  function applyMenuFilters() {
+    let filtered = allProducts;
+    if (currentCategory) {
+      filtered = filtered.filter(p => p.Category_Name === currentCategory);
+    }
+    const q = menuSearchInput.value.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter(p =>
+        (p.Product_Name && p.Product_Name.toLowerCase().includes(q)) ||
+        (p.Product_desc && p.Product_desc.toLowerCase().includes(q))
+      );
+    }
+    renderMenuCards(filtered);
+  }
+
+  document.querySelectorAll('.category-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCategory = btn.getAttribute('data-category');
+      document.querySelectorAll('.menu-category-btn').forEach(b => b.classList.remove('active-category'));
+      btn.classList.add('active-category');
+      menuSearchInput.value = '';
+      applyMenuFilters();
+    });
+  });
+
+  if (showBestsellersBtn) {
+    showBestsellersBtn.addEventListener('click', () => {
+      currentCategory = null;
+      document.querySelectorAll('.menu-category-btn').forEach(b => b.classList.remove('active-category'));
+      showBestsellersBtn.classList.add('active-category');
+      menuSearchInput.value = '';
+      if (Array.isArray(bestsellers) && bestsellers.length) {
+        renderMenuCards(bestsellers);
+      } else {
+        renderMenuCards(allProducts);
       }
-    } catch(e){ console.warn('refreshOrdersAjax failed', e); }
+    });
+  }
+
+  if (menuSearchInput) {
+    menuSearchInput.addEventListener('input', applyMenuFilters);
+  }
+
+  // INITIAL RENDER
+  // Recommended row
+  renderRecommendedCards(recommended);
+
+  if (!Array.isArray(bestsellers) || bestsellers.length === 0) {
+    console.warn('No bestsellers found; showing all products.');
+    renderMenuCards(allProducts);
+    showBestsellersBtn && showBestsellersBtn.classList.add('active-category');
+  } else {
+    renderMenuCards(bestsellers);
+    showBestsellersBtn && showBestsellersBtn.classList.add('active-category');
+  }
+});
+
+// REMOVE / FIX MISSING IMAGE TO STOP 404
+// Delete bg13.jpg from the contactImages array above OR add the actual file assets/bg13.jpg.
+
+// Progress steps: branch by order_type
+const DELIVERY_STEPS = ["Pending","Processing","Ready to deliver","On the way","Delivered"];
+const PICKUP_STEPS   = ["Pending","Processing","Ready to pick up","Received"];
+const STATUS_LABEL_MAP = {
+  Pending: "Pending",
+  Processing: "Preparing",
+  "Ready to deliver": "Ready to deliver",
+  "On the way": "On the way",
+  Delivered: "Delivered",
+  "Ready to pick up": "Ready to pick up",
+  Received: "Received",
+  Cancelled: "Cancelled"
+};
+const STATUS_BADGE_CLASS = {
+  Pending: "bg-secondary",
+  Processing: "bg-info text-dark",
+  "To Ship": "bg-primary",
+  "To Receive": "bg-warning text-dark",
+  Delivered: "bg-success",
+  Cancelled: "bg-dark"
+};
+function renderProgress(current, orderType) {
+  const steps = (orderType === 'Pickup') ? PICKUP_STEPS : DELIVERY_STEPS;
+  const idx = steps.indexOf(current);
+  return `
+    <div class="order-progress d-flex align-items-center mb-2">
+      ${steps.map((s,i)=>{
+        const state = i < idx ? 'completed' : (i === idx ? 'active' : 'upcoming');
+        return `
+          <div class="step ${state}">
+            <div class="dot">${i < idx ? '✓' : ''}</div>
+            <div class="label">${STATUS_LABEL_MAP[s]||s}</div>
+          </div>
+          ${i<steps.length-1?`<div class="bar ${i<idx?'filled':''}"></div>`:""}
+        `;
+      }).join('')}
+    </div>`;
+}
+
+// ================== ORDER LIST / FILTER UI ==================
+const RAW_STATUS_STEPS = ["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received"];
+const STATUS_DISPLAY = {
+  All: "All",
+  Pending:"Pending",
+  Processing:"Processing",
+  "To Ship":"To Ship",
+  "To Receive":"To Receive",
+  Delivered:"Delivered",
+  Cancelled:"Cancelled"
+};
+const CHIP_SEQUENCE = ["All","Pending","Processing","To Ship","To Receive","Delivered","Cancelled"];
+
+let ORDERS_CACHE = [];
+let ACTIVE_STATUS = "All";
+// Pagination state for My Orders modal
+let ORDERS_PAGE = 1;
+const ORDERS_PER_PAGE = 10; // 10 cards per page
+
+function skeletonOrders(count=3){
+  return Array.from({length:count}).map(()=>`
+    <div class="card mb-2" aria-hidden="true" style="border-radius:14px;">
+      <div class="card-body">
+        <div class="placeholder-wave">
+          <div class="placeholder col-4 mb-2"></div>
+          <div class="placeholder col-7 mb-2"></div>
+          <div class="placeholder col-5"></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// Map backend combination -> UI status (adjust if your real logic differs)
+function deriveUiStatus(o){
+  const type = o.order_type || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
+  if (o.order_status === 'Cancelled') return 'Cancelled';
+  if (type === 'Pickup') {
+    // Normalize pickup statuses
+    if (o.order_status === 'Pending') return 'Pending';
+    if (o.order_status === 'Processing') return 'Processing';
+    if (o.order_status === 'Ready to pick up') return 'Ready to pick up';
+    if (o.order_status === 'Received' || o.order_status === 'Delivered') return 'Received';
+  // Legacy to-ship/receive should not appear for pickup, fallback
+    return 'Pending';
+  } else {
+    // Delivery: consider driver live states
+    if (o.Driver_Status === 'on_the_way') return 'On the way';
+    if (o.Driver_Status === 'picked_up') return 'On the way';
+    if (o.order_status === 'Pending') return 'Pending';
+    if (o.order_status === 'Processing') return 'Processing';
+  // Legacy statuses mapping
+  if (o.order_status === 'To Ship') return 'Ready to deliver';
+  if (o.order_status === 'To Receive') return 'On the way';
+    if (o.order_status === 'Ready to deliver') return 'Ready to deliver';
+    if (o.order_status === 'On the way') return 'On the way';
+    if (o.order_status === 'Delivered') return 'Delivered';
+    return 'Pending';
   }
 }
-// Hook into existing checkout success if not already present
-if(typeof __ordersRefreshHookInstalled==='undefined'){
-  __ordersRefreshHookInstalled=true;
-  const origFetch = window.fetch;
-  // (Optional advanced interception omitted for simplicity)
+
+function buildStatusCounts(rawList){
+  const counts = {All: rawList.length};
+  CHIP_SEQUENCE.forEach(s => { if(s!=="All") counts[s]=0; });
+  rawList.forEach(o => { const st = deriveUiStatus(o); if(counts[st]!==undefined) counts[st]++; });
+  return counts;
 }
+
+function renderStatusChips(){
+  const container = document.getElementById('orderStatusChips');
+  const counts = buildStatusCounts(ORDERS_CACHE);
+  container.innerHTML = CHIP_SEQUENCE
+    .filter(s => s==="All" || counts[s] > 0) // optionally hide zero statuses except All
+    .map(s => `
+      <div class="status-chip ${ACTIVE_STATUS===s?'active':''}" data-status="${s}">
+        <span>${STATUS_DISPLAY[s]||s}</span>
+        <span class="count">${counts[s]||0}</span>
+      </div>`).join('');
+  container.querySelectorAll('.status-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+  ACTIVE_STATUS = chip.dataset.status;
+  ORDERS_PAGE = 1; // reset to first page on filter change
+  renderStatusChips();
+  renderOrders();
+    });
+  });
+}
+
+function passesDateFilter(o){
+  const sel = document.getElementById('ordersFilter').value;
+  if(!sel) return true;
+  const days = parseInt(sel,10);
+  const orderDate = new Date(o.Order_Date.replace(' ','T'));
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return orderDate >= cutoff;
+}
+
+function renderOrders(){
+  const listEl = document.getElementById('ordersList');
+  const q = document.getElementById('ordersSearch').value.trim().toLowerCase();
+
+  let processed = ORDERS_CACHE.map(o => ({...o, ui_status: deriveUiStatus(o)}));
+
+  if(ACTIVE_STATUS !== "All"){
+    processed = processed.filter(o => o.ui_status === ACTIVE_STATUS);
+  }
+  processed = processed.filter(passesDateFilter);
+
+  if(q){
+    processed = processed.filter(o =>
+      String(o.Order_ID).includes(q) ||
+      o.items.some(it => it.Product_Name && it.Product_Name.toLowerCase().includes(q))
+    );
+  }
+
+  const totalFiltered = processed.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / ORDERS_PER_PAGE));
+  if (ORDERS_PAGE > totalPages) ORDERS_PAGE = totalPages; // clamp
+  const startIdx = (ORDERS_PAGE - 1) * ORDERS_PER_PAGE;
+  const pageSlice = processed.slice(startIdx, startIdx + ORDERS_PER_PAGE);
+
+  const summary = `${totalFiltered} order${totalFiltered!==1?'s':''} found • Page ${ORDERS_PAGE} of ${totalPages}`;
+  const summaryEl = document.getElementById('ordersSummaryLine');
+  if (summaryEl) summaryEl.textContent = summary;
+
+  if(!totalFiltered){
+    listEl.innerHTML = `<div class="text-muted py-4 text-center">No matching orders.</div>`;
+    return;
+  }
+  listEl.innerHTML = pageSlice.map(o => {
+  const uiStatus = o.ui_status;
+  const badgeClass = (uiStatus==="Delivered"?"bg-success":
+             uiStatus==="Ready to deliver"?"bg-primary":
+             uiStatus==="On the way"?"bg-primary":
+             uiStatus==="To Receive"||uiStatus==="Ready to pick up"||uiStatus==="Received"?"bg-warning text-dark":
+             uiStatus==="Processing"?"bg-info text-dark":
+             uiStatus==="Pending"?"bg-secondary":
+             uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
+    const itemsPreview = o.items.slice(0,3).map(it=>`
+      <div class="d-inline-flex align-items-center me-2 mb-1" style="font-size:.75rem;">
+        <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
+        <span>${it.Product_Name} x ${it.Quantity}</span>
+      </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
+
+    return `
+      <div class="card mb-2" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="d-flex justify-content-between flex-wrap gap-2">
+            <div>
+              <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
+              <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
+            </div>
+            <span class="badge ${badgeClass}" style="height:fit-content;">${uiStatus}</span>
+          </div>
+          <div class="mt-2">${itemsPreview}</div>
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            ${actionButtons(uiStatus,o.Order_ID)}
+          </div>
+          <div class="mt-2 fw-semibold">Total: ₱${parseFloat(o.Order_Amount).toFixed(2)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  renderOrdersPagination(totalPages);
+}
+
+// Render pagination controls (Previous / numbered / Next) inside My Orders modal footer or below list
+function renderOrdersPagination(totalPages){
+  let pagEl = document.getElementById('ordersPagination');
+  if(!pagEl){
+    // Create container just after ordersList
+    const listEl = document.getElementById('ordersList');
+    if(!listEl) return;
+    pagEl = document.createElement('div');
+    pagEl.id = 'ordersPagination';
+    pagEl.className = 'mt-2';
+    listEl.after(pagEl);
+  }
+  if(totalPages <= 1){ pagEl.innerHTML=''; return; }
+  let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0">';
+  const disabledPrev = ORDERS_PAGE === 1 ? ' disabled' : '';
+  html += `<li class="page-item${disabledPrev}"><a class="page-link" data-page="prev" href="#">Previous</a></li>`;
+  for(let i=1;i<=totalPages;i++){
+    const active = i===ORDERS_PAGE ? ' active' : '';
+    html += `<li class="page-item${active}"><a class="page-link" data-page="${i}" href="#">${i}</a></li>`;
+  }
+  const disabledNext = ORDERS_PAGE === totalPages ? ' disabled' : '';
+  html += `<li class="page-item${disabledNext}"><a class="page-link" data-page="next" href="#">Next</a></li>`;
+  html += '</ul></nav>';
+  pagEl.innerHTML = html;
+  pagEl.querySelectorAll('a.page-link').forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const val = a.getAttribute('data-page');
+      if(val==='prev' && ORDERS_PAGE>1){ ORDERS_PAGE--; }
+      else if(val==='next' && ORDERS_PAGE < totalPages){ ORDERS_PAGE++; }
+      else if(/^[0-9]+$/.test(val)){ const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; } }
+      renderOrders();
+      // Scroll to top of modal body for better UX
+      try{ document.querySelector('#myOrdersModal .modal-body').scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+    });
+  });
+}
+
+function actionButtons(status,id){
+  // Look up order to decide if review should be enabled
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(id));
+  const allReviewed = order?.items?.length ? order.items.every(it => !!it.Already_Reviewed) : false;
+  switch(status){
+    case "Pending":
+      return `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`;
+    case "To Receive":
+      return `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm Received</button>`;
+    case "Delivered":
+      return allReviewed
+        ? `<button class="btn btn-secondary btn-sm" data-action="review" data-id="${id}" disabled>Reviewed</button>`
+        : `<button class="btn btn-soft-orange btn-sm" data-action="review" data-id="${id}">Review Items</button>`;
+    default:
+      return '';
+  }
+}
+
+// (Removed earlier duplicate click listener to avoid conflicts)
+
+// Ensure offcanvas closes before opening My Orders to avoid aria-hidden focus issues
+(function(){
+  const trigger = document.getElementById('openMyOrdersBtn');
+  const offcanvasEl = document.getElementById('profileOffcanvas');
+  const modalEl = document.getElementById('myOrdersModal');
+  if(!trigger || !offcanvasEl || !modalEl) return;
+  trigger.addEventListener('click', (e)=>{
+    const instance = bootstrap.Offcanvas.getInstance(offcanvasEl) || bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+    if(offcanvasEl.classList.contains('show')){
+      e.preventDefault();
+      offcanvasEl.addEventListener('hidden.bs.offcanvas', ()=>{
+        const m = bootstrap.Modal.getOrCreateInstance(modalEl);
+        m.show();
+      }, {once:true});
+      instance.hide();
+    }
+  });
+})();
+
+// On modal open fetch orders (with success handling)
+document.getElementById('myOrdersModal').addEventListener('show.bs.modal', ()=>{
+  const listEl = document.getElementById('ordersList');
+  if(listEl) listEl.innerHTML = skeletonOrders();
+  ACTIVE_STATUS = "All";
+  ORDERS_PAGE = 1;
+  fetch('orders_api.php?t=' + Date.now())
+    .then(r=> r.ok ? r.json() : Promise.reject(r.status))
+    .then(data=>{
+      ORDERS_CACHE = Array.isArray(data) ? data : [];
+      renderStatusChips();
+      renderOrders();
+    })
+    .catch((err)=>{
+      if(listEl) listEl.innerHTML = `<div class="text-danger">Failed to load orders.</div>`;
+      console.error('orders_api failed', err);
+    });
+});
+
+// Search / date filter
+document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
+document.getElementById('ordersFilter').addEventListener('change', ()=>renderOrders());
+
+// ---------- Review Items (My Orders) ----------
+let CURRENT_REVIEW_ORDER_ID = null;
+
+function buildStarsHtml(initial=0){
+  // 5 clickable stars
+  return `
+    <div class="review-stars" role="radiogroup" aria-label="Rating">
+      ${[1,2,3,4,5].map(v => `
+        <span class="review-star ${v<=initial?'active':''}" data-value="${v}" aria-label="${v} star${v>1?'s':''}" role="radio"></span>
+      `).join('')}
+    </div>`;
+}
+
+function openReviewModalByOrderId(orderId){
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(orderId));
+  if(!order || !order.items || !order.items.length){
+    Swal.fire({icon:'error', title:'No items to review.', confirmButtonColor:'#FFB27A'});
+    return;
+  }
+  const pendingItems = order.items.filter(it => !it.Already_Reviewed);
+  if(!pendingItems.length){
+    // All reviewed; disable the review button in the orders list and inform user
+    document.querySelector(`#myOrdersModal [data-action="review"][data-id="${orderId}"]`)?.setAttribute('disabled','disabled');
+    Swal.fire({icon:'info', title:'You already reviewed all items in this order.', timer:1600, showConfirmButton:false});
+    return;
+  }
+  CURRENT_REVIEW_ORDER_ID = orderId;
+  document.getElementById('reviewOrderHeader').textContent =
+    `Order #${order.Order_ID} • ${order.Order_Date}`;
+
+  const container = document.getElementById('reviewItemsContainer');
+  const itemsHtml = pendingItems.map(it => {
+    const pid = it.Product_ID || it.product_id || it.ProductId || it.id || 0;  // robust fallback
+    return `
+      <div class="card product-review-card mb-3" data-product-id="${pid}" data-rating="0" data-locked="0"
+           style="border-radius:16px; overflow:hidden;">
+        <div class="card-body d-flex align-items-start">
+          <img src="../admin/uploads/products/${it.Product_Image}" alt="${it.Product_Name}"
+               style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
+          <div class="ms-3 flex-grow-1">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold" style="color:var(--text-dark)">${it.Product_Name}</div>
+                <div class="text-muted small">Please rate your item</div>
+              </div>
+              <span class="badge bg-light text-dark">x${it.Quantity}</span>
+            </div>
+            <div class="mt-2">${buildStarsHtml(0)}</div>
+            <textarea class="form-control form-control-sm mt-3 review-text" rows="2"
+              placeholder="Share a short review (optional)"></textarea>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  container.innerHTML = itemsHtml;
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
+}
+
+// Single handler: close My Orders first to avoid stacked modals (prevents aria-hidden warning)
+document.getElementById('myOrdersModal').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const {action,id} = btn.dataset;
+
+  if(action==="review"){
+    const ordersEl = document.getElementById('myOrdersModal');
+    const ordersModal = bootstrap.Modal.getInstance(ordersEl);
+    if (ordersEl.classList.contains('show')) {
+      ordersEl.addEventListener('hidden.bs.modal', () => openReviewModalByOrderId(id), { once:true });
+      ordersModal.hide();
+    } else {
+      openReviewModalByOrderId(id);
+    }
+    return;
+  }
+
+  if(action==="cancel"){
+    // Allow cancel only when current UI status is Pending
+    const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(id));
+    const uiStatus = order ? deriveUiStatus(order) : null;
+    if (uiStatus !== 'Pending') {
+      Swal.fire({icon:'info', title:'Cannot cancel', text:'Only pending orders can be canceled.', confirmButtonColor:'#FFB27A'});
+      return;
+    }
+
+    Swal.fire({title:'Cancel this order?',icon:'warning',showCancelButton:true,confirmButtonColor:'#FFB27A'})
+      .then(async r=>{ 
+        if(r.isConfirmed){ 
+          try{
+            const resp = await fetch('cancel_order.php', {
+              method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','Accept':'application/json'},
+              body: new URLSearchParams({order_id: id}).toString()
+            });
+            const data = await resp.json().catch(()=>({success:false,message:'Invalid response'}));
+            console.log('cancel_order.php response', resp.status, data);
+            if(resp.ok && data.success){
+              const idx = ORDERS_CACHE.findIndex(o=>String(o.Order_ID)===String(id));
+              if(idx!==-1){ ORDERS_CACHE[idx].order_status = 'Cancelled'; }
+              renderStatusChips();
+              renderOrders();
+              Swal.fire({icon:'success',title:'Order canceled',timer:1200,showConfirmButton:false});
+            } else {
+              Swal.fire({icon:'error',title:data.message||'Unable to cancel',timer:1800,showConfirmButton:false});
+            }
+          }catch(err){
+            Swal.fire({icon:'error',title:'Network error',text:String(err).slice(0,160),confirmButtonColor:'#FFB27A'});
+          }
+        }
+      });
+  } else if(action==="confirm"){
+    Swal.fire({title:'Confirm receipt?',icon:'question',showCancelButton:true,confirmButtonColor:'#FFB27A'})
+      .then(r=>{ if(r.isConfirmed){ Swal.fire({icon:'success',title:'Thank you!',timer:1200,showConfirmButton:false}); }});
+  }
+});
+
+// Submit reviews: ensure numeric product_id
+document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>{
+  const cards = Array.from(document.querySelectorAll('#reviewItemsContainer .product-review-card'));
+  const raw = cards
+    .filter(c => c.dataset.locked !== '1')
+    .map(c => {
+    const datasetRating = Number(c.dataset.rating) || 0;
+    const countedRating = c.querySelectorAll('.review-star.active').length;
+    const rating = datasetRating || countedRating || 0;
+    const product_id = Number(c.dataset.productId) || 0;
+    const review_text = c.querySelector('.review-text')?.value?.trim() || '';
+    return { product_id, rating, review_text };
+  });
+  const payload = raw.filter(x => x.product_id > 0 && x.rating > 0);
+
+  if(payload.length === 0){
+    // Diagnose why it's empty: missing ids or ratings?
+    const missingIds = raw.filter(x => x.rating > 0 && x.product_id <= 0).length;
+    const zeroRatings = raw.filter(x => x.product_id > 0 && x.rating <= 0).length;
+    const noneInteracted = raw.every(x => x.rating <= 0);
+    let text = 'Please tap on the stars to rate at least one item.';
+    if (missingIds > 0 && !noneInteracted) {
+      text = 'We could not link your rating to a product. Please close My Orders, reopen it, then try again.';
+    }
+    if (missingIds > 0 && zeroRatings > 0) {
+      text += ' (Some items are missing product IDs; refresh the page if this persists.)';
+    }
+    Swal.fire({icon:'warning', title:'Please rate at least one item.', text, confirmButtonColor:'#FFB27A'});
+    return;
+  }
+
+  const btn = document.getElementById('submitReviewsBtn');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+
+  try {
+    const results = await Promise.all(payload.map(async (p) => {
+      const form = new FormData();
+      form.append('product_id', String(p.product_id));
+      form.append('rating', String(p.rating));
+      form.append('review_text', p.review_text);
+      const res = await fetch('submit_review.php', { method:'POST', body: form });
+      return res.json();
+    }));
+    const failed = results.filter(r => !r?.success);
+    if(failed.length===0){
+      // Mark items as reviewed in cache
+      const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(CURRENT_REVIEW_ORDER_ID));
+      if (order && Array.isArray(order.items)) {
+        order.items.forEach(it => {
+          if (payload.some(p => p.product_id === (it.Product_ID||it.product_id||it.ProductId||it.id))) {
+            it.Already_Reviewed = true;
+          }
+        });
+      }
+      Swal.fire({icon:'success', title:'Thank you for your reviews!', timer:1500, showConfirmButton:false});
+      bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
+      // Re-render orders so the Review button can disable if all reviewed
+      renderOrders();
+    } else {
+      Swal.fire({icon:'error', title:'Some reviews failed', text: failed.map(f=>f.message||'Error').join('\n'), confirmButtonColor:'#FFB27A'});
+    }
+  } catch(err){
+    Swal.fire({icon:'error', title:'Unable to submit reviews', text:String(err||'Error'), confirmButtonColor:'#FFB27A'});
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
+// Enable clicking stars in the Review Items modal (event delegation)
+(function(){
+  const reviewModalEl = document.getElementById('reviewModal');
+  if(!reviewModalEl) return;
+
+  reviewModalEl.addEventListener('click', (e) => {
+    const star = e.target.closest('.review-star');
+    if (!star) return;
+    const card = star.closest('.product-review-card');
+    if (!card) return;
+  if (card.dataset.locked === '1') return; // ignore interactions on locked cards
+    const val = Number(star.dataset.value) || 0;
+    card.dataset.rating = String(val);
+    const stars = card.querySelectorAll('.review-star');
+    stars.forEach(s => {
+      const active = Number(s.dataset.value) <= val;
+      s.classList.toggle('active', active);
+      s.setAttribute('aria-checked', active ? 'true' : 'false');
+      s.setAttribute('tabindex', '0');
+    });
+  });
+})();
+
+function buildProductModalHtml(product, addons){
+ 
+  const basePrice = Number(product.Price_Amount||0);
+  const priceDisplay = '₱' + basePrice.toFixed(2);
+  const addonsHtml = (addons||[]).map(a=>`
+    <label class="addon-card d-block py-1 px-2 border rounded">
+      <div class="d-flex align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+          <span class="addon-name">${a.Addon_Name}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="addon-qty-wrap input-group input-group-sm" style="width:110px; display:none;" data-price="${a.Addon_Price}">
+            <button class="btn btn-outline-secondary addon-minus" type="button">-</button>
+            <input type="number" class="form-control text-center addon-qty" value="1" min="1">
+            <button class="btn btn-outline-secondary addon-plus" type="button">+</button>
+          </div>
+          <span class="addon-price small text-nowrap">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+        </div>
+      </div>
+    </label>
+  `).join('') || '<div class="text-muted">No add-ons available.</div>';
+
+  return `
+    <div class="product-details-grid">
+      <div>
+        <div class="product-hero">
+          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <h4 class="product-title mb-1">${product.Product_Name}</h4>
+            <div class="product-price" aria-label="Base price">${priceDisplay}</div>
+          </div>
+          <p class="mt-2 mb-0">${product.Product_desc || ''}</p>
+        </div>
+      </div>
+      <div>
+        <div class="addons-section">
+          <h5 class="mb-2">Add-ons</h5>
+          <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mt-3">
+          <div class="input-group" style="width:140px;">
+            <button class="btn btn-outline-secondary" type="button" id="pdQtyMinus">-</button>
+            <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
+            <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
+          </div>
+          <div class="ms-auto text-end modal-total-line small" style="min-width:200px;">
+            <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
+            <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
+            <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
+          </div>
+        </div>
+        <!-- Order instruction textarea -->
+        <div class="mt-3">
+          <label for="pdInstructions" class="form-label small mb-1">Order Instruction (optional)</label>
+          <textarea id="pdInstructions" class="form-control form-control-sm" rows="2" placeholder="e.g., reduce sugar content, no ice, extra spicy"></textarea>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Compute and display the modal total based on base price, selected add-ons, and quantity
+function updateProductModalTotal(basePrice){
+  const qtyEl = document.getElementById('pdQty');
+  const productQty = Math.max(1, Number(qtyEl?.value || 1));
+  let addonsTotal = 0;
+  document.querySelectorAll('#productAddonsList .addon-choice:checked').forEach(chk=>{
+    const wrap = chk.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+    const qtyInput = wrap?.querySelector('.addon-qty');
+    const aQty = Math.max(1, Number(qtyInput?.value||1));
+    const price = Number(chk.getAttribute('data-price'))||0;
+    addonsTotal += price * aQty; // independent of productQty
+  });
+  const baseSubtotal = (Number(basePrice||0) * productQty);
+  // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
+  let shippingFeeDisplay = '—';
+  try {
+    const orderTypeSel = document.querySelector('input[name="orderType"]:checked')?.value;
+    if(orderTypeSel === 'Delivery' && summary?.latInput?.value && summary?.lngInput?.value){
+      const lat = parseFloat(summary.latInput.value), lng = parseFloat(summary.lngInput.value);
+      if(isFinite(lat) && isFinite(lng) && typeof haversineKm === 'function' && typeof computeDeliveryFee === 'function'){
+        const dist = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+        const fee = computeDeliveryFee(dist);
+        if(isFinite(fee)) shippingFeeDisplay = '₱' + fee.toFixed(2);
+      }
+    }
+  } catch(e) { /* ignore */ }
+
+  // Update breakdown elements
+  const baseEl = document.getElementById('productBaseSubtotal');
+  const addonsEl = document.getElementById('productAddonsSubtotal');
+  const shipEl = document.getElementById('productShippingFee');
+  const totalEl = document.getElementById('productWithAddonsTotal');
+  const footerTotalEl = document.getElementById('productWithAddonsFooterTotal');
+  if(baseEl) baseEl.textContent = '₱' + baseSubtotal.toFixed(2);
+  if(addonsEl) addonsEl.textContent = '₱' + addonsTotal.toFixed(2);
+  if(shipEl) shipEl.textContent = shippingFeeDisplay; // not included in item total
+  if(totalEl) totalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
+  if(footerTotalEl) footerTotalEl.textContent = '₱' + (baseSubtotal + addonsTotal).toFixed(2);
+}
+
+async function openProductDetailsWithAddons(product){
+  // Build initial shell (no add-ons yet), show modal immediately
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, []);
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
+  modal.show();
+
+  // Bind qty +/- and total updates for this render
+  const basePrice = Number(product.Price_Amount||0);
+  const qtyEl = document.getElementById('pdQty');
+  const minusEl = document.getElementById('pdQtyMinus');
+  const plusEl = document.getElementById('pdQtyPlus');
+  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
+  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
+  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  updateProductModalTotal(basePrice);
+
+  // Add to Cart handler
+  document.getElementById('modalAddToCartBtn').onclick = ()=>{
+    const selected = Array.from(document.querySelectorAll('#productAddonsList .addon-choice:checked'))
+      .map(c=>{
+        const wrap = c.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+        const qtyInput = wrap?.querySelector('.addon-qty');
+        return { id:Number(c.value), name:c.getAttribute('data-name'), price:Number(c.getAttribute('data-price'))||0, qty: Math.max(1, Number(qtyInput?.value||1)) };
+      });
+    const productQty = Math.max(1, Number(document.getElementById('pdQty').value||1));
+    const instruction = document.getElementById('pdInstructions')?.value?.trim() || '';
+    const found = cart.find(i => i.name === product.Product_Name);
+    if (found) {
+      found.qty += productQty; // only product quantity increments existing entry
+      // Merge addons: if same addon id exists, add quantities
+      selected.forEach(sa=>{
+        const ex = (found.addons||[]).find(a=>a.id===sa.id);
+        if (ex) { ex.qty += sa.qty; } else { (found.addons||[]).push(sa); }
+      });
+      // If new instruction provided append / merge (simple concatenation if different)
+      if (instruction) {
+        if (!found.instruction) found.instruction = instruction; else if (!found.instruction.includes(instruction)) found.instruction += ' | ' + instruction;
+      }
+    } else {
+      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction });
+    }
+    updateCartBadge();
+    renderCartItems();
+    Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
+    modal.hide();
+  };
+
+  // Fetch add-ons asynchronously and render; on failure keep empty list
+  try{
+    const res = await fetch('get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const data = await res.json();
+    const addons = data.success ? (data.addons||[]) : [];
+    const listEl = document.getElementById('productAddonsList');
+    if (listEl) {
+      listEl.innerHTML = addons.length ? addons.map(a=>`
+        <label class="addon-card d-block py-1 px-2 border rounded">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
+              <span class="addon-name">${a.Addon_Name}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="addon-qty-wrap input-group input-group-sm" style="width:110px; display:none;" data-price="${a.Addon_Price}">
+                <button class="btn btn-outline-secondary addon-minus" type="button">-</button>
+                <input type="number" class="form-control text-center addon-qty" value="1" min="1">
+                <button class="btn btn-outline-secondary addon-plus" type="button">+</button>
+              </div>
+              <span class="addon-price small text-nowrap">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
+            </div>
+          </div>
+        </label>
+      `).join('') : '<div class="text-muted">No add-ons available.</div>';
+
+      // Bind checkbox + qty controls
+      document.querySelectorAll('#productAddonsList .addon-choice').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const wrap = cb.closest('.addon-card')?.querySelector('.addon-qty-wrap');
+          if (wrap) wrap.style.display = cb.checked ? 'flex' : 'none';
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-minus').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const wrap = btn.closest('.addon-qty-wrap');
+          const inp = wrap.querySelector('.addon-qty');
+          inp.value = Math.max(1, Number(inp.value||1)-1);
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-plus').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const wrap = btn.closest('.addon-qty-wrap');
+          const inp = wrap.querySelector('.addon-qty');
+          inp.value = Math.max(1, Number(inp.value||1)+1);
+          updateProductModalTotal(basePrice);
+        });
+      });
+      document.querySelectorAll('#productAddonsList .addon-qty').forEach(inp=>{
+        inp.addEventListener('change', ()=>{ if (Number(inp.value)<1) inp.value = 1; updateProductModalTotal(basePrice); });
+      });
+      updateProductModalTotal(basePrice);
+    }
+  }catch(err){
+    console.warn('Add-ons fetch failed, continuing without add-ons', err);
+  }
+}
+
+// Hook into existing card click flows to use the new modal
+(function(){
+  function attachCardHandlers(container){
+    if(!container) return;
+    container.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return; // handled separately
+        const pid = card.dataset.productId;
+        const product = (<?php echo json_encode($all_products); ?> || []).find(p => String(p.Product_ID) === String(pid));
+        if (!product) return;
+        openProductDetailsWithAddons(product);
+      });
+    });
+    container.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        const name = btn.getAttribute('data-product');
+        const product = (<?php echo json_encode($all_products); ?> || []).find(p => p.Product_Name === name);
+        if (!product) return;
+        openProductDetailsWithAddons(product);
+      });
+    });
+  }
+  // Initial attachment for recommended and menu lists after render functions run
+  const origRenderRecommended = (typeof renderRecommendedCards === 'function') ? renderRecommendedCards : null;
+  const origRenderMenu = (typeof renderMenuCards === 'function') ? renderMenuCards : null;
+})();
   </script>
 
   <script>
