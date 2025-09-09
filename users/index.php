@@ -1572,7 +1572,10 @@ function skeletonOrders(count=3){
 function deriveUiStatus(o){
   // Derive order type heuristically (fallback to Delivery if address-like fields exist)
   const type = (o.order_type || '').trim() || ((o.Street || o.City || o.Contact_Number) ? 'Delivery' : 'Pickup');
-  const raw = (o.order_status || '').trim();
+  let raw = (o.order_status || '').trim();
+  // If backend forgot to normalize but grouping fields exist, infer from known flags
+  if(!raw && o.ToShipFlag) raw = 'Ready to deliver';
+  if(!raw && o.ToReceiveFlag) raw = 'On the way';
   const driver = (o.Driver_Status || '').trim();
 
   // Normalize driver live states first (these override some backend textual states)

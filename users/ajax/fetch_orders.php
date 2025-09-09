@@ -46,7 +46,27 @@ try {
     $flat = [];
     foreach ($orders_by_status as $grp => $arr) {
         if (!is_array($arr)) continue;
-        foreach ($arr as $o) { $flat[] = $o; }
+        foreach ($arr as $o) {
+            // Ensure a consistent 'order_status' field exists. Some older code may rely only on grouping.
+            if (!isset($o['order_status']) || $o['order_status'] === '' || $o['order_status'] === null) {
+                // Map legacy group names to canonical statuses (delivery flow)
+                switch ($grp) {
+                    case 'To Ship':
+                        $o['order_status'] = 'Ready to deliver';
+                        break;
+                    case 'To Receive':
+                        $o['order_status'] = 'On the way';
+                        break;
+                    default:
+                        $o['order_status'] = $grp; // Delivered or others
+                }
+            } elseif ($o['order_status'] === 'To Ship') {
+                $o['order_status'] = 'Ready to deliver';
+            } elseif ($o['order_status'] === 'To Receive') {
+                $o['order_status'] = 'On the way';
+            }
+            $flat[] = $o;
+        }
     }
 
     // Derive counts (pending heuristic: order_status == Pending or Processing)
