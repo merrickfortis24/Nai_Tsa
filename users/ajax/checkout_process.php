@@ -17,7 +17,7 @@ echo json_encode($result);
 exit;
 ?>
 <script>
-fetch('checkout_process.php', {
+fetch('ajax/checkout_process.php', {
   method: 'POST',
   headers: {'Content-Type': 'application/json'},
   body: JSON.stringify({
