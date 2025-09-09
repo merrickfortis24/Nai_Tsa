@@ -1689,14 +1689,14 @@ function renderOrders(){
       </div>` : '';
 
     return `
-      <div class="card mb-2" style="border-radius:16px;">
+      <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
         <div class="card-body">
           <div class="d-flex justify-content-between flex-wrap gap-2">
             <div>
               <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
               <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
             </div>
-            <span class="badge ${badgeClass}" style="height:fit-content;">${uiStatus}</span>
+            <span class="badge ${badgeClass} order-status-badge" data-status="${uiStatus}" style="height:fit-content;">${uiStatus}</span>
           </div>
           <div class="mt-2">${itemsPreview}</div>
           <div class="mt-3 d-flex flex-wrap gap-2">
@@ -1825,6 +1825,77 @@ async function loadOrdersGrouped(){
 }
 
 document.getElementById('myOrdersModal').addEventListener('show.bs.modal', loadOrdersGrouped);
+
+// ---- Lightweight background status polling (updates existing renderedcards) ----
+let ORDER_STATUS_POLL_TIMER = null;
+function applyStatusDelta(orders){
+  if(!Array.isArray(orders) || !orders.length) return;
+  const map = new Map(orders.map(o=>[String(o.Order_ID), o]));
+  let changed = false;
+  ORDERS_CACHE = ORDERS_CACHE.map(o => {
+    const upd = map.get(String(o.Order_ID));
+    if(!upd) return o; // order missing is fine
+    const newStatus = upd.order_status;
+    if(newStatus && newStatus !== o.order_status){
+      o.order_status = newStatus;
+      changed = true;
+      try {
+        const card = document.querySelector(`#ordersList .card[data-order-id='${o.Order_ID}']`);
+        if(card){
+          // Recompute ui status + badge class
+          const uiStatus = deriveUiStatus(o);
+          const badge = card.querySelector('.order-status-badge');
+          if(badge){
+            badge.textContent = uiStatus;
+            badge.setAttribute('data-status', uiStatus);
+            // Update classes (remove previous bg-*)
+            badge.className = 'badge order-status-badge ' + (
+              uiStatus==='Delivered' ? 'bg-success' :
+              uiStatus==='Ready to deliver' ? 'bg-primary' :
+              uiStatus==='On the way' ? 'bg-primary' :
+              (uiStatus==='To Receive'||uiStatus==='Ready to pick up'||uiStatus==='Received') ? 'bg-warning text-dark' :
+              uiStatus==='Processing' ? 'bg-info text-dark' :
+              uiStatus==='Pending' ? 'bg-secondary' :
+              uiStatus==='Cancelled' ? 'bg-dark' : 'bg-secondary'
+            );
+          }
+          // Replace progress bar/steps
+          const progWrap = card.querySelector('.card-body .mt-1');
+          if(progWrap){ progWrap.innerHTML = renderProgress(uiStatus, o.order_type); }
+        }
+      } catch(e){ /* ignore */ }
+    }
+    if(upd.Driver_Status && upd.Driver_Status !== o.Driver_Status){
+      o.Driver_Status = upd.Driver_Status; changed = true; }
+    return o;
+  });
+  if(changed){
+    // Update chips counts (cheap recompute) without full list rebuild
+    renderStatusChips();
+  }
+}
+
+async function pollOrderStatuses(){
+  try {
+    const res = await fetch('ajax/order_status.php?t=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(data.success){
+      applyStatusDelta(data.orders);
+      // Badge update
+      if(data.counts && typeof data.counts.pending==='number'){
+        ordersBadge.textContent = data.counts.pending;
+        ordersBadge.style.display = data.counts.pending>0 ? 'inline-block':'none';
+      }
+    }
+  } catch(e) { /* silent */ }
+  finally {
+    ORDER_STATUS_POLL_TIMER = setTimeout(pollOrderStatuses, 15000); // 15s
+  }
+}
+
+// Start polling when page loads (can later pause when modal closed if desired)
+pollOrderStatuses();
 
 // Search / date filter
 document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
@@ -2194,7 +2265,7 @@ async function openProductDetailsWithAddons(product){
 
   // Fetch add-ons asynchronously and render; on failure keep empty list
   try{
-    const res = await fetch('get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const res = await fetch('ajax/get_product_addons.php?product_id='+product.Product_ID+'&t='+Date.now());
     const data = await res.json();
     const addons = data.success ? (data.addons||[]) : [];
     const listEl = document.getElementById('productAddonsList');
@@ -2382,7 +2453,7 @@ async function openProductDetailsWithAddons(product){
   async function openAddonsModal(productId, productName){
     PENDING_ADD_TO_CART = { productId, productName };
     try{
-      const res = await fetch('get_product_addons.php?product_id='+productId+'&t='+Date.now());
+      const res = await fetch('ajax/get_product_addons.php?product_id='+productId+'&t='+Date.now());
       const data = await res.json();
       const list = data.success ? (data.addons||[]) : [];
       const wrap = document.getElementById('addonsList');
