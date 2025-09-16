@@ -355,64 +355,61 @@ function createPasswordResetToken($email) {
     // Add delivery fee to total
     $total_with_fee = $total + $delivery_fee;
 
-    // 3. Insert order
-    // Build INSERT dynamically based on present columns: order_type, Delivery_Fee, Delivery_Distance_Km
+    // 3. Insert order (normalized schema: address & delivery stored in separate tables)
     $dbOrderType = (strcasecmp($orderType, 'Pick Up') === 0) ? 'Pickup' : 'Delivery';
-    $hasFeeCol = false; $hasDistCol = false; $hasTypeCol = false;
+    // Minimal orders columns now: Order_Amount, Customer_ID, order_type (if exists), order_status
+    $hasTypeCol = false;
     try {
         $cType = $con->query("SHOW COLUMNS FROM orders LIKE 'order_type'");
         $hasTypeCol = $cType && $cType->rowCount() > 0;
-        $cFee = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Fee'");
-        $hasFeeCol = $cFee && $cFee->rowCount() > 0;
-        $cDist = $con->query("SHOW COLUMNS FROM orders LIKE 'Delivery_Distance_Km'");
-        $hasDistCol = $cDist && $cDist->rowCount() > 0;
-    } catch (Exception $e) { /* ignore schema probe errors */ }
-
-    $columns = ['Order_Amount','Customer_ID','Street','Barangay','City','Contact_Number'];
-    if ($hasTypeCol) $columns[] = 'order_type';
-    $columns[] = 'order_status';
-    if ($hasFeeCol) $columns[] = 'Delivery_Fee';
-    if ($hasDistCol) $columns[] = 'Delivery_Distance_Km';
-    // Optional: store customer lat/lng if schema has columns
-    $hasCustLatCol = false; $hasCustLngCol = false;
-    try {
-        $cLat = $con->query("SHOW COLUMNS FROM orders LIKE 'customer_lat'");
-        $hasCustLatCol = $cLat && $cLat->rowCount() > 0;
-        $cLng = $con->query("SHOW COLUMNS FROM orders LIKE 'customer_lng'");
-        $hasCustLngCol = $cLng && $cLng->rowCount() > 0;
     } catch (Exception $e) { /* ignore */ }
-    if ($hasCustLatCol) $columns[] = 'customer_lat';
-    if ($hasCustLngCol) $columns[] = 'customer_lng';
-
-    $placeholders = implode(', ', array_fill(0, count($columns), '?'));
-    $order_sql = 'INSERT INTO orders (' . implode(', ', $columns) . ') VALUES (' . $placeholders . ')';
-
+    $orderCols = ['Order_Amount','Customer_ID'];
+    if ($hasTypeCol) $orderCols[] = 'order_type';
+    $orderCols[] = 'order_status';
+    $order_sql = 'INSERT INTO orders (' . implode(', ', $orderCols) . ') VALUES (' . implode(', ', array_fill(0,count($orderCols),'?')) . ')';
     $order_stmt = $con->prepare($order_sql);
-    $bindIdx = 1;
-    $order_stmt->bindValue($bindIdx++, $total_with_fee);
-    $order_stmt->bindValue($bindIdx++, $customer_id);
-    $order_stmt->bindValue($bindIdx++, $street, $street === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue($bindIdx++, $barangay, $barangay === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue($bindIdx++, $city, $city === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $order_stmt->bindValue($bindIdx++, $contact, $contact === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    if ($hasTypeCol) {
-        $order_stmt->bindValue($bindIdx++, $dbOrderType);
-    }
-    $order_stmt->bindValue($bindIdx++, 'Pending');
-    if ($hasFeeCol) {
-        $order_stmt->bindValue($bindIdx++, $delivery_fee);
-    }
-    if ($hasDistCol) {
-        $order_stmt->bindValue($bindIdx++, $distance_km);
-    }
-    if ($hasCustLatCol) {
-        $order_stmt->bindValue($bindIdx++, $lat, $lat === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    }
-    if ($hasCustLngCol) {
-        $order_stmt->bindValue($bindIdx++, $lng, $lng === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    }
+    $bi = 1;
+    $order_stmt->bindValue($bi++, $total_with_fee);
+    $order_stmt->bindValue($bi++, $customer_id, PDO::PARAM_INT);
+    if ($hasTypeCol) $order_stmt->bindValue($bi++, $dbOrderType);
+    $order_stmt->bindValue($bi++, 'Pending');
     $order_success = $order_stmt->execute();
-    $order_id = $con->lastInsertId();
+    $order_id = (int)$con->lastInsertId();
+
+    // 3a. Address table (order_address) if delivery info present & table exists
+    if ($dbOrderType === 'Delivery' && ($street || $barangay || $city || ($lat && $lng))) {
+        $hasAddrTable = false;
+        try { $chk = $con->query("SHOW TABLES LIKE 'order_address'"); $hasAddrTable = $chk && $chk->rowCount()>0; } catch(Exception $e){}
+        if ($hasAddrTable) {
+            $addrStmt = $con->prepare("INSERT INTO order_address (Order_ID, Street, Barangay, City, customer_lat, customer_lng) VALUES (?,?,?,?,?,?)");
+            $addrStmt->execute([
+                $order_id,
+                $street ?: null,
+                $barangay ?: null,
+                $city ?: null,
+                $lat ?: null,
+                $lng ?: null
+            ]);
+        }
+    }
+
+    // 3b. Delivery meta (order_delivery)
+    if ($dbOrderType === 'Delivery' && $delivery_fee > 0) {
+        $hasDelTable = false;
+        try { $chk2 = $con->query("SHOW TABLES LIKE 'order_delivery'"); $hasDelTable = $chk2 && $chk2->rowCount()>0; } catch(Exception $e){}
+        if ($hasDelTable) {
+            $delStmt = $con->prepare("INSERT INTO order_delivery (Order_ID, Delivery_Fee, Delivery_Distance_Km) VALUES (?,?,?)");
+            $delStmt->execute([$order_id, $delivery_fee, $distance_km]);
+        }
+    }
+
+    // 3c. Update customer contact number if supplied and empty in profile
+    if ($contact) {
+        try {
+            $cUpd = $con->prepare("UPDATE customer SET Contact_Number = COALESCE(Contact_Number, ?) WHERE Customer_ID = ? AND (Contact_Number IS NULL OR Contact_Number='')");
+            $cUpd->execute([$contact, $customer_id]);
+        } catch(Throwable $e) { /* ignore */ }
+    }
 
     $payment_stmt = $con->prepare("INSERT INTO payment (Payment_Method, Payment_Amount, Order_ID, Admin_ID, payment_status) VALUES (?, ?, ?, ?, ?)");
     $payment_success = $payment_stmt->execute([
@@ -476,7 +473,7 @@ function createPasswordResetToken($email) {
 
     if (!$order_success) {
         $error = $order_stmt->errorInfo();
-        return ['success' => false, 'message' => 'Order insert failed: ' . $error[2]];
+        return ['success' => false, 'message' => 'Order insert failed: ' . ($error[2] ?? 'unknown')];
     }
     if (!$payment_success) {
         $error = $payment_stmt->errorInfo();
