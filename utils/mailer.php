@@ -53,8 +53,8 @@ function mailer_instance(): PHPMailer {
     // Hostinger SMTP (generic SMTP). Set in .mail.env.php
     $mail->Host     = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
     $mail->Port     = (int)(getenv('SMTP_PORT') ?: 587);
-    $mail->Username = getenv('SMTP_USER') ?: '';
-    $mail->Password = getenv('SMTP_PASS') ?: '';
+    $mail->Username = getenv('SMTP_USER') ?: 'hello@naitsa.online';
+    $mail->Password = getenv('SMTP_PASS') ?: 'Fortismerrick@24';
     if ($mail->Username === '' || $mail->Password === '') {
         throw new \RuntimeException('SMTP_USER/SMTP_PASS not set. Upload Nai_Tsa/.mail.env.php (or rename to mail.env.php) with your mailbox credentials.');
     }
