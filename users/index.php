@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['customer_id'])) {
-    header('Location: ../login.php'); // was login.php
+    header('Location: ../login.php'); // was login.php edit ito
     exit();
 }
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
