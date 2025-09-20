@@ -543,41 +543,54 @@ class database {
 
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
-        // Fetch current status and infer order type
-        $curStmt = $con->prepare("SELECT o.order_status, addr.Street, addr.City, addr.Contact_Number
+        try {
+            $order_id = (int)$order_id;
+            // Fetch current status and infer order type
+            $curStmt = $con->prepare("SELECT o.Order_ID, o.order_status, addr.Street, addr.City, addr.Contact_Number
     FROM orders o
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
-    WHERE o.Order_ID = ? LIMIT 1
-");
-        $curStmt->execute([$order_id]);
-        $row = $curStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) return false;
-        $current = $row['order_status'];
-    // Treat as delivery only if address fields present (contact number alone doesn't imply delivery)
-    $isDelivery = !empty($row['Street']) || !empty($row['City']);
+    WHERE o.Order_ID = ? LIMIT 1");
+            $curStmt->execute([$order_id]);
+            $row = $curStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                error_log("updateOrderStatus: order_id={$order_id} not found");
+                return false;
+            }
+            $current = $row['order_status'] ?? null;
 
-    $targetRaw = trim($order_status);
-    if ($targetRaw === '') return false;
+            $target = trim((string)$order_status);
+            if ($target === '') {
+                error_log("updateOrderStatus: order_id={$order_id} empty target");
+                return false;
+            }
 
-    // Canonical lists (exact strings used in UI)
-    $deliveryStatuses = ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"];
-    $pickupStatuses   = ["Pending","Processing","Ready to pick up","Received","Cancelled"];
-    $allowedList = $isDelivery ? $deliveryStatuses : $pickupStatuses;
+            // Disallow any further changes once terminal
+            if (in_array($current, ["Cancelled","Delivered","Received"], true)) {
+                error_log("updateOrderStatus: order_id={$order_id} current terminal='{$current}' - update blocked");
+                return false;
+            }
 
-    // Case-insensitive match to canonical version
-    $lowerMap = [];
-    foreach ($allowedList as $canon) { $lowerMap[strtolower($canon)] = $canon; }
-    $targetLower = strtolower($targetRaw);
-    if (!isset($lowerMap[$targetLower])) return false; // not valid for this order type
-    $target = $lowerMap[$targetLower];
+            // Perform update (be permissive: accept any target string). Also update Updated_at to signal a change.
+            $sql = "UPDATE orders SET order_status = ?, Updated_at = NOW() WHERE Order_ID = ?";
+            $stmt = $con->prepare($sql);
+            $ok = $stmt->execute([$target, $order_id]);
+            $err = $stmt->errorInfo();
+            $log = sprintf(
+                "updateOrderStatus: order_id=%d current='%s' target='%s' execute=%s rowCount=%d err=%s",
+                $order_id,
+                $current,
+                $target,
+                $ok ? 'true' : 'false',
+                (int)$stmt->rowCount(),
+                json_encode($err, JSON_UNESCAPED_SLASHES)
+            );
+            error_log($log);
 
-    if ($current === $target) return true; // already set
-
-    // Disallow any further changes once terminal
-    if (in_array($current, ["Cancelled","Delivered","Received"], true)) return false;
-
-    $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
-    return $stmt->execute([$target, $order_id]);
+            return (bool)$ok;
+        } catch (PDOException $e) {
+            error_log("updateOrderStatus: order_id={$order_id} PDOException: " . $e->getMessage());
+            return false;
+        }
     }
 
     function updatePaymentStatusByOrder($order_id, $payment_status) {
