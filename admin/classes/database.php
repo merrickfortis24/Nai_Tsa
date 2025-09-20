@@ -570,8 +570,9 @@ class database {
                 return false;
             }
 
-            // Perform update (be permissive: accept any target string). Also update Updated_at to signal a change.
-            $sql = "UPDATE orders SET order_status = ?, Updated_at = NOW() WHERE Order_ID = ?";
+            // Perform update (be permissive: accept any target string).
+            // NOTE: some deployments do not have an Updated_at column on orders; avoid referencing it.
+            $sql = "UPDATE orders SET order_status = ? WHERE Order_ID = ?";
             $stmt = $con->prepare($sql);
             $ok = $stmt->execute([$target, $order_id]);
             $err = $stmt->errorInfo();

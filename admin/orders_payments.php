@@ -34,21 +34,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       // Additional direct DB diagnostic: read current value, attempt manual update, then read again
       try {
         $con = $db->opencon();
-        $s = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
+  $s = $con->prepare("SELECT Order_ID, order_status FROM orders WHERE Order_ID = ? LIMIT 1");
         $s->execute([$oid]);
         $before = $s->fetch(PDO::FETCH_ASSOC);
   $b = 'orders_payments.php: before=' . json_encode($before);
   error_log($b);
   op_debug_push($b);
 
-        $man = $con->prepare("UPDATE orders SET order_status = ?, Updated_at = NOW() WHERE Order_ID = ?");
+  $man = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
         $manOk = $man->execute([$target, $oid]);
         $manErr = $man->errorInfo();
   $m = 'orders_payments.php: manualUpdate execute=' . ($manOk? 'true':'false') . ' rowCount=' . (int)$man->rowCount() . ' err=' . json_encode($manErr);
   error_log($m);
   op_debug_push($m);
 
-        $s2 = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
+  $s2 = $con->prepare("SELECT Order_ID, order_status FROM orders WHERE Order_ID = ? LIMIT 1");
         $s2->execute([$oid]);
         $after = $s2->fetch(PDO::FETCH_ASSOC);
   $a = 'orders_payments.php: after=' . json_encode($after);
