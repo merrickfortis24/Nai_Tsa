@@ -544,7 +544,11 @@ class database {
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
         // Fetch current status and infer order type
-        $curStmt = $con->prepare("SELECT order_status, Street, City, Contact_Number FROM orders WHERE Order_ID = ? LIMIT 1");
+        $curStmt = $con->prepare("SELECT o.order_status, addr.Street, addr.City, addr.Contact_Number
+    FROM orders o
+    LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
+    WHERE o.Order_ID = ? LIMIT 1
+");
         $curStmt->execute([$order_id]);
         $row = $curStmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) return false;
