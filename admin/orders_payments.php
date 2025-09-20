@@ -5,6 +5,12 @@ if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
 require_once 'classes/database.php';
 $db = new database();
 
+// Helper: store debug messages to session for display after redirect
+function op_debug_push($msg) {
+  if (!isset($_SESSION['op_debug']) || !is_array($_SESSION['op_debug'])) $_SESSION['op_debug'] = [];
+  $_SESSION['op_debug'][] = is_string($msg) ? $msg : json_encode($msg);
+}
+
 function h($v){ return htmlspecialchars((string)$v, ENT_QUOTES,'UTF-8'); }
 
 // --- Handle inline updates (POST) ---
@@ -13,13 +19,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       $oid = (int)$_POST['order_id'];
       $target = trim((string)($_POST['order_status'] ?? ''));
-      // Log incoming request
-      error_log("orders_payments.php POST: order_id={$oid} target='" . substr($target,0,200) . "'");
+  // Log incoming request
+  $inMsg = "orders_payments.php POST: order_id={$oid} target='" . substr($target,0,200) . "'";
+  error_log($inMsg);
+  op_debug_push($inMsg);
 
       // Use existing method and capture result
       $ok = false;
       try { $ok = $db->updateOrderStatus($oid, $target); } catch(Throwable $e) { error_log('orders_payments.php updateOrderStatus exception: ' . $e->getMessage()); }
-      error_log("orders_payments.php: updateOrderStatus returned=" . ($ok? 'true':'false'));
+  $uMsg = "orders_payments.php: updateOrderStatus returned=" . ($ok? 'true':'false');
+  error_log($uMsg);
+  op_debug_push($uMsg);
 
       // Additional direct DB diagnostic: read current value, attempt manual update, then read again
       try {
@@ -27,18 +37,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $s = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
         $s->execute([$oid]);
         $before = $s->fetch(PDO::FETCH_ASSOC);
-        error_log('orders_payments.php: before=' . json_encode($before));
+  $b = 'orders_payments.php: before=' . json_encode($before);
+  error_log($b);
+  op_debug_push($b);
 
         $man = $con->prepare("UPDATE orders SET order_status = ?, Updated_at = NOW() WHERE Order_ID = ?");
         $manOk = $man->execute([$target, $oid]);
         $manErr = $man->errorInfo();
-        error_log('orders_payments.php: manualUpdate execute=' . ($manOk? 'true':'false') . ' rowCount=' . (int)$man->rowCount() . ' err=' . json_encode($manErr));
+  $m = 'orders_payments.php: manualUpdate execute=' . ($manOk? 'true':'false') . ' rowCount=' . (int)$man->rowCount() . ' err=' . json_encode($manErr);
+  error_log($m);
+  op_debug_push($m);
 
         $s2 = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
         $s2->execute([$oid]);
         $after = $s2->fetch(PDO::FETCH_ASSOC);
-        error_log('orders_payments.php: after=' . json_encode($after));
-      } catch(Throwable $e) { error_log('orders_payments.php manual DB diagnostic error: ' . $e->getMessage()); }
+  $a = 'orders_payments.php: after=' . json_encode($after);
+  error_log($a);
+  op_debug_push($a);
+  } catch(Throwable $e) { $em = 'orders_payments.php manual DB diagnostic error: ' . $e->getMessage(); error_log($em); op_debug_push($em); }
 
       if ($ok) {
         $adminId = (int)($_SESSION['admin_id'] ?? 0);
@@ -62,6 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   header('Location: orders_payments.php' . ($qs ? ('?' . http_build_query($qs)) : ''));
   exit;
 }
+
+// After redirect: display any debug pushed by previous POST
+// (This will be rendered in the HTML below if present)
 
 // --- Filters & pagination (mirrors orders.php & payments.php variable style) ---
 $search  = $_GET['search']  ?? '';
@@ -125,6 +144,13 @@ ksort($methods);
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
+          <?php if (!empty($_SESSION['op_debug']) && is_array($_SESSION['op_debug'])): ?>
+            <div class="mb-3">
+              <?php foreach($_SESSION['op_debug'] as $d): ?>
+                <div class="alert alert-info small mb-1"><?= h($d) ?></div>
+              <?php endforeach; $_SESSION['op_debug'] = []; ?>
+            </div>
+          <?php endif; ?>
           <form method="get" class="row g-2 mb-3 align-items-end filter-row">
             <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
