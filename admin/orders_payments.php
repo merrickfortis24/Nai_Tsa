@@ -207,8 +207,15 @@ ksort($methods);
                         <form method="post" class="mb-0">
                           <input type="hidden" name="order_id" value="<?= (int)$r['Order_ID'] ?>">
                           <?php
-                            // Delivery if address fields present (contact number alone not decisive)
-                            $isDelivery = !empty($r['Street']) || !empty($r['City']);
+                            // Decide order type: prefer explicit order_type field if present, otherwise infer from address
+                            $rawType = trim((string)($r['order_type'] ?? ''));
+                            if ($rawType !== '') {
+                              // PHP check for 'delivery' string in order_type
+                              $isDelivery = stripos($rawType, 'delivery') !== false;
+                            } else {
+                              // Delivery if address fields present (contact number alone not decisive)
+                              $isDelivery = !empty($r['Street']) || !empty($r['City']);
+                            }
                             $statusOptions = $isDelivery
                               ? ["Pending","Preparing","Ready to deliver","On the way","Delivered","Cancelled"]
                               : ["Pending","Preparing","Ready to pick up","Received","Cancelled"];
@@ -548,9 +555,14 @@ function toast(message, type){
       if(data.success && Array.isArray(data.rows) && data.rows.length){
         data.rows.forEach(r=>{
           const tr = document.createElement('tr');
-          // Decide status options similar to PHP side for consistency
-          const isDelivery = !!(r.Street || r.City);
-          const statusOptions = isDelivery ? ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"] : ["Pending","Processing","Ready to pick up","Received","Cancelled"];
+          // Decide status options similar to PHP side for consistency; prefer explicit order_type when present
+          let isDelivery = false;
+          if (r.order_type && typeof r.order_type === 'string' && r.order_type.trim() !== '') {
+            isDelivery = /delivery/i.test(r.order_type);
+          } else {
+            isDelivery = !!(r.Street || r.City);
+          }
+          const statusOptions = isDelivery ? ["Pending","Preparing","Ready to deliver","On the way","Delivered","Cancelled"] : ["Pending","Preparing","Ready to pick up","Received","Cancelled"];
           const statusSelect = statusOptions.map(st => `<option value="${st}" ${r.order_status===st? 'selected':''}>${st}</option>`).join('');
           const paySelect = `<select name=\"payment_status\" class=\"form-select form-select-sm\" onchange=\"this.form.submit()\"><option value=\"Paid\" ${r.Payment_Status==='Paid'?'selected':''}>Paid</option><option value=\"Unpaid\" ${r.Payment_Status==='Unpaid'?'selected':''}>Unpaid</option></select>`;
           tr.innerHTML = `
