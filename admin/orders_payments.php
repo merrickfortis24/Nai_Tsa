@@ -125,7 +125,7 @@ ksort($methods);
             <div class="col-auto">
               <select name="status" class="form-select form-select-sm short-select" title="Order Status">
                 <option value="">All Status</option>
-                <?php foreach (["Pending","Processing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
+                <?php foreach (["Pending","Preparing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
                   <option value="<?=h($s)?>" <?=$status===$s?'selected':''?>><?=h($s)?></option>
                 <?php endforeach; ?>
               </select>
@@ -210,8 +210,8 @@ ksort($methods);
                             // Delivery if address fields present (contact number alone not decisive)
                             $isDelivery = !empty($r['Street']) || !empty($r['City']);
                             $statusOptions = $isDelivery
-                              ? ["Pending","Processing","Ready to deliver","On the way","Delivered","Cancelled"]
-                              : ["Pending","Processing","Ready to pick up","Received","Cancelled"];
+                              ? ["Pending","Preparing","Ready to deliver","On the way","Delivered","Cancelled"]
+                              : ["Pending","Preparing","Ready to pick up","Received","Cancelled"];
                           ?>
                           <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
                             <?php foreach ($statusOptions as $st): ?>
