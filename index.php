@@ -40,7 +40,7 @@ try {
   <!-- Manifest (optional, create manifest.webmanifest at project root if using PWA features) -->
   <!-- <link rel="manifest" href="/manifest.webmanifest"> -->
   <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="assets/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Google Fonts: Poppins for modern look -->
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
@@ -264,7 +264,7 @@ Open daily from 10AM to midnight..</p>
   </footer>
 
   <!-- Bootstrap JS -->
-  <script src="assets/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     // Smooth scroll and highlight active nav
