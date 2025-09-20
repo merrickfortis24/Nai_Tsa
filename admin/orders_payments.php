@@ -12,7 +12,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['order_id'], $_POST['order_status'])) {
     try {
       $oid = (int)$_POST['order_id'];
-      if ($db->updateOrderStatus($oid, $_POST['order_status'])) {
+      $target = trim((string)($_POST['order_status'] ?? ''));
+      // Log incoming request
+      error_log("orders_payments.php POST: order_id={$oid} target='" . substr($target,0,200) . "'");
+
+      // Use existing method and capture result
+      $ok = false;
+      try { $ok = $db->updateOrderStatus($oid, $target); } catch(Throwable $e) { error_log('orders_payments.php updateOrderStatus exception: ' . $e->getMessage()); }
+      error_log("orders_payments.php: updateOrderStatus returned=" . ($ok? 'true':'false'));
+
+      // Additional direct DB diagnostic: read current value, attempt manual update, then read again
+      try {
+        $con = $db->opencon();
+        $s = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
+        $s->execute([$oid]);
+        $before = $s->fetch(PDO::FETCH_ASSOC);
+        error_log('orders_payments.php: before=' . json_encode($before));
+
+        $man = $con->prepare("UPDATE orders SET order_status = ?, Updated_at = NOW() WHERE Order_ID = ?");
+        $manOk = $man->execute([$target, $oid]);
+        $manErr = $man->errorInfo();
+        error_log('orders_payments.php: manualUpdate execute=' . ($manOk? 'true':'false') . ' rowCount=' . (int)$man->rowCount() . ' err=' . json_encode($manErr));
+
+        $s2 = $con->prepare("SELECT Order_ID, order_status, Updated_at FROM orders WHERE Order_ID = ? LIMIT 1");
+        $s2->execute([$oid]);
+        $after = $s2->fetch(PDO::FETCH_ASSOC);
+        error_log('orders_payments.php: after=' . json_encode($after));
+      } catch(Throwable $e) { error_log('orders_payments.php manual DB diagnostic error: ' . $e->getMessage()); }
+
+      if ($ok) {
         $adminId = (int)($_SESSION['admin_id'] ?? 0);
         $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
       }
