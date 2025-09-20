@@ -543,27 +543,55 @@ class database {
 
     function updateOrderStatus($order_id, $order_status) {
         $con = $this->opencon();
-        $order_id = (int)$order_id;
-        // Fetch current status and infer order type
-        $curStmt = $con->prepare("SELECT o.Order_ID, o.order_status, addr.Street, addr.City, addr.Contact_Number
+        try {
+            $order_id = (int)$order_id;
+            // Fetch current status and infer order type
+            $curStmt = $con->prepare("SELECT o.Order_ID, o.order_status, addr.Street, addr.City, addr.Contact_Number
     FROM orders o
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
     WHERE o.Order_ID = ? LIMIT 1");
-        $curStmt->execute([$order_id]);
-        $row = $curStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) return false;
-        $current = $row['order_status'] ?? null;
+            $curStmt->execute([$order_id]);
+            $row = $curStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                error_log("updateOrderStatus: order_id={$order_id} not found");
+                return false;
+            }
+            $current = $row['order_status'] ?? null;
 
-        $target = trim((string)$order_status);
-        if ($target === '') return false;
+            $target = trim((string)$order_status);
+            if ($target === '') {
+                error_log("updateOrderStatus: order_id={$order_id} empty target");
+                return false;
+            }
 
-        // Disallow any further changes once terminal
-        if (in_array($current, ["Cancelled","Delivered","Received"], true)) return false;
+            // Disallow any further changes once terminal
+            if (in_array($current, ["Cancelled","Delivered","Received"], true)) {
+                error_log("updateOrderStatus: order_id={$order_id} current terminal='{$current}' - update blocked");
+                return false;
+            }
 
-        // Perform update (be permissive: accept any target string).
-        $sql = "UPDATE orders SET order_status = ? WHERE Order_ID = ?";
-        $stmt = $con->prepare($sql);
-        return (bool)$stmt->execute([$target, $order_id]);
+            // Perform update (be permissive: accept any target string).
+            // NOTE: some deployments do not have an Updated_at column on orders; avoid referencing it.
+            $sql = "UPDATE orders SET order_status = ? WHERE Order_ID = ?";
+            $stmt = $con->prepare($sql);
+            $ok = $stmt->execute([$target, $order_id]);
+            $err = $stmt->errorInfo();
+            $log = sprintf(
+                "updateOrderStatus: order_id=%d current='%s' target='%s' execute=%s rowCount=%d err=%s",
+                $order_id,
+                $current,
+                $target,
+                $ok ? 'true' : 'false',
+                (int)$stmt->rowCount(),
+                json_encode($err, JSON_UNESCAPED_SLASHES)
+            );
+            error_log($log);
+
+            return (bool)$ok;
+        } catch (PDOException $e) {
+            error_log("updateOrderStatus: order_id={$order_id} PDOException: " . $e->getMessage());
+            return false;
+        }
     }
 
     function updatePaymentStatusByOrder($order_id, $payment_status) {
