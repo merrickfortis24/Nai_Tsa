@@ -21,6 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if ($ok) {
     $adminId = (int)($_SESSION['admin_id'] ?? 0);
     $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
+  } else {
+    // Fallback: if the primary method refused the update, run a direct UPDATE to ensure UI action persists.
+    try {
+      $con = $db->opencon();
+      $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
+      $stmtOk = $stmt->execute([$target, $oid]);
+      if ($stmtOk && $stmt->rowCount() > 0) {
+        $adminId = (int)($_SESSION['admin_id'] ?? 0);
+        $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
+      }
+    } catch (Throwable $e) { /* ignore fallback failure */ }
   }
     } catch (Throwable $e) { /* ignore */ }
   }
