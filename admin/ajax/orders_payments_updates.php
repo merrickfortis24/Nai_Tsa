@@ -18,6 +18,20 @@ $db = new database();
 try {
   $con = $db->opencon();
 
+  // Quick debug mode: call with ?debug=1 to run a small safe query and return results or full exception details.
+  if (isset($_GET['debug']) && (string)$_GET['debug'] === '1') {
+    try {
+      $one = (int)$con->query('SELECT 1')->fetchColumn();
+      $sample = $con->query("SELECT Order_ID, Order_Date, order_status, Order_Amount FROM orders ORDER BY Order_ID DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+      echo json_encode(['success' => true, 'debug' => true, 'db_test' => $one, 'sample_rows' => $sample]);
+    } catch (Throwable $e) {
+      // Return clear debug info to the caller (also logged server-side)
+      error_log('ajax/orders_payments_updates.php debug exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+      http_response_code(500);
+      echo json_encode(['success' => false, 'debug' => true, 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+    }
+    exit;
+  }
   // Fetch new rows
   // Use singular table names that the rest of the codebase expects (customer, payment)
   $stmt = $con->prepare("SELECT 
