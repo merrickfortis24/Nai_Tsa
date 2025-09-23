@@ -25,13 +25,16 @@ try {
       o.Order_Date,
       o.order_status,
       COALESCE(o.Order_Amount, o.total_amount, 0) AS Order_Amount,
-      o.Street, o.City, o.Contact_Number,
+      addr.Street, addr.City,
+      -- contact number is stored with the customer record in this schema
+      c.Contact_Number AS Contact_Number,
       o.order_type,
-  c.Customer_Name AS Customer_Name,
-  p.Payment_ID AS Payment_ID,
-  p.payment_status AS Payment_Status,
-  p.Payment_Method AS Payment_Method
+      c.Customer_Name AS Customer_Name,
+      p.Payment_ID AS Payment_ID,
+      p.payment_status AS Payment_Status,
+      p.Payment_Method AS Payment_Method
     FROM orders o
+    LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
     LEFT JOIN payment p ON p.Order_ID = o.Order_ID
     WHERE o.Order_ID > ?
@@ -46,7 +49,7 @@ try {
   // Lightweight stats (used for small counters on page)
   $totalOrders = (int)$con->query("SELECT COUNT(*) FROM orders")->fetchColumn();
   $unpaidPayments = 0;
-  try { $unpaidPayments = (int)$con->query("SELECT COUNT(*) FROM payment WHERE Payment_Status='Unpaid'")->fetchColumn(); } catch(Throwable $e) {}
+  try { $unpaidPayments = (int)$con->query("SELECT COUNT(*) FROM payment WHERE payment_status='Unpaid'")->fetchColumn(); } catch(Throwable $e) {}
   $pendingProcessing = 0;
   try { $pendingProcessing = (int)$con->query("SELECT COUNT(*) FROM orders WHERE order_status IN ('Pending','Processing')")->fetchColumn(); } catch(Throwable $e) {}
 
