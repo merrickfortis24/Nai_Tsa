@@ -549,7 +549,7 @@ function toast(message, type){
 
   async function poll(){
     try {
-      const res = await fetch('ajax/orders_payments_updates.php?last_id=' + lastId + '&t=' + Date.now(), {cache:'no-store'});
+  const res = await fetch('ajax/orders_payments_updates.php?last_id=' + lastId + '&t=' + Date.now(), {cache:'no-store', credentials: 'same-origin'});
       if (!res.ok) {
         // Attempt to show server-provided error details to help debugging
         let bodyText = '';
