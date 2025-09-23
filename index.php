@@ -409,7 +409,8 @@ Open daily from 10AM to midnight..</p>
         .then(orders_by_status => {
           // To Ship
           let html = '';
-          if (orders_by_status['To Ship'].length) {
+          const toShipEl = document.querySelector('#to-ship');
+          if (orders_by_status['To Ship'] && orders_by_status['To Ship'].length) {
             orders_by_status['To Ship'].forEach(order => {
               html += `
                 <div class="card mb-2">
@@ -424,11 +425,12 @@ Open daily from 10AM to midnight..</p>
           } else {
             html = '<div class="text-muted">No orders to ship.</div>';
           }
-          document.querySelector('#to-ship').innerHTML = html;
+          if (toShipEl) toShipEl.innerHTML = html;
 
           // To Receive
           html = '';
-          if (orders_by_status['To Receive'].length) {
+          const toReceiveEl = document.querySelector('#to-receive');
+          if (orders_by_status['To Receive'] && orders_by_status['To Receive'].length) {
             orders_by_status['To Receive'].forEach(order => {
               html += `
                 <div class="card mb-2">
@@ -443,11 +445,12 @@ Open daily from 10AM to midnight..</p>
           } else {
             html = '<div class="text-muted">No orders to receive.</div>';
           }
-          document.querySelector('#to-receive').innerHTML = html;
+          if (toReceiveEl) toReceiveEl.innerHTML = html;
 
           // Delivered
           html = '';
-          if (orders_by_status['Delivered'].length) {
+          const deliveredEl = document.querySelector('#delivered');
+          if (orders_by_status['Delivered'] && orders_by_status['Delivered'].length) {
             orders_by_status['Delivered'].forEach(order => {
               html += `
                 <div class="card mb-2">
@@ -462,19 +465,22 @@ Open daily from 10AM to midnight..</p>
           } else {
             html = '<div class="text-muted">No delivered orders.</div>';
           }
-          document.querySelector('#delivered').innerHTML = html;
+          if (deliveredEl) deliveredEl.innerHTML = html;
         });
     }
 
-    // When the My Orders modal is shown, start refreshing every 5 seconds
-    document.getElementById('myOrdersModal').addEventListener('show.bs.modal', function () {
-      refreshMyOrders();
-      window.myOrdersInterval = setInterval(refreshMyOrders, 5000);
-    });
-    // Stop refreshing when modal is hidden
-    document.getElementById('myOrdersModal').addEventListener('hidden.bs.modal', function () {
-      clearInterval(window.myOrdersInterval);
-    });
+    // When the My Orders modal is shown, start refreshing every 5 seconds (guard if element missing)
+    const myOrdersModalEl = document.getElementById('myOrdersModal');
+    if (myOrdersModalEl) {
+      myOrdersModalEl.addEventListener('show.bs.modal', function () {
+        refreshMyOrders();
+        window.myOrdersInterval = setInterval(refreshMyOrders, 5000);
+      });
+      // Stop refreshing when modal is hidden
+      myOrdersModalEl.addEventListener('hidden.bs.modal', function () {
+        if (window.myOrdersInterval) { clearInterval(window.myOrdersInterval); window.myOrdersInterval = null; }
+      });
+    }
   </script>
 </body>
 </html>
