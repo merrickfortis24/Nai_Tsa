@@ -18,12 +18,12 @@ if ($orderId <= 0) {
 try {
   $con = $db->opencon();
   $stmt = $con->prepare("SELECT o.*, c.Customer_Name, p.Payment_ID, p.payment_status, p.Payment_Method,
-    COALESCE(addr.Street, o.Street) AS Street,
-    COALESCE(addr.Barangay, o.Barangay) AS Barangay,
-    COALESCE(addr.City, o.City) AS City,
-    COALESCE(addr.Contact_Number, o.Contact_Number) AS Contact_Number,
-    COALESCE(addr.customer_lat, o.customer_lat) AS customer_lat,
-    COALESCE(addr.customer_lng, o.customer_lng) AS customer_lng
+    COALESCE(addr.Street, '') AS Street,
+    COALESCE(addr.Barangay, '') AS Barangay,
+    COALESCE(addr.City, '') AS City,
+    COALESCE(addr.Contact_Number, c.Contact_Number, '') AS Contact_Number,
+    COALESCE(addr.customer_lat, '') AS customer_lat,
+    COALESCE(addr.customer_lng, '') AS customer_lng
     FROM orders o
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID

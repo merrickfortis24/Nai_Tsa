@@ -21,11 +21,15 @@ try {
 	$stmt = $con->prepare(
 		"SELECT 
 			o.Order_ID, o.Order_Date, o.order_status, o.Driver_Status, o.Order_Amount,
-			o.order_type, o.Street, o.City, o.Contact_Number,
+			o.order_type,
+			COALESCE(addr.Street, '') AS Street,
+			COALESCE(addr.City, '') AS City,
+			COALESCE(addr.Contact_Number, '') AS Contact_Number,
 			p.payment_status,
 			oi.Quantity, oi.Product_ID AS Item_Product_ID,
 			pr.Product_ID AS Product_ID, pr.Product_Name, pr.Product_Image
 		 FROM orders o
+		 LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
 		 LEFT JOIN payment p ON o.Order_ID = p.Order_ID
 		 LEFT JOIN order_item oi ON o.Order_ID = oi.Order_ID
 		 LEFT JOIN product pr ON oi.Product_ID = pr.Product_ID

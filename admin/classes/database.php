@@ -362,12 +362,12 @@ class database {
     $sql = "SELECT o.*, 
             c.Customer_Name, 
             p.Payment_ID, p.payment_status, p.Payment_Method, p.Payment_Date,
-            COALESCE(addr.Street, o.Street) AS Street,
-            COALESCE(addr.Barangay, o.Barangay) AS Barangay,
-            COALESCE(addr.City, o.City) AS City,
-            COALESCE(addr.Contact_Number, o.Contact_Number) AS Contact_Number,
-            COALESCE(addr.customer_lat, o.customer_lat) AS customer_lat,
-            COALESCE(addr.customer_lng, o.customer_lng) AS customer_lng
+            COALESCE(addr.Street, '') AS Street,
+            COALESCE(addr.Barangay, '') AS Barangay,
+            COALESCE(addr.City, '') AS City,
+            COALESCE(addr.Contact_Number, c.Contact_Number, '') AS Contact_Number,
+            COALESCE(addr.customer_lat, '') AS customer_lat,
+            COALESCE(addr.customer_lng, '') AS customer_lng
         FROM orders o
         LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
         LEFT JOIN payment p ON o.Order_ID = p.Order_ID
