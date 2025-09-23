@@ -1,0 +1,7 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Redirect direct requests for /favicon.ico to favicon.php handler
+  RewriteRule ^favicon\.ico$ /favicon.php [L,QSA]
+</IfModule>
+
+# Fallback: if server doesn't allow rewrites, serve the PHP file when requested explicitly.
