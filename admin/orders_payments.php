@@ -295,7 +295,13 @@ ksort($methods);
                 $lat = $r['customer_lat'] ?? $r['Customer_Lat'] ?? null;
                 $lng = $r['customer_lng'] ?? $r['Customer_Lng'] ?? null;
                 $hasCoords = is_numeric($lat) && is_numeric($lng);
-                $isDelivery = $hasCoords || !empty($street) || !empty($city);
+                // Prefer explicit order_type when present; otherwise infer from stored address/coords
+                $rawType = trim((string)($r['order_type'] ?? ''));
+                if ($rawType !== '') {
+                  $isDelivery = stripos($rawType, 'delivery') !== false;
+                } else {
+                  $isDelivery = $hasCoords || !empty($street) || !empty($city);
+                }
               ?>
               <div class="mb-3">
                 <h6 class="fw-semibold mb-1">Order Location / Contact</h6>
