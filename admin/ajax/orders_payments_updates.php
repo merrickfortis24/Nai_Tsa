@@ -4,12 +4,8 @@
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
-// Temporary debug bypass: allow calling ?debug=1&k=<key> from a browser even when not logged in.
-// IMPORTANT: remove this code (or change the key) after debugging in production.
-$debugKey = 'debugme2025'; // temporary key — change or delete after use
-$isDebugRequest = isset($_GET['debug']) && (string)$_GET['debug'] === '1' && isset($_GET['k']) && $_GET['k'] === $debugKey;
-
-if (!isset($_SESSION['admin_id']) && !$isDebugRequest) {
+// Require an admin session. Debug mode remains available but only to logged-in admins.
+if (!isset($_SESSION['admin_id'])) {
   http_response_code(401);
   echo json_encode(['success'=>false,'message'=>'Unauthorized']);
   exit;
