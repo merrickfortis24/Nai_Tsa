@@ -24,7 +24,7 @@ try {
 			o.order_type,
 			COALESCE(addr.Street, '') AS Street,
 			COALESCE(addr.City, '') AS City,
-			COALESCE(addr.Contact_Number, '') AS Contact_Number,
+			COALESCE(c.Contact_Number, '') AS Contact_Number,
 			p.payment_status,
 			oi.Quantity, oi.Product_ID AS Item_Product_ID,
 			pr.Product_ID AS Product_ID, pr.Product_Name, pr.Product_Image

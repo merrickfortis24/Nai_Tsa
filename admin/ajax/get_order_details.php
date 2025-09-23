@@ -21,7 +21,7 @@ try {
     COALESCE(addr.Street, '') AS Street,
     COALESCE(addr.Barangay, '') AS Barangay,
     COALESCE(addr.City, '') AS City,
-    COALESCE(addr.Contact_Number, c.Contact_Number, '') AS Contact_Number,
+  COALESCE(c.Contact_Number, '') AS Contact_Number,
     COALESCE(addr.customer_lat, '') AS customer_lat,
     COALESCE(addr.customer_lng, '') AS customer_lng
     FROM orders o
