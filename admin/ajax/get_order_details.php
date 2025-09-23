@@ -23,11 +23,14 @@ try {
     COALESCE(addr.City, '') AS City,
   COALESCE(c.Contact_Number, '') AS Contact_Number,
     COALESCE(addr.customer_lat, '') AS customer_lat,
-    COALESCE(addr.customer_lng, '') AS customer_lng
+  COALESCE(addr.customer_lng, '') AS customer_lng,
+  COALESCE(od.Delivery_Fee, 0.00) AS Delivery_Fee,
+  COALESCE(od.Delivery_Distance_Km, 0.00) AS Delivery_Distance_Km,
     FROM orders o
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
-    LEFT JOIN payment p ON p.Order_ID = o.Order_ID
+  LEFT JOIN payment p ON p.Order_ID = o.Order_ID
+  LEFT JOIN order_delivery od ON od.Order_ID = o.Order_ID
     WHERE o.Order_ID = ? LIMIT 1");
   $stmt->execute([$orderId]);
   $r = $stmt->fetch(PDO::FETCH_ASSOC);

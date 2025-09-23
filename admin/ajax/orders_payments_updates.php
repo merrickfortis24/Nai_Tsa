@@ -59,6 +59,8 @@ $db = new database();
   COALESCE(addr.Contact_Number, c.Contact_Number, '') AS Contact_Number,
   COALESCE(addr.customer_lat, '') AS customer_lat,
   COALESCE(addr.customer_lng, '') AS customer_lng,
+  COALESCE(od.Delivery_Fee, 0.00) AS Delivery_Fee,
+  COALESCE(od.Delivery_Distance_Km, 0.00) AS Delivery_Distance_Km,
       o.order_type,
       c.Customer_Name AS Customer_Name,
       p.Payment_ID AS Payment_ID,
@@ -68,6 +70,7 @@ $db = new database();
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
     LEFT JOIN payment p ON p.Order_ID = o.Order_ID
+  LEFT JOIN order_delivery od ON od.Order_ID = o.Order_ID
     WHERE o.Order_ID > ?
     ORDER BY o.Order_ID ASC
     LIMIT 100");

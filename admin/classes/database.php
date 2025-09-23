@@ -367,11 +367,14 @@ class database {
             COALESCE(addr.City, '') AS City,
             COALESCE(c.Contact_Number, '') AS Contact_Number,
             COALESCE(addr.customer_lat, '') AS customer_lat,
-            COALESCE(addr.customer_lng, '') AS customer_lng
+            COALESCE(addr.customer_lng, '') AS customer_lng,
+            COALESCE(od.Delivery_Fee, 0.00) AS Delivery_Fee,
+            COALESCE(od.Delivery_Distance_Km, 0.00) AS Delivery_Distance_Km
         FROM orders o
         LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
         LEFT JOIN payment p ON o.Order_ID = p.Order_ID
         LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
+        LEFT JOIN order_delivery od ON od.Order_ID = o.Order_ID
         $whereSql
         ORDER BY o.Order_Date DESC
         LIMIT $limit OFFSET $offset";
