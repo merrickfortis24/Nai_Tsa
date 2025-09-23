@@ -126,7 +126,7 @@ ksort($methods);
             <div class="mb-3">
               <h6 class="small text-muted">Debug: raw query result</h6>
               <pre style="max-height:300px; overflow:auto; background:#f8f9fa; padding:10px; border:1px solid #e9ecef;">
-<?php echo htmlspecialchars(json_encode(['total'=>$total,'rows'=>$rows], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES|'UTF-8'); ?>
+<?php echo htmlspecialchars(json_encode(['total'=>$total,'rows'=>$rows], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>
               </pre>
             </div>
           <?php endif; ?>
