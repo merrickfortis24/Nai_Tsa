@@ -27,12 +27,10 @@ try {
       COALESCE(o.Order_Amount, o.total_amount, 0) AS Order_Amount,
       o.Street, o.City, o.Contact_Number,
       o.order_type,
-      -- customer name may be stored with different case in some schemas
-      COALESCE(c.Customer_Name, c.customer_name) AS Customer_Name,
-      -- payment columns: support either camelCase or snake_case column names
-      COALESCE(p.Payment_ID, p.payment_id) AS Payment_ID,
-      COALESCE(p.Payment_Status, p.payment_status) AS Payment_Status,
-      COALESCE(p.Payment_Method, p.payment_method) AS Payment_Method
+  c.Customer_Name AS Customer_Name,
+  p.Payment_ID AS Payment_ID,
+  p.payment_status AS Payment_Status,
+  p.Payment_Method AS Payment_Method
     FROM orders o
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
     LEFT JOIN payment p ON p.Order_ID = o.Order_ID
@@ -63,8 +61,9 @@ try {
     ]
   ]);
 } catch (Throwable $e) {
-  // Log full exception for server-side debugging
-  error_log('ajax/orders_payments_updates.php exception: ' . $e->getMessage());
+  // Log full exception for server-side debugging (message, file/line, trace)
+  $errMsg = sprintf("ajax/orders_payments_updates.php exception: %s in %s:%d\nTrace: %s", $e->getMessage(), $e->getFile(), $e->getLine(), method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : 'n/a');
+  error_log($errMsg);
   http_response_code(500);
   // Return a helpful message (may include DB error details) to assist debugging in development
   echo json_encode(['success'=>false,'message'=>'Server error','error'=>$e->getMessage()]);

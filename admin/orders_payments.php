@@ -550,7 +550,15 @@ function toast(message, type){
   async function poll(){
     try {
       const res = await fetch('ajax/orders_payments_updates.php?last_id=' + lastId + '&t=' + Date.now(), {cache:'no-store'});
-      if(!res.ok) throw new Error('HTTP '+res.status);
+      if (!res.ok) {
+        // Attempt to show server-provided error details to help debugging
+        let bodyText = '';
+        try {
+          bodyText = await res.text();
+          try { const parsed = JSON.parse(bodyText); console.error('orders_payments_updates.php error', res.status, parsed); } catch(_){ console.error('orders_payments_updates.php error', res.status, bodyText); }
+        } catch(e){ console.error('orders_payments_updates.php error reading body', e); }
+        throw new Error('HTTP ' + res.status);
+      }
       const data = await res.json();
       if(data.success && Array.isArray(data.rows) && data.rows.length){
         data.rows.forEach(r=>{
