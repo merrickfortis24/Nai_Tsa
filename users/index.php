@@ -52,7 +52,7 @@ $all_products = $db->fetchAllProducts();
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
   <!-- Leaflet CSS for interactive map picker -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
   <!-- Navbar -->
@@ -477,7 +477,7 @@ $all_products = $db->fetchAllProducts();
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- Leaflet JS for map picker -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9vmQ9vR4C0R8y+4U6jk=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
