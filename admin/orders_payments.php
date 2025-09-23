@@ -129,6 +129,21 @@ ksort($methods);
 <?php echo htmlspecialchars(json_encode(['total'=>$total,'rows'=>$rows], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>
               </pre>
             </div>
+            <?php
+              // Additional diagnostics: raw orders table count and a small sample to ensure the base table has data
+              try {
+                $con = $db->opencon();
+                $rawCount = (int)$con->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+                $sample = $con->query("SELECT Order_ID, Order_Date, order_status, Order_Amount FROM orders ORDER BY Order_ID DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+                echo '<div class="mb-3">';
+                echo '<h6 class="small text-muted">Diagnostic: base orders table</h6>';
+                echo '<pre style="background:#fffbe6;padding:10px;border:1px solid #f0e6b8;">';
+                echo htmlspecialchars(json_encode(['orders_table_count' => $rawCount, 'sample' => $sample], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+                echo '</pre></div>';
+              } catch (Throwable $e) {
+                echo '<div class="alert alert-warning small">Diagnostic query failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
+              }
+            ?>
           <?php endif; ?>
           <form method="get" class="row g-2 mb-3 align-items-end filter-row">
             <div class="col-12 col-md flex-grow-1">
