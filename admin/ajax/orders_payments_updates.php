@@ -42,8 +42,8 @@ try {
   $stmt = $con->prepare("SELECT 
       o.Order_ID,
       o.Order_Date,
-      o.order_status,
-      COALESCE(o.Order_Amount, o.total_amount, 0) AS Order_Amount,
+  o.order_status,
+  COALESCE(o.Order_Amount, 0) AS Order_Amount,
       addr.Street, addr.City,
       -- contact number is stored with the customer record in this schema
       c.Contact_Number AS Contact_Number,
