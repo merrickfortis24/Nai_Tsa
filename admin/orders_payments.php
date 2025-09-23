@@ -132,76 +132,7 @@ ksort($methods);
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
-          <!-- debug messages removed -->
-          <?php if (isset($_GET['debug']) && (string)$_GET['debug'] === '1'): ?>
-            <div class="mb-3">
-              <h6 class="small text-muted">Debug: raw query result</h6>
-              <pre style="max-height:300px; overflow:auto; background:#f8f9fa; padding:10px; border:1px solid #e9ecef;">
-<?php echo htmlspecialchars(json_encode(['total'=>$total,'rows'=>$rows], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>
-              </pre>
-            </div>
-            <?php
-              // Additional diagnostics: raw orders table count and a small sample to ensure the base table has data
-              try {
-                $con = $db->opencon();
-                $rawCount = (int)$con->query("SELECT COUNT(*) FROM orders")->fetchColumn();
-                $sample = $con->query("SELECT Order_ID, Order_Date, order_status, Order_Amount FROM orders ORDER BY Order_ID DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
-                echo '<div class="mb-3">';
-                echo '<h6 class="small text-muted">Diagnostic: base orders table</h6>';
-                echo '<pre style="background:#fffbe6;padding:10px;border:1px solid #f0e6b8;">';
-                echo htmlspecialchars(json_encode(['orders_table_count' => $rawCount, 'sample' => $sample], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-                echo '</pre></div>';
-              } catch (Throwable $e) {
-                echo '<div class="alert alert-warning small">Diagnostic query failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
-              }
-            ?>
-            <?php
-              // Reconstruct the combined query with current filters and run it to see why count==0
-              try {
-                $where = [];
-                $params = [];
-                $s = trim($search);
-                if ($s !== '') {
-                  if (ctype_digit($s)) { $where[] = '(o.Order_ID = :oid OR c.Customer_Name LIKE :sLike)'; $params[':oid'] = (int)$s; $params[':sLike'] = '%'.$s.'%'; }
-                  else { $where[] = '(c.Customer_Name LIKE :sLike)'; $params[':sLike'] = '%'.$s.'%'; }
-                }
-                if ($status !== '') { $where[] = '(o.order_status = :oStatus)'; $params[':oStatus'] = $status; }
-                if ($payment !== '') { $where[] = '(COALESCE(p.payment_status, "Unpaid") = :pStatus)'; $params[':pStatus'] = $payment; }
-                if ($method !== '') { $where[] = '(p.Payment_Method = :pMethod)'; $params[':pMethod'] = $method; }
-                if ($from !== '') { $where[] = '(o.Order_Date >= :fromDate)'; $params[':fromDate'] = $from . ' 00:00:00'; }
-                if ($to !== '') { $where[] = '(o.Order_Date <= :toDate)'; $params[':toDate'] = $to . ' 23:59:59'; }
-                $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
-                $debugSql = "SELECT COUNT(*) FROM orders o\n  LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID\n  LEFT JOIN payment p ON o.Order_ID = p.Order_ID\n  $whereSql";
-                $stmtD = $con->prepare($debugSql);
-                foreach ($params as $k=>$v) { $stmtD->bindValue($k,$v,is_int($v)?PDO::PARAM_INT:PDO::PARAM_STR); }
-                $stmtD->execute();
-                $debugCount = (int)$stmtD->fetchColumn();
-                echo '<div class="mb-3">';
-                echo '<h6 class="small text-muted">Reconstructed combined COUNT query</h6>';
-                echo '<pre style="background:#eef6ff;padding:10px;border:1px solid #cfe3ff;">';
-                echo htmlspecialchars(json_encode(['sql'=>$debugSql,'params'=>$params,'count'=>$debugCount], JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-                echo '</pre></div>';
-              } catch (Throwable $e) {
-                echo '<div class="alert alert-danger small">Combined query diagnostic failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
-              }
-            ?>
-            <?php if (!empty($fetchException) || !empty($countException)): ?>
-              <div class="mb-3">
-                <h6 class="small text-muted">Captured exceptions from fetch/count</h6>
-                <pre style="background:#fff0f0;padding:10px;border:1px solid #ffd6d6;">
-<?php
-  $exOut = [];
-  if (!empty($fetchException)) {
-    $exOut['fetch'] = ['message' => $fetchException->getMessage(), 'file' => $fetchException->getFile(), 'line' => $fetchException->getLine()];
-  }
-  if (!empty($countException)) {
-    $exOut['count'] = ['message' => $countException->getMessage(), 'file' => $countException->getFile(), 'line' => $countException->getLine()];
-  }
-  echo htmlspecialchars(json_encode($exOut, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-?></pre>
-              </div>
-            <?php endif; ?>
-          <?php endif; ?>
+          <!-- debug output removed -->
           <form method="get" class="row g-2 mb-3 align-items-end filter-row">
             <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
