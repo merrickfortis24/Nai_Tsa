@@ -4,10 +4,9 @@
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
-// Enable useful error reporting while debugging admin AJAX usage. Admin session is required below.
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+// Note: detailed error reporting is enabled only when an admin explicitly requests
+// debug via the `?debug=1` query parameter further below. Avoid turning on
+// display_errors unconditionally in production.
 
 // Require an admin session. Debug mode will only be enabled for logged-in admins.
 if (!isset($_SESSION['admin_id'])) {
