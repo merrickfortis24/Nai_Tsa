@@ -450,6 +450,21 @@ ksort($methods);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Helper: load modal HTML on-demand for order items
+async function loadAndShowOrderModal(orderId){
+  try{
+    const res = await fetch('ajax/get_order_details.php?order_id=' + encodeURIComponent(orderId), {credentials: 'same-origin'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    if(!j.success) throw new Error(j.message || 'Failed to load order details');
+    // Insert HTML and initialize bootstrap modal
+    const temp = document.createElement('div'); temp.innerHTML = j.html;
+    document.body.appendChild(temp.firstElementChild);
+    const modalEl = document.getElementById('itemsModal' + orderId);
+    if(modalEl){ const bsModal = new bootstrap.Modal(modalEl); bsModal.show(); }
+  }catch(e){ console.error('loadAndShowOrderModal error', e); }
+}
+
 document.addEventListener('click', async function(e){
   const btn = e.target.closest('.share-delivery-btn');
   if(!btn) return;
@@ -597,6 +612,19 @@ function toast(message, type){
             <td><span class=\"badge bg-info text-dark\">New</span></td>`;
           tbody.prepend(tr);
           if(r.Order_ID > lastId) lastId = r.Order_ID;
+          // Ensure modal is available for this new row: fetch on-demand when Items button clicked
+          // The button in the rendered row uses data-bs-toggle/data-bs-target but we fetch modal lazily instead
+          const itemsBtn = tr.querySelector('button[data-bs-toggle="modal"]');
+          if(itemsBtn){
+            itemsBtn.addEventListener('click', function(ev){
+              const target = itemsBtn.getAttribute('data-bs-target') || itemsBtn.getAttribute('data-target');
+              const m = target && target.replace('#itemsModal','');
+              const id = m || r.Order_ID;
+              if(!document.getElementById('itemsModal' + id)){
+                ev.preventDefault(); ev.stopPropagation(); loadAndShowOrderModal(id);
+              }
+            });
+          }
         });
       }
       if(data.stats){
