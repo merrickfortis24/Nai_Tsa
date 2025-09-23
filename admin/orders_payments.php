@@ -67,13 +67,24 @@ $perPage = 10;
 $offset  = ($page - 1) * $perPage;
 
 // Fetch combined data
+$debugRequest = isset($_GET['debug']) && (string)$_GET['debug'] === '1';
+$rows = [];
+$total = 0;
+$fetchException = null;
+$countException = null;
 try {
-  $rows  = $db->fetchOrdersPaymentsCombined($search, $status, $payment, $method, $from, $to, $perPage, $offset);
+  $rows = $db->fetchOrdersPaymentsCombined($search, $status, $payment, $method, $from, $to, $perPage, $offset);
+} catch (Throwable $e) {
+  error_log('orders_payments.php: fetchOrdersPaymentsCombined exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+  $rows = [];
+  $fetchException = $e;
+}
+try {
   $total = $db->countOrdersPaymentsCombined($search, $status, $payment, $method, $from, $to);
 } catch (Throwable $e) {
-  // Log details for debugging — visible only in server logs for admins to inspect
-  error_log('orders_payments.php: fetchOrdersPaymentsCombined exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-  $rows = []; $total = 0;
+  error_log('orders_payments.php: countOrdersPaymentsCombined exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+  $total = 0;
+  $countException = $e;
 }
 $totalPages = max(1, (int)ceil($total / $perPage));
 $currentPage = $page; // for pagination snippet compatibility
@@ -174,6 +185,22 @@ ksort($methods);
                 echo '<div class="alert alert-danger small">Combined query diagnostic failed: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
               }
             ?>
+            <?php if (!empty($fetchException) || !empty($countException)): ?>
+              <div class="mb-3">
+                <h6 class="small text-muted">Captured exceptions from fetch/count</h6>
+                <pre style="background:#fff0f0;padding:10px;border:1px solid #ffd6d6;">
+<?php
+  $exOut = [];
+  if (!empty($fetchException)) {
+    $exOut['fetch'] = ['message' => $fetchException->getMessage(), 'file' => $fetchException->getFile(), 'line' => $fetchException->getLine()];
+  }
+  if (!empty($countException)) {
+    $exOut['count'] = ['message' => $countException->getMessage(), 'file' => $countException->getFile(), 'line' => $countException->getLine()];
+  }
+  echo htmlspecialchars(json_encode($exOut, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+?></pre>
+              </div>
+            <?php endif; ?>
           <?php endif; ?>
           <form method="get" class="row g-2 mb-3 align-items-end filter-row">
             <div class="col-12 col-md flex-grow-1">
