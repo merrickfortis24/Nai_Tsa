@@ -4,11 +4,20 @@
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
-// Require an admin session. Debug mode remains available but only to logged-in admins.
+// Require an admin session. Debug mode will only be enabled for logged-in admins.
 if (!isset($_SESSION['admin_id'])) {
   http_response_code(401);
   echo json_encode(['success'=>false,'message'=>'Unauthorized']);
   exit;
+}
+
+// Allow detailed debug output when explicitly requested by an admin via ?debug=1
+$debugRequest = isset($_GET['debug']) && (string)$_GET['debug'] === '1';
+if ($debugRequest) {
+  // Enable rich error reporting temporarily for debugging (admin-only)
+  ini_set('display_errors', '1');
+  ini_set('display_startup_errors', '1');
+  error_reporting(E_ALL);
 }
 
 $lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
@@ -16,7 +25,7 @@ $lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
 require_once __DIR__ . '/../classes/database.php';
 $db = new database();
 
-try {
+  try {
   $con = $db->opencon();
 
   // Quick debug mode: call with ?debug=1 to run a small safe query and return results or full exception details.
@@ -81,12 +90,25 @@ try {
       'pending_processing' => $pendingProcessing,
     ]
   ]);
-} catch (Throwable $e) {
-  // Log full exception for server-side debugging (message, file/line, trace)
-  $errMsg = sprintf("ajax/orders_payments_updates.php exception: %s in %s:%d\nTrace: %s", $e->getMessage(), $e->getFile(), $e->getLine(), method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : 'n/a');
-  error_log($errMsg);
-  http_response_code(500);
-  // Return a helpful message (may include DB error details) to assist debugging in development
-  echo json_encode(['success'=>false,'message'=>'Server error','error'=>$e->getMessage()]);
+  } catch (Throwable $e) {
+    // Log full exception for server-side debugging (message, file/line, trace)
+    $errMsg = sprintf("ajax/orders_payments_updates.php exception: %s in %s:%d\nTrace: %s", $e->getMessage(), $e->getFile(), $e->getLine(), method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : 'n/a');
+    error_log($errMsg);
+    http_response_code(500);
+    // If admin explicitly requested debug, include full details in the JSON response to aid debugging.
+    if (!empty($debugRequest)) {
+      $trace = method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : null;
+      echo json_encode([
+        'success' => false,
+        'message' => 'Server error',
+        'error' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $trace
+      ]);
+    } else {
+      // Generic response for non-debug calls
+      echo json_encode(['success'=>false,'message'=>'Server error']);
+    }
 }
 ?>
