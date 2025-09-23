@@ -4,6 +4,11 @@
 session_start();
 header('Content-Type: application/json; charset=UTF-8');
 
+// Enable useful error reporting while debugging admin AJAX usage. Admin session is required below.
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 // Require an admin session. Debug mode will only be enabled for logged-in admins.
 if (!isset($_SESSION['admin_id'])) {
   http_response_code(401);
@@ -95,20 +100,17 @@ $db = new database();
     $errMsg = sprintf("ajax/orders_payments_updates.php exception: %s in %s:%d\nTrace: %s", $e->getMessage(), $e->getFile(), $e->getLine(), method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : 'n/a');
     error_log($errMsg);
     http_response_code(500);
-    // If admin explicitly requested debug, include full details in the JSON response to aid debugging.
+    // Build a helpful JSON payload. Keep full trace only when admin explicitly asked for debug.
+    $payload = [
+      'success' => false,
+      'message' => 'Server error',
+      'error' => $e->getMessage(),
+      'file' => $e->getFile(),
+      'line' => $e->getLine()
+    ];
     if (!empty($debugRequest)) {
-      $trace = method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : null;
-      echo json_encode([
-        'success' => false,
-        'message' => 'Server error',
-        'error' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'trace' => $trace
-      ]);
-    } else {
-      // Generic response for non-debug calls
-      echo json_encode(['success'=>false,'message'=>'Server error']);
+      $payload['trace'] = method_exists($e, 'getTraceAsString') ? $e->getTraceAsString() : null;
     }
+    echo json_encode($payload);
 }
 ?>
