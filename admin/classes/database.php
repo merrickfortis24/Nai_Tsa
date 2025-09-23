@@ -357,13 +357,24 @@ class database {
         }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
         $limit = max(1,$limit); $offset = max(0,$offset);
-        $sql = "SELECT o.*, c.Customer_Name, p.Payment_ID, p.payment_status, p.Payment_Method, p.Payment_Date
-                FROM orders o
-                LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
-                LEFT JOIN payment p ON o.Order_ID = p.Order_ID
-                $whereSql
-                ORDER BY o.Order_Date DESC
-                LIMIT $limit OFFSET $offset";
+    // Include address/contact/coords where available. Address fields may exist on orders (legacy) or in order_address table.
+    // Use COALESCE to prefer the explicit order_address table when present, falling back to orders.* columns.
+    $sql = "SELECT o.*, 
+            c.Customer_Name, 
+            p.Payment_ID, p.payment_status, p.Payment_Method, p.Payment_Date,
+            COALESCE(addr.Street, o.Street) AS Street,
+            COALESCE(addr.Barangay, o.Barangay) AS Barangay,
+            COALESCE(addr.City, o.City) AS City,
+            COALESCE(addr.Contact_Number, o.Contact_Number) AS Contact_Number,
+            COALESCE(addr.customer_lat, o.customer_lat) AS customer_lat,
+            COALESCE(addr.customer_lng, o.customer_lng) AS customer_lng
+        FROM orders o
+        LEFT JOIN customer c ON o.Customer_ID = c.Customer_ID
+        LEFT JOIN payment p ON o.Order_ID = p.Order_ID
+        LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
+        $whereSql
+        ORDER BY o.Order_Date DESC
+        LIMIT $limit OFFSET $offset";
         $stmt = $con->prepare($sql);
         foreach ($params as $k=>$v) {
             $stmt->bindValue($k,$v,is_int($v)?PDO::PARAM_INT:PDO::PARAM_STR);
