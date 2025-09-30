@@ -24,10 +24,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $wrong_password = true;
     } else {
             $login_success = true;
-            if ($account_type === 'admin') {
-                $_SESSION['admin_id'] = $user['Admin_ID'];
-                $_SESSION['admin_name'] = $user['Admin_Name'];
-                $_SESSION['admin_role'] = $user['Admin_Role'];
+      if ($account_type === 'admin') {
+        // Prevent session fixation by regenerating the session id on login
+        session_regenerate_id(true);
+        $_SESSION['admin_id'] = $user['Admin_ID'];
+        $_SESSION['admin_name'] = $user['Admin_Name'];
+        $_SESSION['admin_role'] = $user['Admin_Role'];
+        // If user asked to be remembered, make the session cookie persistent
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        if ($remember) {
+          // keep the PHP session cookie for 30 days; set httponly and secure when applicable
+          setcookie(session_name(), session_id(), time() + (86400 * 30), "/", "", $secure, true);
+        } else {
+          // ensure session cookie is a session cookie (expires when browser closes)
+          setcookie(session_name(), session_id(), 0, "/", "", $secure, true);
+        }
             } else {
         // Gate unverified customers
         if ((int)($user['is_verified'] ?? 0) !== 1) {
@@ -37,11 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['customer_name'] = $user['Customer_Name'];
                 $_SESSION['customer_email'] = $user['Customer_Email'];
                 $_SESSION['customer_id'] = $user['Customer_ID'];
+        // Prevent session fixation by regenerating session id on successful login
+        session_regenerate_id(true);
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
         if ($remember) {
           // Only remember the email; never store plaintext passwords in cookies.
           setcookie('remember_email', $email, time() + (86400 * 30), "/");
+          // Also extend the session cookie so the user remains logged in after closing the browser.
+          // Note: this is a quick convenience fix. For production, consider a secure token-based "remember me"
+          // implementation (store a hashed persistent token in DB and validate it on revisit).
+          setcookie(session_name(), session_id(), time() + (86400 * 30), "/", "", $secure, true);
         } else {
           setcookie('remember_email', '', time() - 3600, "/");
+          // Make sure the session cookie remains a session cookie (expires when browser closes)
+          setcookie(session_name(), session_id(), 0, "/", "", $secure, true);
         }
         }
             }
