@@ -1,6 +1,7 @@
 <?php
 // order_items_api.php - returns JSON for items of a given order (admin side)
 session_start();
+require_once __DIR__ . '/../includes/remember.php';
 header('Content-Type: application/json');
 if (!isset($_SESSION['admin_id'])) {
     echo json_encode(['success'=>false,'message'=>'Unauthorized']); exit;

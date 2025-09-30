@@ -30,14 +30,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin_id'] = $user['Admin_ID'];
         $_SESSION['admin_name'] = $user['Admin_Name'];
         $_SESSION['admin_role'] = $user['Admin_Role'];
-        // If user asked to be remembered, make the session cookie persistent
-        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        // If user asked to be remembered, create a secure persistent token and cookie
         if ($remember) {
-          // keep the PHP session cookie for 30 days; set httponly and secure when applicable
-          setcookie(session_name(), session_id(), time() + (86400 * 30), "/", "", $secure, true);
-        } else {
-          // ensure session cookie is a session cookie (expires when browser closes)
-          setcookie(session_name(), session_id(), 0, "/", "", $secure, true);
+          // create selector and token
+          $selector = bin2hex(random_bytes(9));
+          $token = bin2hex(random_bytes(33));
+          $token_hash = hash('sha256', $token);
+          $expires_at = date('Y-m-d H:i:s', time() + 86400 * 30);
+          $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+          $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+          // store in DB
+          $db->createRememberToken($selector, $token_hash, (int)$user['Admin_ID'], 'admin', $expires_at, $userAgent, $ip);
+          // set cookie
+          $cookieValue = $selector . ':' . $token;
+          setcookie('rememberme', $cookieValue, [
+            'expires' => time() + 86400 * 30,
+            'path' => '/',
+            // 'domain' => '.naitsa.online', // optional for subdomains
+            'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Lax'
+          ]);
         }
             } else {
         // Gate unverified customers
@@ -50,18 +63,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['customer_id'] = $user['Customer_ID'];
         // Prevent session fixation by regenerating session id on successful login
         session_regenerate_id(true);
-        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
         if ($remember) {
-          // Only remember the email; never store plaintext passwords in cookies.
+          // Only remember the email in UI and create a persistent rememberme token
           setcookie('remember_email', $email, time() + (86400 * 30), "/");
-          // Also extend the session cookie so the user remains logged in after closing the browser.
-          // Note: this is a quick convenience fix. For production, consider a secure token-based "remember me"
-          // implementation (store a hashed persistent token in DB and validate it on revisit).
-          setcookie(session_name(), session_id(), time() + (86400 * 30), "/", "", $secure, true);
+          // create selector and token
+          $selector = bin2hex(random_bytes(9));
+          $token = bin2hex(random_bytes(33));
+          $token_hash = hash('sha256', $token);
+          $expires_at = date('Y-m-d H:i:s', time() + 86400 * 30);
+          $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+          $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+          // store in DB
+          $db->createRememberToken($selector, $token_hash, (int)$user['Customer_ID'], 'customer', $expires_at, $userAgent, $ip);
+          // set cookie
+          $cookieValue = $selector . ':' . $token;
+          setcookie('rememberme', $cookieValue, [
+            'expires' => time() + 86400 * 30,
+            'path' => '/',
+            // 'domain' => '.naitsa.online',
+            'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Lax'
+          ]);
         } else {
           setcookie('remember_email', '', time() - 3600, "/");
-          // Make sure the session cookie remains a session cookie (expires when browser closes)
-          setcookie(session_name(), session_id(), 0, "/", "", $secure, true);
         }
         }
             }

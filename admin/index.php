@@ -1,5 +1,7 @@
 <?php
 // Start session to check if user is logged in
+// Attempt to restore session from remember-me cookie if present
+require_once __DIR__ . '/../includes/remember.php';
 session_start();
 
 // Redirect to login if not authenticated

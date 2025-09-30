@@ -1,6 +1,7 @@
 <?php
 // Orders page with search, filters, pagination, static per-order modals (professional version)
 session_start();
+require_once __DIR__ . '/../includes/remember.php';
 if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
 require_once 'classes/database.php';
 $db = new database();

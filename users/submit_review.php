@@ -1,5 +1,7 @@
 <?php
 session_start();
+// Attempt to restore session from remember-me cookie for AJAX endpoints
+require_once __DIR__ . '/../includes/remember.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['customer_id'])) {

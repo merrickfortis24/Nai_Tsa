@@ -169,4 +169,51 @@ class database {
         $upd->execute([(int)$row['Customer_ID']]);
         return $upd->rowCount() > 0;
     }
+
+    // -----------------------------
+    // Remember-me token methods
+    // -----------------------------
+    public function createRememberToken(string $selector, string $token_hash, int $user_id, string $account_type, string $expires_at, ?string $user_agent = null, ?string $ip = null): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("INSERT INTO remember_tokens (selector, token_hash, user_id, account_type, expires_at, user_agent, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        return (bool)$stmt->execute([$selector, $token_hash, $user_id, $account_type, $expires_at, $user_agent, $ip]);
+    }
+
+    public function getRememberTokenBySelector(string $selector): ?array {
+        $con = $this->opencon();
+        $stmt = $con->prepare("SELECT * FROM remember_tokens WHERE selector = ? LIMIT 1");
+        $stmt->execute([$selector]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function deleteRememberToken(string $selector): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("DELETE FROM remember_tokens WHERE selector = ?");
+        return (bool)$stmt->execute([$selector]);
+    }
+
+    public function deleteAllRememberTokensForUser(int $user_id, string $account_type = 'customer'): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("DELETE FROM remember_tokens WHERE user_id = ? AND account_type = ?");
+        return (bool)$stmt->execute([$user_id, $account_type]);
+    }
+
+    public function updateRememberToken(string $oldSelector, string $newSelector, string $newTokenHash, string $newExpires): bool {
+        $con = $this->opencon();
+        $stmt = $con->prepare("UPDATE remember_tokens SET selector = ?, token_hash = ?, expires_at = ?, last_used = NOW() WHERE selector = ?");
+        return (bool)$stmt->execute([$newSelector, $newTokenHash, $newExpires, $oldSelector]);
+    }
+
+    // Helper: get user by id and account type
+    public function getUserById(int $id, string $account_type) {
+        $con = $this->opencon();
+        if ($account_type === 'admin') {
+            $stmt = $con->prepare("SELECT * FROM admin WHERE Admin_ID = ?");
+        } else {
+            $stmt = $con->prepare("SELECT * FROM customer WHERE Customer_ID = ?");
+        }
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
