@@ -347,29 +347,11 @@ $all_products = $db->fetchAllProducts();
               <input class="form-check-input" type="radio" name="paymentMethod" id="cod" value="COD" checked>
               <label class="form-check-label" for="cod">Cash on Delivery</label>
             </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="paymentMethod" id="gcash" value="GCash">
-              <label class="form-check-label" for="gcash">GCash</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="paymentMethod" id="credit" value="Credit Card">
-              <label class="form-check-label" for="credit">Credit Card</label>
-            </div>
-          </div>
-          <!-- GCash Info -->
-          <div id="gcashFields" style="display:none;">
-            <div class="alert alert-info mb-3" style="font-size:1.05em;">
-              <strong>GCash:</strong><br>
-              Name: Nai Tsa<br>
-              Number: 09940780881
-            </div>
-          </div>
-          <!-- Credit Card Info -->
-          <div id="creditFields" style="display:none;">
-            <div class="alert alert-info mb-3" style="font-size:1.05em;" id="creditCardInfo">
-              <strong>Credit Card:</strong><br>
-              Name: Nai Tsa<br>
-              Number: <span id="generatedCardNumber"></span>
+            <div class="mt-2">
+              <div class="alert alert-info mb-0" role="status" aria-live="polite" style="font-size:0.95rem;">
+                <strong>Note:</strong> We accept GCash as a payment method, but we do not accept online transactions processed through our website.
+                Please pay via GCash in-person to the number <strong>09940780881</strong> or present proof of transfer to the rider or at pickup.
+              </div>
             </div>
           </div>
           <!-- Order Summary -->
