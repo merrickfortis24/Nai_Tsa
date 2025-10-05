@@ -15,35 +15,69 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
         <div class="logo-text fw-bold fs-5">AdminPanel</div>
     </div>
     <ul class="nav flex-column">
-        <?php
-        // Helper to render a nav link uniformly
-        function navItem($key,$href,$icon,$label,$page,$badgesHtml=''){ $active = ($page===$key)?' active':''; echo "<li class='nav-item'>\n<a class='nav-link d-flex align-items-center gap-2$active' href='$href'>\n<i class='bi $icon'></i><span class='flex-grow-1'>$label</span>$badgesHtml</a>\n</li>"; }
-
-        navItem('index','index.php','bi-speedometer2','Dashboard',$page);
-        navItem('admins','admins.php','bi-people-fill','Admins',$page);
-
-        // Orders & Payments badges group
-        $opBadges = '';
-        if (!empty($pendingProcessingCount)) {
-            $opBadges .= "<span class='badge rounded-pill bg-warning text-dark ms-1'>$pendingProcessingCount</span>";
-        }
-        if (!empty($unpaidPayments)) {
-            $opBadges .= "<span class='badge rounded-pill bg-danger ms-1'>$unpaidPayments</span>";
-        }
-        if ($opBadges) $opBadges = "<span class='d-inline-flex ms-auto'>$opBadges</span>"; else $opBadges = "<span class='ms-auto'></span>"; // keep spacing
-        navItem('orders_payments','orders_payments.php','bi-stack','Orders & Payments',$page,$opBadges);
-
-        navItem('products','products.php','bi-box-seam','Products',$page);
-        navItem('categories','categories.php','bi-tags','Categories',$page);
-        navItem('addons','addons.php','bi-plus-circle','Add-ons',$page);
-        navItem('drivers','drivers.php','bi-truck','Drivers',$page);
-
-        $blockedBadge = !empty($blockedUsersCount) ? "<span class='badge rounded-pill bg-danger ms-auto'>$blockedUsersCount</span>" : "<span class='ms-auto'></span>";
-        // For blocked users we want the badge on the far right without extra wrapper since only one badge
-        $active = ($page==='blocked_users')?' active':'';
-        echo "<li class='nav-item'>\n<a class='nav-link d-flex align-items-center gap-2$active' href='blocked_users.php'>\n<i class='bi bi-shield-exclamation'></i><span class='flex-grow-1'>Blocked Users</span>" . (!empty($blockedUsersCount)?"<span class='badge rounded-pill bg-danger'>$blockedUsersCount</span>":"") . "</a>\n</li>";
-
-        navItem('logout','logout.php','bi-box-arrow-right','Logout',$page);
-        ?>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='index')echo' active'; ?>" href="index.php">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='admins')echo' active'; ?>" href="admins.php">
+                <i class="bi bi-people-fill"></i>
+                <span>Admins</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <?php $isCombined = ($page==='orders_payments'); ?>
+            <a class="nav-link<?= $isCombined ? ' active' : '' ?>" href="orders_payments.php">
+                <i class="bi bi-stack"></i>
+                <span>Orders & Payments</span>
+                <?php if (!empty($pendingProcessingCount)) : ?>
+                    <span class="badge rounded-pill bg-warning text-dark float-end ms-1"><?= (int)$pendingProcessingCount ?></span>
+                <?php endif; ?>
+                <?php if (!empty($unpaidPayments)) : ?>
+                    <span class="badge rounded-pill bg-danger float-end"><?= (int)$unpaidPayments ?></span>
+                <?php endif; ?>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='products')echo' active'; ?>" href="products.php">
+                <i class="bi bi-box-seam"></i>
+                <span>Products</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='categories')echo' active'; ?>" href="categories.php">
+                <i class="bi bi-tags"></i>
+                <span>Categories</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='addons')echo' active'; ?>" href="addons.php">
+                <i class="bi bi-plus-circle"></i>
+                <span>Add-ons</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='drivers')echo' active'; ?>" href="drivers.php">
+                <i class="bi bi-truck"></i>
+                <span>Drivers</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link<?php if($page=='blocked_users')echo' active'; ?>" href="blocked_users.php">
+                <i class="bi bi-shield-exclamation"></i>
+                                <span>Blocked Users</span>
+                                <?php if (!empty($blockedUsersCount)): ?>
+                                    <span class="badge rounded-pill bg-danger float-end ms-1"><?= (int)$blockedUsersCount ?></span>
+                                <?php endif; ?>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="logout.php">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </li>
     </ul>
 </div>
