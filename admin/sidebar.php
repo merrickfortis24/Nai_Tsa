@@ -65,6 +65,12 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link<?php if($page=='blocked_users')echo' active'; ?>" href="blocked_users.php">
+                <i class="bi bi-shield-exclamation"></i>
+                <span>Blocked Users</span>
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" href="logout.php">
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Logout</span>
