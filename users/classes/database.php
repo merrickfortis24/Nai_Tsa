@@ -289,6 +289,11 @@ function createPasswordResetToken($email) {
         }
     }
 
+    // 1.a Fraud / block check (fast). If blocked -> abort early.
+    if ($this->isCustomerBlockedFast($customer_id)) {
+        return ['success'=>false,'blocked'=>true,'message'=>'Ordering disabled for this account. Please contact support.'];
+    }
+
     // 2. Calculate total (base products + selected add-ons per item)
     $total = 0;
     foreach ($cart as $item) {
@@ -550,5 +555,31 @@ public function fetchAllCategories() {
     $stmt = $con->prepare("SELECT * FROM category ORDER BY Category_Name ASC");
     $stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/** Quick block check used before creating orders */
+public function isCustomerBlockedFast(int $customerId): bool {
+    try {
+        $con = $this->opencon();
+        // Prefer is_blocked column if present
+        $hasCol = false;
+        try { $c = $con->query("SHOW COLUMNS FROM customer LIKE 'is_blocked'"); $hasCol = $c && $c->rowCount()>0; } catch(Throwable $e){}
+        if ($hasCol) {
+            $s = $con->prepare("SELECT is_blocked FROM customer WHERE Customer_ID=? LIMIT 1");
+            $s->execute([$customerId]);
+            $val = $s->fetchColumn();
+            if ($val !== false) return (int)$val === 1;
+        }
+        // Fallback blocked_users table
+        try {
+            $chk = $con->query("SHOW TABLES LIKE 'blocked_users'");
+            if ($chk && $chk->rowCount()>0) {
+                $s2 = $con->prepare("SELECT 1 FROM blocked_users WHERE customer_id=? LIMIT 1");
+                $s2->execute([$customerId]);
+                return (bool)$s2->fetchColumn();
+            }
+        } catch(Throwable $e){}
+        return false;
+    } catch(Throwable $e) { return false; }
 }
 }
