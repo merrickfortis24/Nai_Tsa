@@ -2,7 +2,8 @@
 // Shared sidebar navigation for admin pages
 $page = basename($_SERVER['PHP_SELF'], '.php');
 // Ensure sidebar counters are available on every page that includes this file
-if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
+// Also load counts if blockedUsersCount not set so its badge is always available
+if (!isset($pendingProcessingCount) || !isset($unpaidPayments) || !isset($blockedUsersCount)) {
     /** @noinspection PhpIncludeInspection */
     @require_once __DIR__ . '/sidebar_counts.php';
 }
