@@ -52,93 +52,115 @@ try {
         <?php include 'sidebar.php'; ?>
     </div>
     <div class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
-      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 mb-3 border-bottom">
-        <h1 class="h4 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Blocked Users</h1>
-        <div>
-          <button id="runScanBtn" class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle me-1"></i>Run Scan</button>
-          <button id="dryScanBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>Dry Run</button>
-        </div>
-      </div>
-      <div class="card shadow-sm mb-4">
-        <div class="card-body">
-          <div class="row g-3 mb-3">
-            <div class="col-md-4 col-lg-3">
-              <input type="text" id="searchInput" class="form-control" placeholder="Search name/email/ID">
+      <div class="row g-4 pt-3">
+        <div class="col-lg-5 col-xl-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <h5 class="mb-1">Block / Unblock User</h5>
+              <p class="text-muted small mb-3">Manually block suspicious users or remove an existing block. Use scan for automatic detection.</p>
+              <form id="manualBlockForm" class="mb-3">
+                <div class="mb-3">
+                  <label class="form-label">Customer ID</label>
+                  <input type="number" class="form-control" id="mbCustomerId" placeholder="e.g. 42" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Reason</label>
+                  <input type="text" class="form-control" id="mbReason" placeholder="Reason (e.g. chargeback, abusive)" required>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary" id="btnManualBlock"><i class="bi bi-shield-plus me-1"></i>Block</button>
+                  <button type="button" class="btn btn-outline-success" id="btnManualUnblock"><i class="bi bi-unlock me-1"></i>Unblock</button>
+                  <button type="button" class="btn btn-outline-secondary" id="btnResetForm">Reset</button>
+                </div>
+              </form>
+              <div class="border-top pt-3 mt-3">
+                <h6 class="mb-2">Automated Scan</h6>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                  <button id="runScanBtn" class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle me-1"></i>Run Scan</button>
+                  <button id="dryScanBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>Dry Run</button>
+                  <button id="exportCsvBtn" class="btn btn-sm btn-outline-success"><i class="bi bi-download me-1"></i>CSV</button>
+                </div>
+                <div id="scanOutput" class="small text-muted" style="max-height:160px;overflow:auto;"></div>
+              </div>
             </div>
-            <div class="col-md-3 col-lg-2">
-              <select id="typeFilter" class="form-select">
-                <option value="">All Types</option>
-                <option value="auto">Auto</option>
-                <option value="manual">Manual</option>
-              </select>
-            </div>
-            <div class="col-md-3 col-lg-2">
-              <select id="sortSelect" class="form-select">
-                <option value="blocked_at_desc">Newest Blocked</option>
-                <option value="blocked_at_asc">Oldest Blocked</option>
-                <option value="cancel_ratio_desc">Cancel Ratio ↓</option>
-                <option value="orders_24h_desc">24h Orders ↓</option>
-              </select>
-            </div>
-            <div class="col-md-2 col-lg-2">
-              <button id="exportCsvBtn" class="btn btn-outline-success w-100"><i class="bi bi-download me-1"></i>CSV</button>
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="blockedTable">
-              <thead class="table-light">
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th class="text-center">Tot</th>
-                  <th class="text-center">Canc</th>
-                  <th class="text-center">Ratio</th>
-                  <th class="text-center">24h</th>
-                  <th>Reason</th>
-                  <th>Type</th>
-                  <th>Blocked At</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-              <?php if (!$blocked): ?>
-                <tr><td colspan="11" class="text-center text-muted py-4">No blocked users.</td></tr>
-              <?php else: foreach($blocked as $b): ?>
-                <tr data-id="<?= (int)$b['customer_id'] ?>" data-auto="<?= (int)$b['auto_block']===1?'1':'0' ?>" data-total="<?= (int)$b['total_orders'] ?>" data-cancel="<?= (int)$b['cancelled_orders'] ?>" data-ratio="<?= number_format($b['cancel_ratio'],2) ?>" data-24h="<?= (int)$b['orders_24h'] ?>" data-blocked="<?= htmlspecialchars($b['blocked_at']) ?>">
-                  <td><?= (int)$b['customer_id'] ?></td>
-                  <td><?= htmlspecialchars($b['Customer_Name'] ?? 'Unknown') ?></td>
-                  <td><?= htmlspecialchars($b['Customer_Email'] ?? '') ?></td>
-                  <td class="text-center small"><?= (int)$b['total_orders'] ?></td>
-                  <td class="text-center small"><?= (int)$b['cancelled_orders'] ?></td>
-                  <td class="text-center small"><?= number_format($b['cancel_ratio'],2) ?></td>
-                  <td class="text-center small"><?= (int)$b['orders_24h'] ?></td>
-                  <td class="small"><?= htmlspecialchars($b['reason']) ?></td>
-                  <td>
-                    <?php if ((int)$b['auto_block']===1): ?>
-                      <span class="badge badge-auto">Auto</span>
-                    <?php else: ?>
-                      <span class="badge badge-manual">Manual</span>
-                    <?php endif; ?>
-                  </td>
-                  <td><?= htmlspecialchars($b['blocked_at']) ?></td>
-                  <td>
-                    <button class="btn btn-sm btn-outline-success unblock-btn"><i class="bi bi-unlock"></i></button>
-                  </td>
-                </tr>
-              <?php endforeach; endif; ?>
-              </tbody>
-            </table>
-          </div>
-          <div class="d-flex justify-content-between align-items-center mt-3">
-            <div class="small text-muted" id="statsSummary"></div>
-            <nav>
-              <ul class="pagination pagination-sm mb-0" id="pager"></ul>
-            </nav>
           </div>
         </div>
+        <div class="col-lg-7 col-xl-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div>
+                  <h5 class="mb-0">Blocked Users</h5>
+                  <small class="text-muted" id="statsSummary"></small>
+                </div>
+                <div class="d-flex gap-2">
+                  <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Search..." style="min-width:180px;">
+                  <select id="typeFilter" class="form-select form-select-sm" style="width:120px;">
+                    <option value="">All Types</option>
+                    <option value="auto">Auto</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  <select id="sortSelect" class="form-select form-select-sm" style="width:150px;">
+                    <option value="blocked_at_desc">Newest</option>
+                    <option value="blocked_at_asc">Oldest</option>
+                    <option value="cancel_ratio_desc">Cancel %</option>
+                    <option value="orders_24h_desc">24h Orders</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-responsive flex-grow-1">
+                <table class="table table-hover table-sm align-middle mb-0" id="blockedTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th class="text-center">Tot</th>
+                      <th class="text-center">Canc</th>
+                      <th class="text-center">Ratio</th>
+                      <th class="text-center">24h</th>
+                      <th>Reason</th>
+                      <th>Type</th>
+                      <th>Blocked At</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <?php if (!$blocked): ?>
+                    <tr><td colspan="11" class="text-center text-muted py-4">No blocked users.</td></tr>
+                  <?php else: foreach($blocked as $b): ?>
+                    <tr data-id="<?= (int)$b['customer_id'] ?>" data-auto="<?= (int)$b['auto_block']===1?'1':'0' ?>" data-total="<?= (int)$b['total_orders'] ?>" data-cancel="<?= (int)$b['cancelled_orders'] ?>" data-ratio="<?= number_format($b['cancel_ratio'],2) ?>" data-24h="<?= (int)$b['orders_24h'] ?>" data-blocked="<?= htmlspecialchars($b['blocked_at']) ?>">
+                      <td><?= (int)$b['customer_id'] ?></td>
+                      <td><?= htmlspecialchars($b['Customer_Name'] ?? 'Unknown') ?></td>
+                      <td><?= htmlspecialchars($b['Customer_Email'] ?? '') ?></td>
+                      <td class="text-center small"><?= (int)$b['total_orders'] ?></td>
+                      <td class="text-center small"><?= (int)$b['cancelled_orders'] ?></td>
+                      <td class="text-center small"><?= number_format($b['cancel_ratio'],2) ?></td>
+                      <td class="text-center small"><?= (int)$b['orders_24h'] ?></td>
+                      <td class="small"><?= htmlspecialchars($b['reason']) ?></td>
+                      <td>
+                        <?php if ((int)$b['auto_block']===1): ?>
+                          <span class="badge badge-auto">Auto</span>
+                        <?php else: ?>
+                          <span class="badge badge-manual">Manual</span>
+                        <?php endif; ?>
+                      </td>
+                      <td><?= htmlspecialchars($b['blocked_at']) ?></td>
+                      <td>
+                        <button class="btn btn-sm btn-outline-success unblock-btn" title="Unblock"><i class="bi bi-unlock"></i></button>
+                      </td>
+                    </tr>
+                  <?php endforeach; endif; ?>
+                  </tbody>
+                </table>
+              </div>
+              <div class="d-flex justify-content-end mt-2">
+                <ul class="pagination pagination-sm mb-0" id="pager"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="scanOutput" class="mt-3"></div>
     </div>
   </div>
 </div>
@@ -255,6 +277,34 @@ document.querySelectorAll('.unblock-btn').forEach(btn=>{
     }catch(e){ alert('Error: '+e); }
     applyFilters();
   });
+});
+
+// Manual Block / Unblock
+const manualForm = document.getElementById('manualBlockForm');
+const cidInput = document.getElementById('mbCustomerId');
+const reasonInput = document.getElementById('mbReason');
+document.getElementById('btnResetForm').addEventListener('click', ()=>{ manualForm.reset(); });
+manualForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const cid = parseInt(cidInput.value,10); if(!cid){ alert('Enter valid Customer ID'); return; }
+  const reason = reasonInput.value.trim()||'Manual block';
+  const btn = document.getElementById('btnManualBlock'); btn.disabled=true; btn.textContent='Blocking...';
+  try {
+    const res = await fetch('ajax/fraud_manual_block.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:cid,reason})});
+    const data = await res.json();
+    if(!data.success){ alert(data.message||'Failed'); }
+    else { location.reload(); }
+  } catch(err){ alert('Error: '+err); }
+  btn.disabled=false; btn.textContent='Block';
+});
+document.getElementById('btnManualUnblock').addEventListener('click', async ()=>{
+  const cid = parseInt(cidInput.value,10); if(!cid){ alert('Enter Customer ID to unblock'); return; }
+  if(!confirm('Unblock customer #'+cid+'?')) return;
+  try {
+    const res = await fetch('ajax/fraud_unblock.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:cid})});
+    const data = await res.json();
+    if(!data.success){ alert(data.message||'Failed'); } else { location.reload(); }
+  }catch(e){ alert('Error: '+e); }
 });
 </script>
 </body>
