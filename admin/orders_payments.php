@@ -304,10 +304,12 @@ ksort($methods);
                 $street = $r['Street'] ?? '';
                 $city   = $r['City'] ?? '';
                 $contactNum = $r['Contact_Number'] ?? '';
-                // Prefer stored customer coordinates over textual address
-                $lat = $r['customer_lat'] ?? $r['Customer_Lat'] ?? null;
-                $lng = $r['customer_lng'] ?? $r['Customer_Lng'] ?? null;
-                $hasCoords = is_numeric($lat) && is_numeric($lng);
+                // Prefer stored customer coordinates over textual address. Normalize and treat 0 / near-zero as missing.
+                $latRaw = $r['customer_lat'] ?? $r['Customer_Lat'] ?? null;
+                $lngRaw = $r['customer_lng'] ?? $r['Customer_Lng'] ?? null;
+                $lat = (is_numeric($latRaw) ? (float)$latRaw : null);
+                $lng = (is_numeric($lngRaw) ? (float)$lngRaw : null);
+                $hasCoords = $lat !== null && $lng !== null && (abs($lat) > 0.000001 || abs($lng) > 0.000001);
                 // Prefer explicit order_type when present; otherwise infer from stored address/coords
                 $rawType = trim((string)($r['order_type'] ?? ''));
                 if ($rawType !== '') {
@@ -329,6 +331,7 @@ ksort($methods);
                   <?php if ($hasCoords): ?>
                     <?php $addressParts = array_filter([$street, $city]); $fullAddress = $addressParts ? implode(', ', $addressParts) : '—'; ?>
                     <div class="small"><strong>Address:</strong> <?= h($fullAddress) ?></div>
+                    <div class="small"><strong>Coordinates:</strong> <?= h(number_format($lat, 7)) ?>, <?= h(number_format($lng, 7)) ?></div>
                     <div class="ratio ratio-16x9 mt-2" style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
                       <iframe
                         loading="lazy"
@@ -348,6 +351,7 @@ ksort($methods);
                               data-address="<?=h($fullAddress)?>">
                         <i class="bi bi-share"></i> Share Info
                       </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText('<?=h($lat)?>,<?=h($lng)?>').then(()=>toast('Coordinates copied','success')).catch(()=>toast('Copy failed','danger'))">Copy Coords</button>
                     </div>
                   <?php else: ?>
                     <div class="small text-muted">No stored coordinates for this delivery.</div>
