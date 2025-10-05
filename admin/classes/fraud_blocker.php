@@ -117,12 +117,12 @@ class FraudBlocker extends database {
         }
         $m['unpaid_recent'] = $unpaidStreak;
 
-        // Burst orders last X minutes
-        $stmt = $con->prepare("SELECT COUNT(*) FROM orders WHERE Customer_ID=? AND Order_Date >= NOW()-INTERVAL :mins MINUTE");
-        $stmt->bindValue(':mins', (int)$this->config['burst_minutes'], PDO::PARAM_INT);
-        $stmt->bindValue(1, $customerId, PDO::PARAM_INT); // positional + named safeguard
-        $stmt->execute();
-        $m['burst_orders_20m'] = (int)$stmt->fetchColumn();
+    // Burst orders last X minutes (use named placeholders only; mixing causes PDO errors)
+    $stmt = $con->prepare("SELECT COUNT(*) FROM orders WHERE Customer_ID=:cid AND Order_Date >= NOW()-INTERVAL :mins MINUTE");
+    $stmt->bindValue(':cid', $customerId, PDO::PARAM_INT);
+    $stmt->bindValue(':mins', (int)$this->config['burst_minutes'], PDO::PARAM_INT);
+    $stmt->execute();
+    $m['burst_orders_20m'] = (int)$stmt->fetchColumn();
 
         // Decision logic
         if ($m['total_orders'] >= $this->config['min_orders_for_ratio']
