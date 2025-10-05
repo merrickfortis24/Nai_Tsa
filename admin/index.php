@@ -146,6 +146,26 @@ try {
                     </div>
                 </div>
 
+                <!-- Fraud / Risk Stats Cards -->
+                <?php $blockedCount = isset($blockedUsersCount)? (int)$blockedUsersCount : 0; ?>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card stats-card border-danger">
+                            <i class="bi bi-shield-exclamation text-danger"></i>
+                            <div class="number" id="dashBlockedUsers"><?= $blockedCount ?></div>
+                            <div class="label">Blocked Users</div>
+                        </div>
+                    </div>
+                    <div class="col-md-9 d-flex align-items-center small text-muted">
+                        <div>
+                            <span class="me-3"><i class="bi bi-info-circle"></i> Users blocked by heuristics (high cancel ratio, bursts, unpaid streaks). </span>
+                            <a href="blocked_users.php" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-up-right"></i> Manage</a>
+                            <button type="button" id="quickFraudScanBtn" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-play"></i> Quick Scan</button>
+                            <span id="quickScanStatus" class="ms-2 text-secondary"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Add this button above your sales chart card -->
                 <a href="export_sales_pdf.php" class="btn btn-outline-primary mb-2" target="_blank">
                     <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
@@ -769,4 +789,47 @@ const salesChart = new Chart(ctx, {
 });
     </script>
 </body>
+<script>
+// Dynamic badge & dash card refresh (blocked users) every 60s
+(function(){
+    async function refreshBlockedBadge(){
+        try {
+            const res = await fetch('ajax/fraud_scan.php?dry=1'); // dry run fast: we only need table existence for safe path
+            // We don't actually need evaluation list; just count from separate lightweight endpoint?
+        } catch(e) { /* ignore */ }
+        // Instead of relying on scan (which is heavier), grab count directly via lightweight endpoint we inline here:
+        try {
+            const r = await fetch('ajax/quick_blocked_count.php');
+            if(!r.ok) return; const j = await r.json();
+            if(j && typeof j.count !== 'undefined'){
+                const badge = document.querySelector('a.nav-link[href="blocked_users.php"] .badge.bg-danger');
+                const cardNum = document.getElementById('dashBlockedUsers');
+                if(cardNum) cardNum.textContent = j.count;
+                if (badge){
+                    if (j.count > 0){ badge.textContent = j.count; badge.style.display='inline-block'; }
+                    else { badge.style.display='none'; }
+                }
+            }
+        }catch(e){}
+    }
+    setInterval(refreshBlockedBadge, 60000);
+    refreshBlockedBadge();
+})();
+
+// Quick Scan button (real blocking run)
+document.getElementById('quickFraudScanBtn')?.addEventListener('click', async ()=>{
+    const statusEl = document.getElementById('quickScanStatus');
+    statusEl.textContent = 'Running...';
+    try {
+        const r = await fetch('ajax/fraud_scan.php?detail=0');
+        const j = await r.json();
+        if(j.success){
+            statusEl.textContent = `Blocked ${j.blocked_now.length} (total evaluated ${j.evaluated_count})`;
+        } else {
+            statusEl.textContent = 'Scan failed';
+        }
+    } catch(e){ statusEl.textContent = 'Error'; }
+    setTimeout(()=>{statusEl.textContent='';}, 5000);
+});
+</script>
 </html>

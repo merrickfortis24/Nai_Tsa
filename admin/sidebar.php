@@ -67,7 +67,10 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments)) {
         <li class="nav-item">
             <a class="nav-link<?php if($page=='blocked_users')echo' active'; ?>" href="blocked_users.php">
                 <i class="bi bi-shield-exclamation"></i>
-                <span>Blocked Users</span>
+                                <span>Blocked Users</span>
+                                <?php if (!empty($blockedUsersCount)): ?>
+                                    <span class="badge rounded-pill bg-danger float-end ms-1"><?= (int)$blockedUsersCount ?></span>
+                                <?php endif; ?>
             </a>
         </li>
         <li class="nav-item">
