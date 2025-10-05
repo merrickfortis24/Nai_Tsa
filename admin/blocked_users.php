@@ -37,6 +37,7 @@ try {
   <title>Blocked Users</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
   <style>
     body { background:#f8f9fc; }
     .table td, .table th { vertical-align: middle; }
@@ -53,7 +54,7 @@ try {
     <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
         <?php include 'sidebar.php'; ?>
     </div>
-    <div class="col-md-10 ms-sm-auto col-lg-10 px-md-4 pt-3">
+  <div class="col-md-10 col-lg-10 main-content">
       <div class="card shadow-sm page-header-card mb-4 p-4">
         <div class="d-flex flex-column flex-md-row justify-content-between w-100 gap-3">
           <div>
