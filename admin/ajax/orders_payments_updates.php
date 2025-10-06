@@ -47,6 +47,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($target === '') {
         $payload['message'] = 'Empty status not allowed';
       } else {
+          // Determine allowed enum values from DB (cache per request)
+          $allowed = [];
+          try {
+            $inf = $con->query("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='order_status' LIMIT 1")->fetchColumn();
+            if ($inf && preg_match("/^enum\\((.*)\\)$/i", $inf, $m)) {
+              $inner = $m[1];
+              // split top-level comma list of quoted values
+              $parts = preg_split('/,(?=(?:[^']*'+[^']*')*[^']*$)/', $inner); // conservative, fallback below
+              if (!$parts || count($parts) < 1) { $parts = explode(',', $inner); }
+              foreach ($parts as $p) {
+                $p = trim($p);
+                if ($p === '') continue;
+                if ($p[0]==="'" || $p[0]=='"') { $p = trim($p, "'\""); }
+                $allowed[] = $p;
+              }
+            }
+          } catch (Throwable $e) { /* ignore */ }
+          $allowedLower = array_map('strtolower', $allowed);
+          $origTarget = $target;
+          // Graceful mapping: if UI uses 'Preparing' but DB still has legacy 'Processing'
+          if (!in_array($target, $allowed, true)) {
+            if (strcasecmp($target,'Preparing')===0 && in_array('Processing', $allowed, true)) {
+              $target = 'Processing';
+            }
+          }
+          if ($allowed && !in_array($target, $allowed, true)) {
+            $payload['message'] = 'Invalid status "'.$origTarget.'" for current schema';
+            echo json_encode($payload); exit;
+          }
         // Fetch current
         $curStmt = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = ? LIMIT 1");
         $curStmt->execute([$orderId]);
@@ -66,6 +95,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $payload['previous'] = $current;
           $payload['current']  = $target;
           if ($changed) {
+              // Verify it actually stored (invalid enum would become '')
+              try {
+                $vf = $con->prepare("SELECT order_status FROM orders WHERE Order_ID=? LIMIT 1");
+                $vf->execute([$orderId]);
+                $after = $vf->fetchColumn();
+                if ($after === '' || $after === null) {
+                  $payload['success'] = false;
+                  $payload['changed'] = false;
+                  $payload['message'] = 'Update failed: status value not permitted by enum ('.$target.')';
+                  $payload['current'] = $current; // revert view
+                  echo json_encode($payload); exit;
+                }
+              } catch (Throwable $e) { /* ignore */ }
             // Attempt sales insert if qualifies (Delivered/Received + Paid)
             try { $db->insertSalesIfDeliveredAndPaid($orderId, (int)($_SESSION['admin_id'] ?? 0)); } catch (Throwable $e) {}
             $payload['message'] = 'Order status updated';
