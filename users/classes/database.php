@@ -453,30 +453,8 @@ function createPasswordResetToken($email) {
         }
     }
 
-    // 3c. Auto-assign a driver for Delivery orders (if not already assigned and drivers table exists)
-    $assignedDriverId = null;
-    if ($dbOrderType === 'Delivery') {
-        try {
-            $driversTable = $con->query("SHOW TABLES LIKE 'drivers'");
-            if ($driversTable && $driversTable->rowCount() > 0) {
-                // Find least busy active driver (counts only active, non-delivered, non-rejected orders)
-                $sqlDriver = "SELECT d.Driver_ID
-                               FROM drivers d
-                               LEFT JOIN orders o ON o.Driver_ID = d.Driver_ID
-                                 AND o.Driver_Status IN ('assigned','accepted','on_the_way','picked_up')
-                               WHERE d.Status='Active'
-                               GROUP BY d.Driver_ID
-                               ORDER BY COUNT(o.Order_ID) ASC, d.Driver_ID ASC
-                               LIMIT 1";
-                $drv = $con->query($sqlDriver)->fetch(PDO::FETCH_COLUMN);
-                if ($drv) {
-                    $updDrv = $con->prepare("UPDATE orders SET Driver_ID=?, Driver_Status='assigned' WHERE Order_ID=? AND Driver_ID IS NULL");
-                    $updDrv->execute([(int)$drv, $order_id]);
-                    if ($updDrv->rowCount() > 0) { $assignedDriverId = (int)$drv; }
-                }
-            }
-        } catch (Throwable $e) { /* ignore auto-assign failures */ }
-    }
+    // (Pool model) Removed previous auto-assign logic: Delivery orders remain unassigned
+    // and visible to all drivers until one accepts (claims) it via update_status endpoint.
 
     // 3c. Update customer contact number if supplied and empty in profile
     if ($contact) {
