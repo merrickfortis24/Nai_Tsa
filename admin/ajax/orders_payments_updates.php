@@ -52,15 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           try {
             $inf = $con->query("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='order_status' LIMIT 1")->fetchColumn();
             if ($inf && preg_match("/^enum\\((.*)\\)$/i", $inf, $m)) {
-              $inner = $m[1];
-              // split top-level comma list of quoted values
-              $parts = preg_split('/,(?=(?:[^']*'+[^']*')*[^']*$)/', $inner); // conservative, fallback below
-              if (!$parts || count($parts) < 1) { $parts = explode(',', $inner); }
+              $inner = $m[1]; // content inside enum(...)
+              // Use str_getcsv to safely parse quoted comma-separated values.
+              // ENUM definition lists each value quoted, e.g. 'Pending','Preparing','Delivered'
+              $parts = str_getcsv($inner, ',', "'");
               foreach ($parts as $p) {
                 $p = trim($p);
                 if ($p === '') continue;
-                if ($p[0]==="'" || $p[0]=='"') { $p = trim($p, "'\""); }
-                $allowed[] = $p;
+                $allowed[] = $p; // str_getcsv already strips surrounding single quotes
               }
             }
           } catch (Throwable $e) { /* ignore */ }
