@@ -93,7 +93,19 @@ class Order {
             $data['city'] ?: null,
             $data['contact'] ?: null
         ]);
-        return $success ? $this->con->lastInsertId() : false;
+        if (!$success) return false;
+        $oid = $this->con->lastInsertId();
+        // Safety: force Pending if stored value ended up blank (enum mismatch / silent failure)
+        try {
+            $chk = $this->con->prepare("SELECT order_status FROM orders WHERE Order_ID=? LIMIT 1");
+            $chk->execute([$oid]);
+            $cur = $chk->fetchColumn();
+            if ($cur === '' || $cur === null) {
+                $fix = $this->con->prepare("UPDATE orders SET order_status='Pending' WHERE Order_ID=?");
+                $fix->execute([$oid]);
+            }
+        } catch (Throwable $e) { /* ignore */ }
+        return $oid;
     }
 
     private function insertOrderItem($data) {

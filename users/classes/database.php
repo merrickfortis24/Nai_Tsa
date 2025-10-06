@@ -82,7 +82,18 @@ class database {
             $data['city'] ?: null,
             $data['contact'] ?: null
         ]);
-        return $con->lastInsertId();
+        $oid = $con->lastInsertId();
+        // Fallback safety: if enum mismatch caused invalid value -> MySQL stores '' (empty string). Force to 'Pending'.
+        try {
+            $chk = $con->prepare("SELECT order_status FROM orders WHERE Order_ID=? LIMIT 1");
+            $chk->execute([$oid]);
+            $cur = $chk->fetchColumn();
+            if ($cur === '' || $cur === null) {
+                $fix = $con->prepare("UPDATE orders SET order_status='Pending' WHERE Order_ID=?");
+                $fix->execute([$oid]);
+            }
+        } catch (Throwable $e) { /* ignore */ }
+        return $oid;
     }
 
     // Insert order item
@@ -380,6 +391,15 @@ function createPasswordResetToken($email) {
     $order_stmt->bindValue($bi++, 'Pending');
     $order_success = $order_stmt->execute();
     $order_id = (int)$con->lastInsertId();
+    // Post-insert verification: ensure order_status actually stored (enum mismatch stores as '').
+    try {
+        $vs = $con->prepare("SELECT order_status FROM orders WHERE Order_ID=? LIMIT 1");
+        $vs->execute([$order_id]);
+        $val = $vs->fetchColumn();
+        if ($val === '' || $val === null) {
+            $con->prepare("UPDATE orders SET order_status='Pending' WHERE Order_ID=?")->execute([$order_id]);
+        }
+    } catch (Throwable $e) { /* ignore */ }
 
     // 3a. Address table (order_address) if delivery info present & table exists
     if ($dbOrderType === 'Delivery' && ($street || $barangay || $city || ($lat && $lng))) {
