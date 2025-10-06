@@ -28,9 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (isset($_POST['payment_status'], $_POST['payment_id'])) {
             $db->updatePaymentStatus($_POST['payment_id'], $_POST['payment_status']);
         }
-        if (isset($_POST['order_status'], $_POST['order_id'])) { // fallback if ever used here
-            $db->updateOrderStatus($_POST['order_id'], $_POST['order_status']);
-        }
     } catch (Throwable $e) {
         $error = 'Update failed: ' . $e->getMessage();
     }

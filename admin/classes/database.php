@@ -555,60 +555,7 @@ class database {
         return $val !== false ? (int)$val : null;
     }
 
-    function updateOrderStatus($order_id, $order_status) {
-        $con = $this->opencon();
-        try {
-            $order_id = (int)$order_id;
-            // Fetch current status and infer order type
-        $curStmt = $con->prepare("SELECT o.Order_ID, o.order_status, addr.Street, addr.City, c.Contact_Number
-    FROM orders o
-    LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
-    LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
-    WHERE o.ORDER_ID = ? LIMIT 1");
-            $curStmt->execute([$order_id]);
-            $row = $curStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) {
-                error_log("updateOrderStatus: order_id={$order_id} not found");
-                return false;
-            }
-            $current = $row['order_status'] ?? null;
-
-            $target = trim((string)$order_status);
-            if ($target === '') {
-                error_log("updateOrderStatus: order_id={$order_id} empty target");
-                return false;
-            }
-
-            // Block only if order already cancelled (allow Delivered/Received corrections if needed)
-            if ($current === 'Cancelled') {
-                error_log("updateOrderStatus: order_id={$order_id} current='Cancelled' - update blocked");
-                return false;
-            }
-
-            // No change needed
-            if ($current === $target) {
-                error_log("updateOrderStatus: order_id={$order_id} target equals current '{$current}' - no change");
-                return false;
-            }
-
-            $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
-            $execOk = $stmt->execute([$target, $order_id]);
-            $changed = $execOk && $stmt->rowCount() > 0;
-            error_log(sprintf(
-                "updateOrderStatus: order_id=%d current='%s' target='%s' exec=%s changed=%s rowCount=%d",
-                $order_id,
-                $current,
-                $target,
-                $execOk ? 'true' : 'false',
-                $changed ? 'true' : 'false',
-                (int)$stmt->rowCount()
-            ));
-            return $changed;
-        } catch (PDOException $e) {
-            error_log("updateOrderStatus: order_id={$order_id} PDOException: " . $e->getMessage());
-            return false;
-        }
-    }
+    // updateOrderStatus removed: order status changes now handled exclusively via ajax/orders_payments_updates.php
 
     function updatePaymentStatusByOrder($order_id, $payment_status) {
         $con = $this->opencon();

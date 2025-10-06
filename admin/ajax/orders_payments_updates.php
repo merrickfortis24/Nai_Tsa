@@ -2,6 +2,7 @@
 // Return newly created orders (and related payment info) with Order_ID greater than provided last_id.
 // Used by admin/orders_payments.php to auto-append new orders without full page reload.
 session_start();
+// We'll set Content-Type dynamically (POST updates vs polling fetch). Default JSON.
 header('Content-Type: application/json; charset=UTF-8');
 
 // Note: detailed error reporting is enabled only when an admin explicitly requests
@@ -22,6 +23,90 @@ if ($debugRequest) {
   ini_set('display_errors', '1');
   ini_set('display_startup_errors', '1');
   error_reporting(E_ALL);
+}
+
+// --- Optional status/payment update via POST ---
+// This lets the admin update order_status or payment_status through this endpoint (AJAX) without full page reload.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  require_once __DIR__ . '/../classes/database.php';
+  $db = new database();
+  $con = $db->opencon();
+  $payload = [ 'success' => false ];
+  try {
+    // Accept either form-encoded or JSON
+    $raw = file_get_contents('php://input');
+    $data = $_POST;
+    if (!$data && $raw) {
+      $j = json_decode($raw, true);
+      if (is_array($j)) { $data = $j; }
+    }
+
+    if (isset($data['order_id'], $data['order_status'])) {
+      $orderId = (int)$data['order_id'];
+      $target  = trim((string)$data['order_status']);
+      if ($target === '') {
+        $payload['message'] = 'Empty status not allowed';
+      } else {
+        // Fetch current
+        $curStmt = $con->prepare("SELECT order_status FROM orders WHERE Order_ID = ? LIMIT 1");
+        $curStmt->execute([$orderId]);
+        $current = $curStmt->fetchColumn();
+        if ($current === false) {
+          $payload['message'] = 'Order not found';
+        } elseif ($current === 'Cancelled') {
+          $payload['message'] = 'Cancelled orders are locked';
+        } elseif ($current === $target) {
+          $payload['message'] = 'No change';
+        } else {
+          $upd = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
+          $upd->execute([$target, $orderId]);
+          $changed = $upd->rowCount() > 0;
+          $payload['success'] = $changed;
+          $payload['changed'] = $changed;
+          $payload['previous'] = $current;
+          $payload['current']  = $target;
+          if ($changed) {
+            // Attempt sales insert if qualifies (Delivered/Received + Paid)
+            try { $db->insertSalesIfDeliveredAndPaid($orderId, (int)($_SESSION['admin_id'] ?? 0)); } catch (Throwable $e) {}
+            $payload['message'] = 'Order status updated';
+          } else {
+            $payload['message'] = 'Update executed but no rows changed';
+          }
+        }
+      }
+    } elseif (isset($data['payment_id'], $data['payment_status'])) {
+      $paymentId = (int)$data['payment_id'];
+      $pstatus   = trim((string)$data['payment_status']);
+      if ($pstatus === '') {
+        $payload['message'] = 'Empty payment status';
+      } else {
+        $upd = $con->prepare("UPDATE payment SET payment_status = ? WHERE Payment_ID = ?");
+        $ok  = $upd->execute([$pstatus, $paymentId]);
+        if ($ok && $upd->rowCount() > 0) {
+          $payload['success'] = true;
+          $payload['changed'] = true;
+          $payload['message'] = 'Payment status updated';
+          // Get associated order to possibly insert sales
+            try {
+              $oidStmt = $con->prepare("SELECT Order_ID FROM payment WHERE Payment_ID = ? LIMIT 1");
+              $oidStmt->execute([$paymentId]);
+              $oid = $oidStmt->fetchColumn();
+              if ($oid !== false) {
+                $db->insertSalesIfDeliveredAndPaid((int)$oid, (int)($_SESSION['admin_id'] ?? 0));
+              }
+            } catch (Throwable $e) {}
+        } else {
+          $payload['message'] = 'No payment row updated';
+        }
+      }
+    } else {
+      $payload['message'] = 'No recognized update parameters provided';
+    }
+  } catch (Throwable $e) {
+    $payload['message'] = 'Exception: ' . $e->getMessage();
+  }
+  echo json_encode($payload);
+  exit;
 }
 
 $lastId = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;

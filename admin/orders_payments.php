@@ -11,19 +11,7 @@ function h($v){ return htmlspecialchars((string)$v, ENT_QUOTES,'UTF-8'); }
 
 // --- Handle inline updates (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  if (isset($_POST['order_id'], $_POST['order_status'])) {
-    try {
-      $oid = (int)$_POST['order_id'];
-      $target = trim((string)($_POST['order_status'] ?? ''));
-      // Updated logic: rely on updateOrderStatus returning true only if a change occurred
-      $changed = false;
-      try { $changed = $db->updateOrderStatus($oid, $target); } catch(Throwable $e) { /* ignore */ }
-      if ($changed) {
-        $adminId = (int)($_SESSION['admin_id'] ?? 0);
-        $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
-      }
-    } catch (Throwable $e) { /* ignore */ }
-  }
+  // Order status updates are now handled exclusively via AJAX endpoint (orders_payments_updates.php)
   if (isset($_POST['payment_id'], $_POST['payment_status'])) {
     try {
       $pid = (int)$_POST['payment_id'];
@@ -224,7 +212,7 @@ ksort($methods);
                               ? ["Pending","Preparing","Ready to deliver","On the way","Delivered","Cancelled"]
                               : ["Pending","Preparing","Ready to pick up","Received","Cancelled"];
                           ?>
-                          <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                          <select name="order_status" class="form-select form-select-sm order-status-select" data-order-id="<?= (int)$r['Order_ID'] ?>">
                             <?php foreach ($statusOptions as $st): ?>
                               <option value="<?=h($st)?>" <?=$r['order_status']===$st?'selected':''?>><?=$st?></option>
                             <?php endforeach; ?>
@@ -644,6 +632,43 @@ function toast(message, type){
   }
   poll();
 })();
+
+// --- AJAX order status updates ---
+document.addEventListener('change', async function(e){
+  const sel = e.target.closest('select.order-status-select');
+  if(!sel) return;
+  const orderId = sel.getAttribute('data-order-id');
+  const newStatus = sel.value;
+  const prev = sel.getAttribute('data-prev') || '';
+  if(newStatus === prev){ return; }
+  sel.disabled = true;
+  try {
+    const res = await fetch('ajax/orders_payments_updates.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ order_id: orderId, order_status: newStatus })
+    });
+    const j = await res.json();
+    if(!j.success){
+      toast(j.message || 'Update failed', 'danger');
+      // revert UI
+      sel.value = prev;
+    } else {
+      toast('Status updated', 'success');
+      sel.setAttribute('data-prev', newStatus);
+    }
+  } catch(err){
+    sel.value = prev;
+    toast('Network error', 'danger');
+  } finally {
+    sel.disabled = false;
+  }
+});
+
+// Initialize data-prev for existing selects
+document.querySelectorAll('select.order-status-select').forEach(s=>{
+  s.setAttribute('data-prev', s.value);
+});
 </script>
 </body>
 </html>

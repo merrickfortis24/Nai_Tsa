@@ -8,13 +8,7 @@ $db = new database();
 
 function safe($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 
-// Handle status update (simple post-back)
-if ($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['order_id'], $_POST['order_status'])) {
-        try { $db->updateOrderStatus((int)$_POST['order_id'], $_POST['order_status']); } catch (Throwable $e) { /* ignore */ }
-        $qs = $_GET; unset($qs['page']);
-        header('Location: orders.php?' . http_build_query($qs));
-        exit;
-}
+// Legacy POST status updates removed. Order status now updated via AJAX endpoint (ajax/orders_payments_updates.php).
 
 // --- Search, filters, pagination ---
 $search = $_GET['search'] ?? '';
@@ -108,9 +102,8 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
                                     <td><?= safe(date('Y-m-d H:i', strtotime($o['Order_Date']))) ?></td>
                                     <td>₱<?= number_format($o['Order_Amount'],2) ?></td>
                                     <td>
-                                        <form method="post" class="status-form mb-0">
-                                            <input type="hidden" name="order_id" value="<?= (int)$o['Order_ID'] ?>">
-                                            <select name="order_status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                            <form class="status-form mb-0" onsubmit="return false;">
+                                            <select name="order_status" class="form-select form-select-sm order-status-select" data-order-id="<?= (int)$o['Order_ID'] ?>">
                                                 <?php 
                                                     $statuses = [
                                                         'Pending'=>'secondary','Processing'=>'info','Ready to deliver'=>'info','On the way'=>'primary','Delivered'=>'success','Ready to pick up'=>'info','Received'=>'success','Cancelled'=>'danger'
@@ -119,7 +112,7 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
                                                         <option value="<?= safe($st) ?>" <?= $o['order_status']===$st?'selected':'' ?>><?= safe($st) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
-                                        </form>
+                                            </form>
                                     </td>
                                     <td>
                                         <?php if (($o['payment_status']??'')==='Paid'): ?>
@@ -201,5 +194,27 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toast(message,type){
+    let box=document.getElementById('toastBox');
+    if(!box){ box=document.createElement('div'); box.id='toastBox'; box.className='position-fixed top-0 end-0 p-3'; box.style.zIndex=1080; document.body.appendChild(box); }
+    const el=document.createElement('div'); el.className='alert alert-'+type+' py-2 px-3 mb-2 shadow-sm'; el.textContent=message; box.appendChild(el); setTimeout(()=>el.remove(),2500);
+}
+document.addEventListener('change', async (e)=>{
+    const sel=e.target.closest('select.order-status-select');
+    if(!sel) return;
+    const orderId=sel.getAttribute('data-order-id');
+    const newStatus=sel.value; const prev=sel.getAttribute('data-prev')||''; if(newStatus===prev) return;
+    sel.disabled=true;
+    try{
+        const res=await fetch('ajax/orders_payments_updates.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:orderId,order_status:newStatus})});
+        const j=await res.json();
+        if(!j.success){ toast(j.message||'Update failed','danger'); sel.value=prev; }
+        else { toast('Status updated','success'); sel.setAttribute('data-prev',newStatus);} }
+    catch(err){ sel.value=prev; toast('Network error','danger'); }
+    finally{ sel.disabled=false; }
+});
+document.querySelectorAll('select.order-status-select').forEach(s=>s.setAttribute('data-prev',s.value));
+</script>
 </body>
 </html>
