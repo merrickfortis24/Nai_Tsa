@@ -40,6 +40,25 @@ $recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
 // Fetch bestsellers (e.g., top 4 by order count)
 $bestsellers = $db->getBestsellerProducts(4); // You need to implement this method
 $all_products = $db->fetchAllProducts();
+
+// Fetch saved delivery address (customer_address table) if exists
+$savedAddress = [];
+try {
+  if (!empty($user_id)) {
+    $conTmp = $db->opencon();
+    $stmtAddr = $conTmp->prepare("SELECT Street, Barangay, City, Contact_Number FROM customer_address WHERE Customer_ID = ? LIMIT 1");
+    $stmtAddr->execute([$user_id]);
+    $rowAddr = $stmtAddr->fetch(PDO::FETCH_ASSOC);
+    if ($rowAddr) { $savedAddress = $rowAddr; }
+    // Fallback: if contact missing in address table, use customer table contact
+    if ((!isset($savedAddress['Contact_Number']) || $savedAddress['Contact_Number']==='')) {
+        $stmtC = $conTmp->prepare("SELECT Contact_Number FROM customer WHERE Customer_ID=? LIMIT 1");
+        $stmtC->execute([$user_id]);
+        $cnum = $stmtC->fetchColumn();
+        if ($cnum) { $savedAddress['Contact_Number'] = $cnum; }
+    }
+  }
+} catch (Throwable $e) { /* ignore */ }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -313,16 +332,16 @@ $all_products = $db->fetchAllProducts();
           </div>
           <div id="deliveryFields" style="display:none;">
             <div class="mb-3">
-              <input type="text" class="form-control" name="street" placeholder="Street">
+              <input type="text" class="form-control" name="street" placeholder="Street" value="<?= isset($savedAddress['Street']) ? htmlspecialchars($savedAddress['Street']) : '' ?>">
             </div>
             <div class="mb-3">
-              <input type="text" class="form-control" name="barangay" placeholder="Barangay">
+              <input type="text" class="form-control" name="barangay" placeholder="Barangay" value="<?= isset($savedAddress['Barangay']) ? htmlspecialchars($savedAddress['Barangay']) : '' ?>">
             </div>
             <div class="mb-3">
-              <input type="text" class="form-control" name="city" placeholder="City">
+              <input type="text" class="form-control" name="city" placeholder="City" value="<?= isset($savedAddress['City']) ? htmlspecialchars($savedAddress['City']) : '' ?>">
             </div>
             <div class="mb-3">
-              <input type="text" class="form-control" name="contact" placeholder="Contact Number">
+              <input type="text" class="form-control" name="contact" placeholder="Contact Number" value="<?= isset($savedAddress['Contact_Number']) ? htmlspecialchars($savedAddress['Contact_Number']) : '' ?>">
             </div>
             <div class="mb-3">
               <div class="d-flex align-items-center gap-2">
@@ -681,6 +700,37 @@ const summary = {
   latInput: document.getElementById('latInput'),
   lngInput: document.getElementById('lngInput')
 };
+
+// Saved delivery address injected from PHP (empty object if none)
+const SAVED_ADDRESS = <?php echo json_encode([
+  'street' => $savedAddress['Street'] ?? '',
+  'barangay' => $savedAddress['Barangay'] ?? '',
+  'city' => $savedAddress['City'] ?? '',
+  'contact' => $savedAddress['Contact_Number'] ?? ''
+]); ?>;
+
+function autofillDeliveryIfEmpty(){
+  if (!deliveryFields) return;
+  const streetEl = paymentForm.querySelector('input[name="street"]');
+  const barangayEl = paymentForm.querySelector('input[name="barangay"]');
+  const cityEl = paymentForm.querySelector('input[name="city"]');
+  const contactEl = paymentForm.querySelector('input[name="contact"]');
+  if (streetEl && !streetEl.value && SAVED_ADDRESS.street) streetEl.value = SAVED_ADDRESS.street;
+  if (barangayEl && !barangayEl.value && SAVED_ADDRESS.barangay) barangayEl.value = SAVED_ADDRESS.barangay;
+  if (cityEl && !cityEl.value && SAVED_ADDRESS.city) cityEl.value = SAVED_ADDRESS.city;
+  if (contactEl && !contactEl.value && SAVED_ADDRESS.contact) contactEl.value = SAVED_ADDRESS.contact;
+}
+
+// When selecting Delivery radio, auto fill blanks
+document.querySelectorAll('input[name="orderType"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const v = document.querySelector('input[name="orderType"]:checked')?.value;
+    if (v === 'Delivery') {
+      deliveryFields.style.display = '';
+      autofillDeliveryIfEmpty();
+    }
+  });
+});
 
 function moneyPhp(n){ return '₱' + (Number(n||0).toFixed(2)); }
 

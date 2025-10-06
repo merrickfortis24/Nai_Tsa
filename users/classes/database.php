@@ -70,6 +70,21 @@ class database {
         }
     }
 
+    // Ensure customer_address table exists for persisting last delivery address
+    private function ensureCustomerAddressTable(PDO $con): void {
+        try {
+            $con->exec("CREATE TABLE IF NOT EXISTS customer_address (
+                Customer_ID INT NOT NULL PRIMARY KEY,
+                Street VARCHAR(255) NULL,
+                Barangay VARCHAR(255) NULL,
+                City VARCHAR(255) NULL,
+                Contact_Number VARCHAR(50) NULL,
+                Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_ca_customer FOREIGN KEY (Customer_ID) REFERENCES customer (Customer_ID) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        } catch (Throwable $e) { /* ignore */ }
+    }
+
     // Insert order and return the new order ID
     function insertOrder($data) {
         $con = $this->opencon();
@@ -256,6 +271,7 @@ function createPasswordResetToken($email) {
         $con = $this->opencon();
         $this->ensureOrderItemAddons($con);
         $this->ensureOrderItemInstruction($con); // ensure Instruction column
+        $this->ensureCustomerAddressTable($con); // ensure address persistence table
 
     $orderType = $data['orderType'] ?? '';
     $street = $data['street'] ?? '';
@@ -416,6 +432,15 @@ function createPasswordResetToken($email) {
                 $lng ?: null
             ]);
         }
+
+        // Persist as user's default delivery address (upsert in customer_address)
+        try {
+            if ($customer_id) {
+                $up = $con->prepare("INSERT INTO customer_address (Customer_ID, Street, Barangay, City, Contact_Number) VALUES (?,?,?,?,?) 
+                    ON DUPLICATE KEY UPDATE Street=VALUES(Street), Barangay=VALUES(Barangay), City=VALUES(City), Contact_Number=VALUES(Contact_Number)");
+                $up->execute([$customer_id, $street ?: null, $barangay ?: null, $city ?: null, $contact ?: null]);
+            }
+        } catch (Throwable $e) { /* ignore */ }
     }
 
     // 3b. Delivery meta (order_delivery)
