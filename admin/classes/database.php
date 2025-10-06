@@ -579,30 +579,31 @@ class database {
                 return false;
             }
 
-            // Disallow any further changes once terminal
-            if (in_array($current, ["Cancelled","Delivered","Received"], true)) {
-                error_log("updateOrderStatus: order_id={$order_id} current terminal='{$current}' - update blocked");
+            // Block only if order already cancelled (allow Delivered/Received corrections if needed)
+            if ($current === 'Cancelled') {
+                error_log("updateOrderStatus: order_id={$order_id} current='Cancelled' - update blocked");
                 return false;
             }
 
-            // Perform update (be permissive: accept any target string).
-            // NOTE: some deployments do not have an Updated_at column on orders; avoid referencing it.
-            $sql = "UPDATE orders SET order_status = ? WHERE Order_ID = ?";
-            $stmt = $con->prepare($sql);
-            $ok = $stmt->execute([$target, $order_id]);
-            $err = $stmt->errorInfo();
-            $log = sprintf(
-                "updateOrderStatus: order_id=%d current='%s' target='%s' execute=%s rowCount=%d err=%s",
+            // No change needed
+            if ($current === $target) {
+                error_log("updateOrderStatus: order_id={$order_id} target equals current '{$current}' - no change");
+                return false;
+            }
+
+            $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
+            $execOk = $stmt->execute([$target, $order_id]);
+            $changed = $execOk && $stmt->rowCount() > 0;
+            error_log(sprintf(
+                "updateOrderStatus: order_id=%d current='%s' target='%s' exec=%s changed=%s rowCount=%d",
                 $order_id,
                 $current,
                 $target,
-                $ok ? 'true' : 'false',
-                (int)$stmt->rowCount(),
-                json_encode($err, JSON_UNESCAPED_SLASHES)
-            );
-            error_log($log);
-
-            return (bool)$ok;
+                $execOk ? 'true' : 'false',
+                $changed ? 'true' : 'false',
+                (int)$stmt->rowCount()
+            ));
+            return $changed;
         } catch (PDOException $e) {
             error_log("updateOrderStatus: order_id={$order_id} PDOException: " . $e->getMessage());
             return false;

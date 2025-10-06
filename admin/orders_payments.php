@@ -15,24 +15,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       $oid = (int)$_POST['order_id'];
       $target = trim((string)($_POST['order_status'] ?? ''));
-  // Use existing method and insert sales if the update succeeded
-  $ok = false;
-  try { $ok = $db->updateOrderStatus($oid, $target); } catch(Throwable $e) { /* ignore */ }
-  if ($ok) {
-    $adminId = (int)($_SESSION['admin_id'] ?? 0);
-    $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
-  } else {
-    // Fallback: if the primary method refused the update, run a direct UPDATE to ensure UI action persists.
-    try {
-      $con = $db->opencon();
-      $stmt = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
-      $stmtOk = $stmt->execute([$target, $oid]);
-      if ($stmtOk && $stmt->rowCount() > 0) {
+      // Updated logic: rely on updateOrderStatus returning true only if a change occurred
+      $changed = false;
+      try { $changed = $db->updateOrderStatus($oid, $target); } catch(Throwable $e) { /* ignore */ }
+      if ($changed) {
         $adminId = (int)($_SESSION['admin_id'] ?? 0);
         $db->insertSalesIfDeliveredAndPaid($oid, $adminId);
       }
-    } catch (Throwable $e) { /* ignore fallback failure */ }
-  }
     } catch (Throwable $e) { /* ignore */ }
   }
   if (isset($_POST['payment_id'], $_POST['payment_status'])) {
