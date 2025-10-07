@@ -337,7 +337,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
               </div>
             </form>
-            <div class="table-responsive border rounded" style="max-height:320px; overflow:auto;">
+            <div class="table-responsive border rounded" style="max-height:360px; overflow:auto;">
               <table class="table table-sm table-hover align-middle mb-0" id="sizesTable">
                 <thead class="table-light position-sticky top-0">
                   <tr>
@@ -346,14 +346,58 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <th>Size</th>
                     <th>Mode</th>
                     <th>Amount</th>
+                    <th>Sort</th>
                     <th>Updated</th>
-                    <th style="width:45px;">Actions</th>
+                    <th style="width:70px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td colspan="7" class="text-center text-muted small">Loading...</td></tr>
+                  <tr><td colspan="8" class="text-center text-muted small">Loading...</td></tr>
                 </tbody>
               </table>
+            </div>
+            <!-- Edit Size Modal -->
+            <div class="modal fade" id="editSizeModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-sm">
+                <form class="modal-content" id="editSizeForm">
+                  <div class="modal-header py-2">
+                    <h6 class="modal-title">Edit Size Variant</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <input type="hidden" name="mapping_id" id="editMappingId">
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">Size Code</label>
+                      <input type="text" class="form-control form-control-sm" name="size_code" id="editSizeCode" required maxlength="32">
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small mb-1">Display Name</label>
+                      <input type="text" class="form-control form-control-sm" name="display_name" id="editDisplayName" maxlength="64">
+                    </div>
+                    <div class="row g-2">
+                      <div class="col-6">
+                        <label class="form-label small mb-1">Mode</label>
+                        <select class="form-select form-select-sm" name="price_mode" id="editPriceMode" required>
+                          <option value="ABS">Absolute</option>
+                          <option value="DELTA">Delta (+)</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small mb-1">Amount</label>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="editPriceAmount" required>
+                      </div>
+                    </div>
+                    <div class="mt-2">
+                      <label class="form-label small mb-1">Sort Order (optional)</label>
+                      <input type="number" class="form-control form-control-sm" name="sort_order" id="editSortOrder" min="0">
+                    </div>
+                  </div>
+                  <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                  </div>
+                </form>
+              </div>
             </div>
             <div class="form-text small mt-2">Absolute = full price overrides base product price. Delta = add amount to base price when selected.</div>
           </div>
@@ -467,19 +511,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!data.success){ tbody.innerHTML = `<tr><td colspan="7" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
         if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="7" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
         data.rows.forEach((row,i)=>{
+          const isLegacy = !!row.LEGACY;
+          const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
           const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
           const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
           const sizeCode = row.Size_Code || row.size_code;
-          const legacyBadge = row.LEGACY ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
+          const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
+          const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${i+1}</td>
             <td>${escapeHtml(row.Product_Name||'')}</td>
             <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
             <td>${modeLabel}</td>
-            <td>₱${Number(amountVal).toFixed(2())}</td>
+            <td>₱${Number(amountVal).toFixed(2)}</td>
+            <td>${sortOrder}</td>
             <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
-            <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${row.Product_Size_Price_ID||row.ID}" title="Delete"><i class="bi bi-x"></i></button></td>`;
+            <td class="d-flex gap-1">
+              ${!isLegacy && mappingId ? `<button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn" data-map="${mappingId}" data-code="${escapeHtml(sizeCode)}" data-mode="${row.Price_Mode}" data-amount="${amountVal}" data-sort="${sortOrder}" data-display="${escapeHtml(row.Display_Name||sizeCode)}" title="Edit"><i class='bi bi-pencil'></i></button>` : ''}
+              <button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID}" title="Delete"><i class="bi bi-x"></i></button>
+            </td>`;
           tbody.appendChild(tr);
         });
       }).catch(()=>{
@@ -501,8 +552,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelector('#sizesTable').addEventListener('click', function(e){
-      if(e.target.closest('button[data-id]')){
-        const id = e.target.closest('button[data-id]').dataset.id;
+      const delBtn = e.target.closest('button[data-id]');
+      const editBtn = e.target.closest('.edit-size-btn');
+      if(delBtn){
+        const id = delBtn.dataset.id;
         Swal.fire({title:'Delete size variant?',icon:'warning',showCancelButton:true}).then(res=>{
           if(res.isConfirmed){
             fetch('ajax/delete_size.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(id)}).then(r=>r.json()).then(data=>{
@@ -510,7 +563,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Delete failed'}));
           }
         });
+      } else if(editBtn){
+        // Populate modal
+        document.getElementById('editMappingId').value = editBtn.dataset.map;
+        document.getElementById('editSizeCode').value = editBtn.dataset.code;
+        document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
+        document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
+        document.getElementById('editPriceAmount').value = editBtn.dataset.amount || '0';
+        document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
+        const m = new bootstrap.Modal(document.getElementById('editSizeModal'));
+        m.show();
       }
+    });
+
+    document.getElementById('editSizeForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const fd = new FormData(this);
+      fetch('ajax/update_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+        if(data.success){
+          bootstrap.Modal.getInstance(document.getElementById('editSizeModal')).hide();
+          loadSizes();
+        } else {
+          Swal.fire({icon:'error',title:'Update failed',text:data.message||'Error'});
+        }
+      }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to update'}));
     });
 
     function escapeHtml(str){ return str.replace(/[&<>"]+/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }

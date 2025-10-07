@@ -34,10 +34,10 @@ try {
   // Attempt to load from new mapping
   $rows = [];
   try {
-    $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, p.Product_Name FROM product_size_price psp
-                          JOIN sizes s ON psp.Size_ID = s.Size_ID
-                          JOIN product p ON psp.Product_ID = p.Product_ID
-                          ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+  $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
+              JOIN sizes s ON psp.Size_ID = s.Size_ID
+              JOIN product p ON psp.Product_ID = p.Product_ID
+              ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
   } catch (Throwable $inner) { /* ignore */ }
 
