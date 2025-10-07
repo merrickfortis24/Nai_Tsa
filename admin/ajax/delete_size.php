@@ -8,8 +8,18 @@ $id = isset($_POST['id'])? (int)$_POST['id'] : 0;
 if($id<=0){ echo json_encode(['success'=>false,'message'=>'Invalid id']); exit; }
 try{
   $con = $db->opencon();
-  $stmt = $con->prepare('DELETE FROM product_sizes WHERE ID=?');
-  $ok = $stmt->execute([$id]);
+  // Try new mapping table first
+  $ok = false;
+  try {
+    $stmt = $con->prepare('DELETE FROM product_size_price WHERE Product_Size_Price_ID=?');
+    $ok = $stmt->execute([$id]);
+  } catch (Throwable $e) { /* ignore */ }
+  if(!$ok){
+    try {
+      $stmt2 = $con->prepare('DELETE FROM product_sizes WHERE ID=?');
+      $ok = $stmt2->execute([$id]);
+    } catch (Throwable $e2) { /* ignore */ }
+  }
   echo json_encode(['success'=>$ok]);
 } catch(Throwable $e){
   error_log('delete_size.php: '.$e->getMessage());

@@ -316,12 +316,13 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               </div>
               <div class="col-md-2">
                 <label class="form-label small">Size Code</label>
-                <select class="form-select form-select-sm" name="size_code" required>
-                  <option value="16oz">16oz</option>
-                  <option value="22oz">22oz</option>
-                </select>
+                <input type="text" maxlength="32" placeholder="e.g. 16oz or small" class="form-control form-control-sm" name="size_code" required>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
+                <label class="form-label small">Display Name</label>
+                <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="display_name">
+              </div>
+              <div class="col-md-2">
                 <label class="form-label small">Price Amount</label>
                 <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" required>
               </div>
@@ -466,15 +467,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!data.success){ tbody.innerHTML = `<tr><td colspan="7" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
         if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="7" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
         data.rows.forEach((row,i)=>{
+          const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
+          const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
+          const sizeCode = row.Size_Code || row.size_code;
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${i+1}</td>
             <td>${escapeHtml(row.Product_Name||'')}</td>
-            <td><span class="badge bg-info text-dark">${escapeHtml(row.Size_Code)}</span></td>
-            <td>${row.Is_Absolute==1?'Absolute':'Delta'}</td>
-            <td>₱${Number(row.Price_Amount).toFixed(2)}</td>
+            <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}</span></td>
+            <td>${modeLabel}</td>
+            <td>₱${Number(amountVal).toFixed(2)}</td>
             <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
-            <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${row.ID}" title="Delete"><i class="bi bi-x"></i></button></td>`;
+            <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${row.Product_Size_Price_ID||row.ID}" title="Delete"><i class="bi bi-x"></i></button></td>`;
           tbody.appendChild(tr);
         });
       }).catch(()=>{
