@@ -310,7 +310,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <select class="form-select form-select-sm" name="product_id" required id="sizeProductSelect">
                   <option value="">Select...</option>
                   <?php foreach($products as $p): ?>
-                    <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
+                    <option value="<?= (int)$p['Product_ID'] ?>" data-category="<?= htmlspecialchars($p['Category_ID']) ?>">
+                      <?= htmlspecialchars($p['Product_Name']) ?>
+                    </option>
                   <?php endforeach; ?>
                 </select>
               </div>
@@ -413,6 +415,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const currentCategoryFilter = "<?= $categoryFilter ? (int)$categoryFilter : '' ?>"; // Selected category from page filter
     // Close alerts after 5 seconds
     setTimeout(() => {
         const alerts = document.querySelectorAll('.alert');
@@ -500,16 +503,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Load sizes when modal opens
+    // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
-    manageSizesModal.addEventListener('shown.bs.modal', loadSizes);
+    manageSizesModal.addEventListener('shown.bs.modal', function(){
+      // Filter product dropdown options by category if selected
+      const select = document.getElementById('sizeProductSelect');
+      Array.from(select.options).forEach(opt=>{
+        if(!opt.value) return; // skip placeholder
+        const cat = opt.getAttribute('data-category');
+        if(currentCategoryFilter){
+          opt.hidden = (cat !== currentCategoryFilter);
+        } else {
+          opt.hidden = false;
+        }
+      });
+      // Reset selection if current hidden
+      if(currentCategoryFilter){
+        const sel = select.options[select.selectedIndex];
+        if(sel && sel.hidden){ select.value = ''; }
+      }
+      loadSizes();
+    });
 
     function loadSizes(){
-      fetch('ajax/list_sizes.php').then(r=>r.json()).then(data=>{
+      const params = new URLSearchParams();
+      if(currentCategoryFilter){ params.append('category_id', currentCategoryFilter); }
+      fetch('ajax/list_sizes.php' + (params.toString()?('?'+params.toString()):''))
+      .then(r=>r.json()).then(data=>{
         const tbody = document.querySelector('#sizesTable tbody');
         tbody.innerHTML='';
-        if(!data.success){ tbody.innerHTML = `<tr><td colspan="7" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
-        if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="7" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
+  if(!data.success){ tbody.innerHTML = `<tr><td colspan="8" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
+  if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
         data.rows.forEach((row,i)=>{
           const isLegacy = !!row.LEGACY;
           const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
@@ -535,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }).catch(()=>{
         const tbody = document.querySelector('#sizesTable tbody');
-        tbody.innerHTML = '<tr><td colspan="7" class="text-danger small text-center">Error loading.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-danger small text-center">Error loading.</td></tr>';
       });
     }
 

@@ -34,10 +34,23 @@ try {
   // Attempt to load from new mapping
   $rows = [];
   try {
-  $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
+  $categoryFilter = null;
+  if(isset($_REQUEST['category_id']) && $_REQUEST['category_id'] !== '') {
+    $categoryFilter = (int)$_REQUEST['category_id'];
+  }
+  if($categoryFilter){
+    $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
+              JOIN sizes s ON psp.Size_ID = s.Size_ID
+              JOIN product p ON psp.Product_ID = p.Product_ID
+              WHERE p.Category_ID = ?
+              ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+    $stmt->execute([$categoryFilter]);
+  } else {
+    $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
               JOIN sizes s ON psp.Size_ID = s.Size_ID
               JOIN product p ON psp.Product_ID = p.Product_ID
               ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+  }
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
   } catch (Throwable $inner) { /* ignore */ }
 
