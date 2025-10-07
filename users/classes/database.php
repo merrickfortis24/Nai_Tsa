@@ -432,6 +432,8 @@ function createPasswordResetToken($email) {
                 $lng ?: null
             ]);
         }
+        
+        
 
         // Persist as user's default delivery address (upsert in customer_address)
         try {
@@ -453,8 +455,31 @@ function createPasswordResetToken($email) {
         }
     }
 
-    // (Pool model) Removed previous auto-assign logic: Delivery orders remain unassigned
-    // and visible to all drivers until one accepts (claims) it via update_status endpoint.
+    // Auto-assign logic (reverted from pool model):
+    // For Delivery orders, immediately assign a driver (simple heuristic: first active driver with least in‑progress deliveries)
+    if ($dbOrderType === 'Delivery') {
+        try {
+            // Check if Driver_ID column exists
+            $colChk = $con->query("SHOW COLUMNS FROM orders LIKE 'Driver_ID'");
+            if ($colChk && $colChk->rowCount() > 0) {
+                // Find driver with fewest active (non-delivered / non-cancelled) deliveries
+                $drvStmt = $con->query("SELECT d.Driver_ID
+                                         FROM drivers d
+                                         WHERE d.Status='Active'
+                                         ORDER BY (
+                                            SELECT COUNT(*) FROM orders o2
+                                            WHERE o2.Driver_ID = d.Driver_ID
+                                              AND o2.order_status NOT IN ('Delivered','Cancelled')
+                                         ) ASC, d.Driver_ID ASC
+                                         LIMIT 1");
+                $chosen = $drvStmt->fetchColumn();
+                if ($chosen) {
+                    $as = $con->prepare("UPDATE orders SET Driver_ID=? WHERE Order_ID=?");
+                    $as->execute([$chosen, $order_id]);
+                }
+            }
+        } catch (Throwable $e) { /* swallow auto-assign failures */ }
+    }
 
     // 3c. Update customer contact number if supplied and empty in profile
     if ($contact) {

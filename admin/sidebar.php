@@ -32,7 +32,7 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments) || !isset($blocke
             <?php $isCombined = ($page==='orders_payments'); ?>
             <a class="nav-link<?= $isCombined ? ' active' : '' ?>" href="orders_payments.php">
                 <i class="bi bi-stack"></i>
-                <span>Orders & Payments</span>
+                <span>Payments & Orders</span>
                 <?php if (!empty($pendingProcessingCount)) : ?>
                     <span class="badge rounded-pill bg-warning text-dark float-end ms-1"><?= (int)$pendingProcessingCount ?></span>
                 <?php endif; ?>
