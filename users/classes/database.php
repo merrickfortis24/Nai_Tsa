@@ -114,13 +114,30 @@ class database {
     // Insert order item
     function insertOrderItem($data) {
         $con = $this->opencon();
-        $stmt = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-        return $stmt->execute([
-            $data['order_id'],
-            $data['product_id'],
-            $data['quantity'],
-            $data['price']
-        ]);
+        $hasSizeCols = false;
+        try {
+            $chk = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Code'");
+            $hasSizeCols = $chk && $chk->rowCount()>0;
+        } catch (Throwable $e) {}
+        if ($hasSizeCols) {
+            $stmt = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Size_Code, Size_Price) VALUES (?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([
+                $data['order_id'],
+                $data['product_id'],
+                $data['quantity'],
+                $data['price'],
+                $data['size_code'] ?? null,
+                $data['size_price'] ?? $data['price']
+            ]);
+        } else {
+            $stmt = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
+            return $stmt->execute([
+                $data['order_id'],
+                $data['product_id'],
+                $data['quantity'],
+                $data['price']
+            ]);
+        }
     }
 
     // Fetch product by name

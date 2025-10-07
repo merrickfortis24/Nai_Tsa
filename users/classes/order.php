@@ -31,11 +31,17 @@ class Order {
         foreach ($data['cart'] as $item) {
             $product_id = $this->getProductIdByName($item['name']);
             if ($product_id) {
+                $basePrice = $this->getProductPrice($product_id);
+                $sizeCode = isset($item['size']) ? $item['size'] : '16oz';
+                $sizeAdj = $this->resolveSizeUpcharge($product_id, $sizeCode, $basePrice);
+                $finalPrice = $basePrice + $sizeAdj; // price per unit for chosen size
                 $this->insertOrderItem([
-                    'order_id' => $order_id,
+                    'order_id'   => $order_id,
                     'product_id' => $product_id,
-                    'quantity' => $item['qty'],
-                    'price' => $this->getProductPrice($product_id)
+                    'quantity'   => $item['qty'],
+                    'price'      => $finalPrice,
+                    'size_code'  => $sizeCode,
+                    'size_price' => $finalPrice
                 ]);
             }
         }
@@ -57,10 +63,36 @@ class Order {
         foreach ($cart as $item) {
             $product_id = $this->getProductIdByName($item['name']);
             if ($product_id) {
-                $total += $this->getProductPrice($product_id) * $item['qty'];
+                $base = $this->getProductPrice($product_id);
+                $sizeCode = isset($item['size']) ? $item['size'] : '16oz';
+                $adj = $this->resolveSizeUpcharge($product_id, $sizeCode, $base);
+                $total += ($base + $adj) * $item['qty'];
             }
         }
         return $total;
+    }
+
+    // Determine size upcharge: looks for product_size override else simple heuristic (22oz +10 if not configured)
+    private function resolveSizeUpcharge($product_id, $sizeCode, $basePrice) {
+        $sizeCode = strtolower($sizeCode);
+        try {
+            $stmt = $this->con->prepare("SELECT Size_Code, Price_Amount FROM product_sizes WHERE Product_ID=? LIMIT 10");
+            $stmt->execute([$product_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows) {
+                foreach ($rows as $r) {
+                    if (strtolower($r['Size_Code']) === $sizeCode) {
+                        $amt = (float)$r['Price_Amount'];
+                        // If price record is absolute (>= base) treat as absolute; else treat as upcharge delta
+                        if ($amt >= $basePrice) return $amt - $basePrice; // convert absolute to delta
+                        return $amt; // already a delta
+                    }
+                }
+            }
+        } catch (Throwable $e) { /* ignore */ }
+        // fallback heuristic
+        if ($sizeCode === '22oz') return 10.0; // simple default
+        return 0.0;
     }
 
     private function getProductIdByName($name) {
@@ -109,13 +141,31 @@ class Order {
     }
 
     private function insertOrderItem($data) {
-        $stmt = $this->con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-        $stmt->execute([
-            $data['order_id'],
-            $data['product_id'],
-            $data['quantity'],
-            $data['price']
-        ]);
+        // Attempt to include size columns if they exist
+        $hasSizeCols = false;
+        try {
+            $res = $this->con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Code'");
+            $hasSizeCols = $res && $res->rowCount()>0;
+        } catch (Throwable $e) { }
+        if ($hasSizeCols) {
+            $stmt = $this->con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Size_Code, Size_Price) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $data['order_id'],
+                $data['product_id'],
+                $data['quantity'],
+                $data['price'],
+                $data['size_code'] ?? null,
+                $data['size_price'] ?? $data['price']
+            ]);
+        } else {
+            $stmt = $this->con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
+            $stmt->execute([
+                $data['order_id'],
+                $data['product_id'],
+                $data['quantity'],
+                $data['price']
+            ]);
+        }
     }
 
     private function insertPayment($data) {

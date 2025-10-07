@@ -599,22 +599,23 @@ function renderCartItems() {
     return;
   }
   cartItemsList.innerHTML = cart.map((item, idx) => {
+    const unit = item.unitPrice != null ? Number(item.unitPrice) : 0;
+    let addonsTotal = 0;
     const addonsHtml = (item.addons && item.addons.length)
-      ? `<div class="ms-2 small text-muted">${item.addons.map(a=>`${a.name} (+₱${money(a.price)})`).join(', ')}</div>`
+      ? `<div class=\"ms-2 small text-muted\">${item.addons.map(a=>{ addonsTotal += Number(a.price||0)*Number(a.qty||1); return `${a.name} x${a.qty} (+₱${money(a.price)})`; }).join(', ')}</div>`
       : '';
+    const line = (unit * item.qty) + addonsTotal;
     return `
-    <div class="d-flex align-items-center justify-content-between border-bottom py-2">
+    <div class=\"d-flex align-items-center justify-content-between border-bottom py-2\">
       <div>
-        <strong>${item.name}</strong>
+        <strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark ms-1'>${item.size}</span>`:''}
         ${addonsHtml}
+        ${item.instruction ? `<div class=\"small fst-italic text-muted ms-2\">${item.instruction}</div>`:''}
       </div>
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-secondary">${item.qty}</span>
-        <button class="remove-cart-item" data-idx="${idx}" title="Remove">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5.5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6zm3 .5a.5.5 0 0 1 .5-.5.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6zm-7-1A1.5 1.5 0 0 1 5.5 4h5A1.5 1.5 0 0 1 12 5.5V6h1.5A.5.5 0 0 1 14 6.5v.5a.5.5 0 0 1-.5.5H2.5a.5.5 0 0 1-.5-.5v-.5A.5.5 0 0 1 2.5 6H4v-.5zM5.5 5a.5.5 0 0 0-.5.5V6h6v-.5a.5.5 0 0 0-.5-.5h-5z"/>
-          </svg>
-        </button>
+      <div class=\"d-flex flex-column align-items-end gap-1\">
+        <span class=\"badge bg-secondary\">x${item.qty}</span>
+        <div class=\"fw-semibold\">₱${money(line)}</div>
+        <button class=\"remove-cart-item btn btn-sm btn-outline-danger mt-1\" data-idx=\"${idx}\" title=\"Remove\">&times;</button>
       </div>
     </div>`;
   }).join('');
@@ -775,16 +776,26 @@ function computeDeliveryFee(distanceKm){
 function updateOrderSummary(){
   const subtotal = computeCartSubtotal();
   const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
-  let fee = 0;
-  let distance = null;
-  if (orderType === 'Delivery'){
-    const lat = parseFloat(summary.latInput?.value);
-    const lng = parseFloat(summary.lngInput?.value);
-    if (isFinite(lat) && isFinite(lng)){
-      distance = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
-      fee = computeDeliveryFee(distance);
-      if(summary.distanceInfo){ summary.distanceInfo.textContent = `Distance: ${distance.toFixed(2)} km • Fee: ${moneyPhp(fee)}`; }
-    } else {
+  let s = 0;
+  const allProducts = <?php echo json_encode($all_products); ?> || [];
+  cart.forEach(i=>{
+    const prod = allProducts.find(p=>p.Product_Name===i.name);
+    const unit = (i.unitPrice != null) ? Number(i.unitPrice) : Number(prod?.Price_Amount||0);
+    let line = unit * (i.qty||1);
+    if (Array.isArray(i.addons)) {
+      i.addons.forEach(a=>{ line += Number(a.price||0) * Number(a.qty||1); });
+    }
+    s += line;
+  });
+          return s;
+        }
+        if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
+      } else {
+        if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+      }
+      if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
+      if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
+      if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
       if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
     }
   } else {
@@ -1216,6 +1227,20 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       }catch(err){ /* ignore; server will fallback */ }
     }
   }
+  // Build payload including size information per cart item
+  const payload = {
+    orderType,
+    paymentMethod,
+    street, barangay, city, contact,
+    lat, lng,
+    cart: cart.map(it=>({
+      name: it.name,
+      qty: it.qty,
+      addons: it.addons||[],
+      instruction: it.instruction||'',
+      size: it.size || '16oz'
+    }))
+  };
   // If GCash via PayMongo: create source first, then submit order only after returning success (simplified: we create order immediately as pending then redirect)
   if (paymentMethod === 'GCash') {
     // Calculate total locally (reuse summary) to send to PayMongo
@@ -1806,20 +1831,21 @@ function renderOrdersPagination(totalPages){
     pagEl.id = 'ordersPagination';
     pagEl.className = 'mt-2';
     listEl.after(pagEl);
-  }
+    list.innerHTML = cart.map((item, idx) => {
   if(totalPages <= 1){ pagEl.innerHTML=''; return; }
   let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0">';
+      const unit = item.unitPrice != null ? Number(item.unitPrice) : base;
   const disabledPrev = ORDERS_PAGE === 1 ? ' disabled' : '';
   html += `<li class="page-item${disabledPrev}"><a class="page-link" data-page="prev" href="#">Previous</a></li>`;
   for(let i=1;i<=totalPages;i++){
     const active = i===ORDERS_PAGE ? ' active' : '';
-    html += `<li class="page-item${active}"><a class="page-link" data-page="${i}" href="#">${i}</a></li>`;
-  }
-  const disabledNext = ORDERS_PAGE === totalPages ? ' disabled' : '';
+      return `<li class="list-group-item d-flex align-items-start justify-content-between">
+        <div>
+          <div><strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark'>${item.size}</span>`:''} <span class="badge bg-secondary">x${item.qty}</span></div>
   html += `<li class="page-item${disabledNext}"><a class="page-link" data-page="next" href="#">Next</a></li>`;
   html += '</ul></nav>';
   pagEl.innerHTML = html;
-  pagEl.querySelectorAll('a.page-link').forEach(a=>{
+        <div class="text-end">₱${(unit * item.qty).toFixed(2)}<br>
     a.addEventListener('click', e=>{
       e.preventDefault();
       const val = a.getAttribute('data-page');
@@ -2266,6 +2292,11 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
 function buildProductModalHtml(product, addons){
  
   const basePrice = Number(product.Price_Amount||0);
+  // Provide naive size upcharge defaults if not supplied by backend (could be replaced by AJAX later)
+  const sizeOptions = [
+    { code: '16oz', label: '16oz', up: 0 },
+    { code: '22oz', label: '22oz (+₱10)', up: 10 }
+  ];
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
     <label class="addon-card d-block py-1 px-2 border rounded">
@@ -2301,6 +2332,16 @@ function buildProductModalHtml(product, addons){
         </div>
       </div>
       <div>
+        <div class="mb-3">
+          <h5 class="mb-2">Size</h5>
+          <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
+            ${sizeOptions.map((s,i)=>`
+            <label class="btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}" style="position:relative;">
+              <input type="radio" name="pdSize" class="d-none" value="${s.code}" data-upcharge="${s.up}" ${i===0?'checked':''}>
+              ${s.label}
+            </label>`).join('')}
+          </div>
+        </div>
         <div class="addons-section">
           <h5 class="mb-2">Add-ons</h5>
           <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
@@ -2327,9 +2368,15 @@ function buildProductModalHtml(product, addons){
 }
 
 // Compute and display the modal total based on base price, selected add-ons, and quantity
+function getSelectedSizeUpcharge(){
+  const r = document.querySelector('input[name="pdSize"]:checked');
+  return r ? Number(r.getAttribute('data-upcharge'))||0 : 0;
+}
+
 function updateProductModalTotal(basePrice){
   const qtyEl = document.getElementById('pdQty');
   const productQty = Math.max(1, Number(qtyEl?.value || 1));
+  const sizeUp = getSelectedSizeUpcharge();
   let addonsTotal = 0;
   document.querySelectorAll('#productAddonsList .addon-choice:checked').forEach(chk=>{
     const wrap = chk.closest('.addon-card')?.querySelector('.addon-qty-wrap');
@@ -2338,7 +2385,7 @@ function updateProductModalTotal(basePrice){
     const price = Number(chk.getAttribute('data-price'))||0;
     addonsTotal += price * aQty; // independent of productQty
   });
-  const baseSubtotal = (Number(basePrice||0) * productQty);
+  const baseSubtotal = ((Number(basePrice||0)+sizeUp) * productQty);
   // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
   let shippingFeeDisplay = '—';
   try {
@@ -2380,6 +2427,10 @@ async function openProductDetailsWithAddons(product){
   minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
   plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
   qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  // Bind size change
+  document.getElementById('productDetailsContent').addEventListener('change', e=>{
+    if (e.target.name === 'pdSize') updateProductModalTotal(basePrice);
+  });
   updateProductModalTotal(basePrice);
 
   // Add to Cart handler
@@ -2392,6 +2443,10 @@ async function openProductDetailsWithAddons(product){
       });
     const productQty = Math.max(1, Number(document.getElementById('pdQty').value||1));
     const instruction = document.getElementById('pdInstructions')?.value?.trim() || '';
+    const sizeRadio = document.querySelector('input[name="pdSize"]:checked');
+    const sizeCode = sizeRadio ? sizeRadio.value : '16oz';
+    const sizeUp = sizeRadio ? Number(sizeRadio.getAttribute('data-upcharge'))||0 : 0;
+    const effectiveUnitPrice = Number(product.Price_Amount||0) + sizeUp;
     const found = cart.find(i => i.name === product.Product_Name);
     if (found) {
       found.qty += productQty; // only product quantity increments existing entry
@@ -2404,8 +2459,15 @@ async function openProductDetailsWithAddons(product){
       if (instruction) {
         if (!found.instruction) found.instruction = instruction; else if (!found.instruction.includes(instruction)) found.instruction += ' | ' + instruction;
       }
+      // If size differs, we create a new entry instead (avoid mixing sizes)
+      if (found.size && found.size !== sizeCode) {
+      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
+      } else {
+        found.size = sizeCode;
+        found.unitPrice = effectiveUnitPrice;
+      }
     } else {
-      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction });
+      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
     }
     updateCartBadge();
     renderCartItems();
