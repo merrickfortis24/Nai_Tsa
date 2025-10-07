@@ -96,9 +96,6 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
                   <i class="bi bi-plus-circle me-1"></i> Add Product
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
-                  <i class="bi bi-cash-coin me-1"></i> Add Price
-                </button>
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
@@ -116,7 +113,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <th>Image</th>
                     <th>Product Name</th>
                     <th>Description</th>
-                    <th><strong>Allergens</strong></th>
+                    <!-- Allergens column removed -->
                     <th>Created At</th>
                     <th>Updated At</th>
                     <th>Admin Name</th>
@@ -137,7 +134,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     </td>
                     <td><?= htmlspecialchars($product['Product_Name']) ?></td>
                     <td><?= htmlspecialchars($product['Product_desc']) ?></td>
-                    <td><?= htmlspecialchars($product['Product_allergens'] ?? '') ?></td>
+                    <!-- Allergens data removed -->
                     <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
                     <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
                     <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
@@ -239,21 +236,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="mb-3">
-              <label for="Product_Allergens" class="form-label">Allergen Content</label>
-              <select class="form-select" id="Product_Allergens" name="Product_Allergens[]" multiple>
-                <option value="Milk">Milk</option>
-                <option value="Eggs">Eggs</option>
-                <option value="Peanuts">Peanuts</option>
-                <option value="Soy">Soy</option>
-                <option value="Wheat">Wheat</option>
-                <option value="Tree nuts">Tree nuts</option>
-                <option value="Fish">Fish</option>
-                <option value="Shellfish">Shellfish</option>
-                <!-- Add more as needed -->
-              </select>
-              <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</div>
-            </div>
+            <!-- Allergens input removed -->
 
             <input type="hidden" id="product_id" name="product_id" value="">
           </div>
@@ -265,35 +248,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
-    <!-- Add Price Modal -->
-    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <form class="modal-content" id="addPriceForm" action="ajax/add_price.php" method="POST">
-          <div class="modal-header">
-            <h5 class="modal-title" id="addPriceModalLabel">Add Price</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="price_amount" class="form-label">Price Amount</label>
-              <input type="text" pattern="^\d+(\.\d{1,2})?$" class="form-control" id="price_amount" name="price_amount" required>
-            </div>
-            <div class="mb-3">
-              <label for="effective_from" class="form-label">Effective From</label>
-              <input type="date" class="form-control" id="effective_from" name="effective_from" required>
-            </div>
-            <div class="mb-3">
-              <label for="effective_to" class="form-label">Effective To</label>
-              <input type="date" class="form-control" id="effective_to" name="effective_to">
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Add Price</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Legacy Add Price Modal removed -->
 
     <!-- Manage Sizes Modal -->
     <div class="modal fade" id="manageSizesModal" tabindex="-1" aria-labelledby="manageSizesModalLabel" aria-hidden="true">
@@ -304,6 +259,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="alert alert-info small mb-3">
+              <strong>How pricing works now:</strong> Base product price + (Delta) or overridden by (Absolute) size price. If a product has no size variants, only its base price is used. To add or change pricing, add a size variant here. The old standalone "Add Price" feature was removed for clarity.
+            </div>
             <form id="addSizeForm" class="row g-3 align-items-end mb-3">
               <div class="col-md-4">
                 <label class="form-label small">Product</label>
@@ -465,43 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.getElementById('addPriceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var form = this;
-        var formData = new FormData(form);
-
-        fetch('ajax/add_price.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Price Added',
-                    text: data.message
-                }).then(() => {
-                    var modal = bootstrap.Modal.getInstance(document.getElementById('addPriceModal'));
-                    modal.hide();
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message
-                });
-            }
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'An error occurred while adding the price.'
-            });
-        });
-    });
+  // Removed legacy add price form handler
 
     // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
