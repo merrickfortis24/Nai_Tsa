@@ -815,6 +815,29 @@ function saveCategory($category_name, $category_id = null) {
     }
 }
 
+    /**
+     * Size-aware variant of fetchOrderItemsWithAddons (non-breaking):
+     * Returns order items including Size_Code / Size_Price columns if they exist.
+     */
+    function fetchOrderItemsWithAddonsSizes($order_id) {
+        $con = $this->opencon();
+        $extraCols = [];
+        try { $c1 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Code'"); if ($c1 && $c1->fetch()) { $extraCols[] = 'oi.Size_Code'; } } catch (Throwable $e) {}
+        try { $c2 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Price'"); if ($c2 && $c2->fetch()) { $extraCols[] = 'oi.Size_Price'; } } catch (Throwable $e) {}
+        $extraSql = $extraCols ? (', '.implode(', ',$extraCols)) : '';
+        $sql = "SELECT oi.Order_Item_ID, oi.Order_ID, oi.Product_ID, oi.Quantity, oi.Price, oi.Instruction".$extraSql.", p.Product_Name, p.Product_Image FROM order_item oi JOIN product p ON oi.Product_ID = p.Product_ID WHERE oi.Order_ID = ?";
+        $stmt = $con->prepare($sql);
+        $stmt->execute([$order_id]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if(!$items) return [];
+        $by = [];
+        foreach ($items as $k=>$row) { $items[$k]['addons'] = []; $by[$row['Order_Item_ID']] = &$items[$k]; }
+        $stmtA = $con->prepare("SELECT Order_Item_ID, Addon_Name, Addon_Price, Quantity FROM order_item_addons WHERE Order_ID = ? ORDER BY Order_Item_ID, Addon_Name");
+        $stmtA->execute([$order_id]);
+        while ($ad = $stmtA->fetch(PDO::FETCH_ASSOC)) { $oid = $ad['Order_Item_ID']; if(isset($by[$oid])) { $by[$oid]['addons'][] = $ad; } }
+        return $items;
+    }
+
 public function getProductsCount($category_id = null) {
     $con = $this->opencon();
     if ($category_id) {

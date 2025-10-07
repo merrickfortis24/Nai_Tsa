@@ -39,9 +39,15 @@ try {
     exit;
   }
 
-  // fetch items with addons
+  // fetch items with addons (size-aware if method exists)
   $items = [];
-  try { $items = $db->fetchOrderItemsWithAddons($orderId); } catch(Throwable $e) { $items = []; }
+  try {
+    if (method_exists($db, 'fetchOrderItemsWithAddonsSizes')) {
+      $items = $db->fetchOrderItemsWithAddonsSizes($orderId);
+    } else {
+      $items = $db->fetchOrderItemsWithAddons($orderId);
+    }
+  } catch(Throwable $e) { $items = []; }
 
   // Helper esc
   function h_local($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
@@ -128,15 +134,23 @@ try {
                   </div>
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start">
-                      <span class="fw-semibold me-2" style="max-width:60%;"><?=h_local($it['Product_Name'] ?? 'Item')?></span>
+                      <span class="fw-semibold me-2" style="max-width:60%;">
+                        <?=h_local($it['Product_Name'] ?? 'Item')?>
+                        <?php if(!empty($it['Size_Code'])): ?>
+                          <span class="badge bg-info text-dark align-middle ms-1" title="Size variant"><?=h_local(strtoupper($it['Size_Code']))?></span>
+                        <?php endif; ?>
+                      </span>
                       <div class="text-end small">
                         <div><span class="text-muted">Item:</span> ₱<?=number_format($line,2)?></div>
+                        <?php if(isset($it['Size_Price']) && $it['Size_Price'] !== null && $it['Size_Price']!==''): $szp=(float)$it['Size_Price']; if($szp>0): ?>
+                          <div><span class="text-muted">Size Adj:</span> ₱<?=number_format($szp * $qty,2)?></div>
+                        <?php endif; endif; ?>
                         <?php if($addonTotal>0): ?><div><span class="text-muted">Add-ons:</span> ₱<?=number_format($addonTotal,2)?></div><?php endif; ?>
                         <div class="fw-semibold border-top mt-1 pt-1">₱<?=number_format($lineWithAddons,2)?></div>
                       </div>
                     </div>
                     <?php if(isset($it['Instruction']) && trim((string)$it['Instruction']) !== ''): ?><div class="small fst-italic mt-1"><span class="text-muted">Instruction:</span> <?=h_local($it['Instruction'])?></div><?php endif; ?>
-                    <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?></small>
+                    <small class="text-muted d-block">Qty: <?=$qty?> @ ₱<?=number_format($price,2)?><?php if(!empty($it['Size_Code'])):?> (<?=h_local(strtoupper($it['Size_Code']))?>)<?php endif; ?></small>
                     <?php if($addonTotal>0): ?><div class="mt-1 small text-muted"><?php foreach($it['addons'] as $ad): $adLine=(float)$ad['Addon_Price'] * (int)$ad['Quantity'] * max(1,$qty); ?><div>• <?=h_local($ad['Addon_Name'])?> x <?= (int)$ad['Quantity'] ?> = ₱<?=number_format($adLine,2)?></div><?php endforeach; ?></div><?php endif; ?>
                   </div>
                 </div>

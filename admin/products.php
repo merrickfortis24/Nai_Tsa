@@ -99,6 +99,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
                   <i class="bi bi-cash-coin me-1"></i> Add Price
                 </button>
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
+                  <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
+                </button>
               </div>
           </div>
           <div class="card-body">
@@ -292,6 +295,74 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
+    <!-- Manage Sizes Modal -->
+    <div class="modal fade" id="manageSizesModal" tabindex="-1" aria-labelledby="manageSizesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="manageSizesModalLabel">Product Size Variants</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addSizeForm" class="row g-3 align-items-end mb-3">
+              <div class="col-md-4">
+                <label class="form-label small">Product</label>
+                <select class="form-select form-select-sm" name="product_id" required id="sizeProductSelect">
+                  <option value="">Select...</option>
+                  <?php foreach($products as $p): ?>
+                    <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Size Code</label>
+                <select class="form-select form-select-sm" name="size_code" required>
+                  <option value="16oz">16oz</option>
+                  <option value="22oz">22oz</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Price Amount</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Mode</label>
+                <select class="form-select form-select-sm" name="is_absolute" required>
+                  <option value="1">Absolute</option>
+                  <option value="0" selected>Delta (+)</option>
+                </select>
+              </div>
+              <div class="col-md-1 d-grid">
+                <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
+              </div>
+            </form>
+            <div class="table-responsive border rounded" style="max-height:320px; overflow:auto;">
+              <table class="table table-sm table-hover align-middle mb-0" id="sizesTable">
+                <thead class="table-light position-sticky top-0">
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Product</th>
+                    <th>Size</th>
+                    <th>Mode</th>
+                    <th>Amount</th>
+                    <th>Updated</th>
+                    <th style="width:45px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="7" class="text-center text-muted small">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="form-text small mt-2">Absolute = full price overrides base product price. Delta = add amount to base price when selected.</div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -383,6 +454,61 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Load sizes when modal opens
+    const manageSizesModal = document.getElementById('manageSizesModal');
+    manageSizesModal.addEventListener('shown.bs.modal', loadSizes);
+
+    function loadSizes(){
+      fetch('ajax/list_sizes.php').then(r=>r.json()).then(data=>{
+        const tbody = document.querySelector('#sizesTable tbody');
+        tbody.innerHTML='';
+        if(!data.success){ tbody.innerHTML = `<tr><td colspan="7" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
+        if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="7" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
+        data.rows.forEach((row,i)=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${i+1}</td>
+            <td>${escapeHtml(row.Product_Name||'')}</td>
+            <td><span class="badge bg-info text-dark">${escapeHtml(row.Size_Code)}</span></td>
+            <td>${row.Is_Absolute==1?'Absolute':'Delta'}</td>
+            <td>₱${Number(row.Price_Amount).toFixed(2)}</td>
+            <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
+            <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${row.ID}" title="Delete"><i class="bi bi-x"></i></button></td>`;
+          tbody.appendChild(tr);
+        });
+      }).catch(()=>{
+        const tbody = document.querySelector('#sizesTable tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-danger small text-center">Error loading.</td></tr>';
+      });
+    }
+
+    document.getElementById('addSizeForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const fd = new FormData(this);
+      fetch('ajax/add_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+        if(data.success){
+          loadSizes(); this.reset();
+        } else {
+          Swal.fire({icon:'error',title:'Size not added',text:data.message||'Failed'});
+        }
+      }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to add size.'}));
+    });
+
+    document.querySelector('#sizesTable').addEventListener('click', function(e){
+      if(e.target.closest('button[data-id]')){
+        const id = e.target.closest('button[data-id]').dataset.id;
+        Swal.fire({title:'Delete size variant?',icon:'warning',showCancelButton:true}).then(res=>{
+          if(res.isConfirmed){
+            fetch('ajax/delete_size.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(id)}).then(r=>r.json()).then(data=>{
+              if(data.success){ loadSizes(); } else { Swal.fire({icon:'error',title:'Failed',text:data.message||'Could not delete'}); }
+            }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Delete failed'}));
+          }
+        });
+      }
+    });
+
+    function escapeHtml(str){ return str.replace(/[&<>"]+/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 
     document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
