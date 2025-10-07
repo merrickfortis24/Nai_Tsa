@@ -9,6 +9,7 @@ $size_code_raw = isset($_POST['size_code'])? trim($_POST['size_code']) : '';
 $display_name  = isset($_POST['display_name'])? trim($_POST['display_name']) : '';
 $price_amount  = isset($_POST['price_amount'])? (float)$_POST['price_amount'] : 0.0;
 $is_absolute   = isset($_POST['is_absolute'])? (int)$_POST['is_absolute'] : 0; // 1 = Absolute, 0 = Delta
+$sort_order    = isset($_POST['sort_order'])? (int)$_POST['sort_order'] : null;
 
 if($product_id<=0 || $size_code_raw===''){ echo json_encode(['success'=>false,'message'=>'Missing product or size']); exit; }
 
@@ -45,8 +46,21 @@ try {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
   // Ensure size in master
-  $stmt = $con->prepare("INSERT INTO sizes (Size_Code, Display_Name) VALUES (?,?) ON DUPLICATE KEY UPDATE Display_Name=VALUES(Display_Name)");
-  $stmt->execute([$norm_code,$display_name]);
+  // If sort_order provided ensure uniqueness per size if not used; we keep simple incremental otherwise
+  if($sort_order !== null){
+    // If another size already has this Sort_Order and code differs, bump provided +1 until free
+    $probe = $con->prepare("SELECT 1 FROM sizes WHERE Sort_Order=? AND Size_Code<>? LIMIT 1");
+    while(true){
+      $probe->execute([$sort_order,$norm_code]);
+      if(!$probe->fetch()) break; // free slot
+      $sort_order++;
+    }
+    $stmt = $con->prepare("INSERT INTO sizes (Size_Code, Display_Name, Sort_Order) VALUES (?,?,?) ON DUPLICATE KEY UPDATE Display_Name=VALUES(Display_Name), Sort_Order=VALUES(Sort_Order)");
+    $stmt->execute([$norm_code,$display_name,$sort_order]);
+  } else {
+    $stmt = $con->prepare("INSERT INTO sizes (Size_Code, Display_Name) VALUES (?,?) ON DUPLICATE KEY UPDATE Display_Name=VALUES(Display_Name)");
+    $stmt->execute([$norm_code,$display_name]);
+  }
   $sizeId = (int)$con->lastInsertId();
   if($sizeId === 0){
     // fetch existing id

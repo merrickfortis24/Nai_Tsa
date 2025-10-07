@@ -72,26 +72,37 @@ class Order {
         return $total;
     }
 
-    // Determine size upcharge: looks for product_size override else simple heuristic (22oz +10 if not configured)
+    // Determine size upcharge using new schema (sizes + product_size_price). Falls back to legacy product_sizes.
     private function resolveSizeUpcharge($product_id, $sizeCode, $basePrice) {
-        $sizeCode = strtolower($sizeCode);
+        $sizeCodeNorm = strtolower($sizeCode);
+        // First: new mapping tables
         try {
-            $stmt = $this->con->prepare("SELECT Size_Code, Price_Amount FROM product_sizes WHERE Product_ID=? LIMIT 10");
+            $q = $this->con->prepare("SELECT psp.Price_Mode, psp.Price_Value FROM product_size_price psp
+                JOIN sizes s ON psp.Size_ID = s.Size_ID
+                WHERE psp.Product_ID=? AND s.Size_Code=? LIMIT 1");
+            $q->execute([$product_id,$sizeCodeNorm]);
+            if($row = $q->fetch(PDO::FETCH_ASSOC)){
+                $mode = $row['Price_Mode'];
+                $val  = (float)$row['Price_Value'];
+                if($mode === 'ABS') return max(0.0, $val - $basePrice); // convert to delta
+                return $val; // DELTA
+            }
+        } catch (Throwable $e) { /* ignore and fallback */ }
+
+        // Legacy fallback
+        try {
+            $stmt = $this->con->prepare("SELECT Size_Code, Price_Amount, Is_Absolute FROM product_sizes WHERE Product_ID=?");
             $stmt->execute([$product_id]);
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            if ($rows) {
-                foreach ($rows as $r) {
-                    if (strtolower($r['Size_Code']) === $sizeCode) {
-                        $amt = (float)$r['Price_Amount'];
-                        // If price record is absolute (>= base) treat as absolute; else treat as upcharge delta
-                        if ($amt >= $basePrice) return $amt - $basePrice; // convert absolute to delta
-                        return $amt; // already a delta
-                    }
+            while($r = $stmt->fetch(PDO::FETCH_ASSOC)){
+                if(strtolower($r['Size_Code']) === $sizeCodeNorm){
+                    $amt = (float)$r['Price_Amount'];
+                    $isAbs = isset($r['Is_Absolute']) ? ((int)$r['Is_Absolute'] === 1) : ($amt >= $basePrice);
+                    return $isAbs ? max(0,$amt - $basePrice) : $amt;
                 }
             }
-        } catch (Throwable $e) { /* ignore */ }
-        // fallback heuristic
-        if ($sizeCode === '22oz') return 10.0; // simple default
+        } catch (Throwable $e2) { /* ignore */ }
+
+        // No variant found: no upcharge (do not auto +10 anymore since new system explicit)
         return 0.0;
     }
 

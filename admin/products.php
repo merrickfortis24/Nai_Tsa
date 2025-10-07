@@ -470,13 +470,14 @@ document.addEventListener('DOMContentLoaded', function() {
           const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
           const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
           const sizeCode = row.Size_Code || row.size_code;
+          const legacyBadge = row.LEGACY ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${i+1}</td>
             <td>${escapeHtml(row.Product_Name||'')}</td>
-            <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}</span></td>
+            <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
             <td>${modeLabel}</td>
-            <td>₱${Number(amountVal).toFixed(2)}</td>
+            <td>₱${Number(amountVal).toFixed(2())}</td>
             <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
             <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${row.Product_Size_Price_ID||row.ID}" title="Delete"><i class="bi bi-x"></i></button></td>`;
           tbody.appendChild(tr);
