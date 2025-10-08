@@ -64,8 +64,8 @@ try {
   try {
     if($productFilter){
       // Filter by specific product (optimized for primary size selection modal)
-      $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
+  $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+        (p.Primary_Size_ID = psp.Size_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID
@@ -73,8 +73,8 @@ try {
                 ORDER BY psp.Is_Anchor DESC, s.Sort_Order, s.Display_Name");
       $stmt->execute([$productFilter]);
     } elseif($categoryFilter){
-      $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
+  $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+        (p.Primary_Size_ID = psp.Size_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID
@@ -82,8 +82,8 @@ try {
                 ORDER BY p.Product_Name, psp.Is_Anchor DESC, s.Sort_Order, s.Display_Name");
       $stmt->execute([$categoryFilter]);
     } else {
-      $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
+  $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+        (p.Primary_Size_ID = psp.Size_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID

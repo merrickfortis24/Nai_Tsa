@@ -744,11 +744,12 @@ function getProductPriceByName(name){
 }
 
 function computeCartSubtotal(){
-  // Base product total plus independent addon totals (addon qty not multiplied by product qty)
+  // Sum using size-specific unitPrice when available; fallback to legacy base lookup
   return cart.reduce((sum, item)=>{
-    const base = getProductPriceByName(item.name) * (item.qty||1);
+    const unit = (item.unitPrice != null) ? Number(item.unitPrice) : getProductPriceByName(item.name);
+    const baseLine = unit * (item.qty||1);
     const addons = (item.addons||[]).reduce((s,a)=> s + (Number(a.price)||0) * (a.qty||1), 0);
-    return sum + base + addons;
+    return sum + baseLine + addons;
   }, 0);
 }
 
@@ -1515,6 +1516,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     renderMenuCards(filtered);
   }
+
+  // Initial render: show all products (or a helpful message if empty)
+  try {
+    console.info('All products loaded (count):', Array.isArray(allProducts)? allProducts.length : 'not an array');
+    if(Array.isArray(allProducts) && allProducts.length){
+      renderMenuCards(allProducts);
+    } else {
+      renderMenuCards([]); // will show 'No products found.' placeholder
+    }
+  } catch(e){ console.warn('Initial product render failed', e); }
 
   document.querySelectorAll('.category-link').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2327,9 +2338,9 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
           <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
             ${sizeOptions.map((s,i)=>{
               const finalPrice = Number(s.final_price||0);
-              const up = finalPrice - basePrice;
-              const upDisp = up>0 ? ` (+₱${up.toFixed(2)})` : '';
-              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" data-upcharge=\"${up.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}${upDisp}\n              </label>`;
+              const diff = finalPrice - basePrice;
+              const diffDisp = diff>0 ? ` (+₱${diff.toFixed(2)})` : (diff<0 ? ` (−₱${Math.abs(diff).toFixed(2)})` : '');
+              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}${diffDisp}\n              </label>`;
             }).join('')}
           </div>
         </div>
@@ -2359,22 +2370,18 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
 }
 
 // Compute and display the modal total based on base price, selected add-ons, and quantity
-function getSelectedSizeUpcharge(){
+// In anchor model each radio already exposes the full final unit price (data-final). Upcharge concept deprecated.
+function getSelectedSizeFinal(){
   const r = document.querySelector('input[name="pdSize"]:checked');
-  if(!r) return 0;
-  if(r.hasAttribute('data-upcharge')) return Number(r.getAttribute('data-upcharge'))||0;
-  if(r.hasAttribute('data-final')){
-    const final = Number(r.getAttribute('data-final'))||0;
-    const base = (window.__currentBasePrice!==undefined)? window.__currentBasePrice : 0;
-    return final>base ? (final-base) : 0;
-  }
-  return 0;
+  if(!r) return (window.__currentAnchorPrice||0);
+  if(r.hasAttribute('data-final')) return Number(r.getAttribute('data-final'))||0;
+  return (window.__currentAnchorPrice||0);
 }
 
-function updateProductModalTotal(basePrice){
+function updateProductModalTotal(anchorPrice){
   const qtyEl = document.getElementById('pdQty');
   const productQty = Math.max(1, Number(qtyEl?.value || 1));
-  const sizeUp = getSelectedSizeUpcharge();
+  const selectedUnit = getSelectedSizeFinal();
   let addonsTotal = 0;
   document.querySelectorAll('#productAddonsList .addon-choice:checked').forEach(chk=>{
     const wrap = chk.closest('.addon-card')?.querySelector('.addon-qty-wrap');
@@ -2383,7 +2390,7 @@ function updateProductModalTotal(basePrice){
     const price = Number(chk.getAttribute('data-price'))||0;
     addonsTotal += price * aQty; // independent of productQty
   });
-  const baseSubtotal = ((Number(basePrice||0)+sizeUp) * productQty);
+  const baseSubtotal = (selectedUnit * productQty);
   // Attempt to estimate shipping if user already selected Delivery & provided coords (does NOT get added to per-item total)
   let shippingFeeDisplay = '—';
   try {
@@ -2412,7 +2419,7 @@ function updateProductModalTotal(basePrice){
 }
 
 async function openProductDetailsWithAddons(product){
-  // Fetch size variants
+  // Fetch size variants (anchor-based). If variants exist, ignore product.Price_Amount.
   let sizePayload = { base_price: Number(product.Price_Amount||0), sizes: [] };
   try {
     const res = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
@@ -2422,15 +2429,15 @@ async function openProductDetailsWithAddons(product){
   if(!Array.isArray(sizePayload.sizes) || sizePayload.sizes.length===0){
     sizePayload.sizes = [{ code:'default', label:'Regular', final_price:sizePayload.base_price }];
   }
-  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price) }));
-  window.__currentBasePrice = Number(sizePayload.base_price||0);
-  // Build modal HTML
-  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentBasePrice);
+  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price), is_anchor: s.is_anchor||0 }));
+  window.__currentAnchorPrice = Number(sizePayload.base_price||0);
+  // Build modal HTML (pass anchor as base for header); markup already expects final prices in data-final attributes
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice);
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
   modal.show();
 
   // Bind qty +/- and total updates for this render
-  const basePrice = window.__currentBasePrice;
+  const basePrice = window.__currentAnchorPrice;
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
@@ -2455,13 +2462,10 @@ async function openProductDetailsWithAddons(product){
     const instruction = document.getElementById('pdInstructions')?.value?.trim() || '';
     const sizeRadio = document.querySelector('input[name="pdSize"]:checked');
     const sizeCode = sizeRadio ? sizeRadio.value : 'default';
-    let effectiveUnitPrice = Number(product.Price_Amount||0);
-    if(sizeRadio){
-      if(sizeRadio.hasAttribute('data-final')){
-        effectiveUnitPrice = Number(sizeRadio.getAttribute('data-final'))||effectiveUnitPrice;
-      } else if(sizeRadio.hasAttribute('data-upcharge')) {
-        effectiveUnitPrice = effectiveUnitPrice + (Number(sizeRadio.getAttribute('data-upcharge'))||0);
-      }
+    // New model: effective unit price is just the selected size's final price (anchor-relative already computed server-side)
+    let effectiveUnitPrice = window.__currentAnchorPrice;
+    if(sizeRadio && sizeRadio.hasAttribute('data-final')){
+      effectiveUnitPrice = Number(sizeRadio.getAttribute('data-final'))||effectiveUnitPrice;
     }
     const found = cart.find(i => i.name === product.Product_Name);
     if (found) {
@@ -2477,13 +2481,13 @@ async function openProductDetailsWithAddons(product){
       }
       // If size differs, we create a new entry instead (avoid mixing sizes)
       if (found.size && found.size !== sizeCode) {
-      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
+  cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
       } else {
         found.size = sizeCode;
         found.unitPrice = effectiveUnitPrice;
       }
     } else {
-      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
+  cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
     }
     updateCartBadge();
     renderCartItems();

@@ -29,14 +29,93 @@ class database {
 
     public function fetchAllProducts() {
         $con = $this->opencon();
-        $stmt = $con->prepare("
-            SELECT p.*, c.Category_Name, pp.Price_Amount
-            FROM product p
-            JOIN category c ON p.Category_ID = c.Category_ID
-            JOIN product_price pp ON p.Price_ID = pp.Price_ID
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Ensure Primary_Size_ID column exists (idempotent) to stay consistent with admin side
+            try {
+                $col = $con->query("SHOW COLUMNS FROM product LIKE 'Primary_Size_ID'");
+                if ($col && $col->rowCount() === 0) {
+                    $con->exec("ALTER TABLE product ADD COLUMN Primary_Size_ID INT NULL AFTER Price_ID, ADD INDEX (Primary_Size_ID)");
+                }
+            } catch (Throwable $e) { /* ignore */ }
+            // Ensure Is_Anchor exists for anchor-based pricing
+            try {
+                $c = $con->query("SHOW COLUMNS FROM product_size_price LIKE 'Is_Anchor'");
+                if ($c && $c->rowCount() === 0) {
+                    $con->exec("ALTER TABLE product_size_price ADD COLUMN Is_Anchor TINYINT(1) NOT NULL DEFAULT 0 AFTER Price_Source_ID, ADD INDEX (Is_Anchor)");
+                    // Migration: mark first ABS row as anchor else first any
+                    try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) mid FROM product_size_price WHERE Price_Mode='ABS' GROUP BY Product_ID) t ON p.Product_ID=t.Product_ID AND p.Product_Size_Price_ID=t.mid SET p.Is_Anchor=1 WHERE p.Is_Anchor=0"); } catch(Throwable $m1){}
+                    try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) midAny FROM product_size_price GROUP BY Product_ID) x ON p.Product_ID=x.Product_ID AND p.Product_Size_Price_ID=x.midAny SET p.Is_Anchor=1 WHERE p.Is_Anchor=0 AND NOT EXISTS (SELECT 1 FROM product_size_price z WHERE z.Product_ID=p.Product_ID AND z.Is_Anchor=1)"); } catch(Throwable $m2){}
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            // Use LEFT JOIN so products without a base Price_ID (anchor-only) still appear
+            $sql = "SELECT p.*, c.Category_Name, pp.Price_Amount AS Base_Price_Amount, p.Primary_Size_ID
+                    FROM product p
+                    LEFT JOIN category c ON p.Category_ID = c.Category_ID
+                    LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID";
+            $stmt = $con->prepare($sql);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!$rows) return [];
+            $ids = array_column($rows, 'Product_ID');
+            $in = implode(',', array_fill(0, count($ids), '?'));
+            // Fetch size variants (if any) for these products
+            $sizesByProduct = [];
+            try {
+                $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name, psp.Price_Mode, psp.Price_Value, psp.Is_Anchor, s.Sort_Order
+                             FROM product_size_price psp
+                             JOIN sizes s ON psp.Size_ID = s.Size_ID
+                             WHERE psp.Product_ID IN ($in)";
+                $sizeStmt = $con->prepare($sizeSql);
+                $sizeStmt->execute($ids);
+                while($r = $sizeStmt->fetch(PDO::FETCH_ASSOC)){
+                    $sizesByProduct[$r['Product_ID']][] = $r;
+                }
+            } catch (Throwable $e) { /* sizes table may not exist */ }
+
+            foreach ($rows as &$r) {
+                $pid = $r['Product_ID'];
+                $sizes = $sizesByProduct[$pid] ?? [];
+                if ($sizes) {
+                    // Find anchor
+                    $anchor = null;
+                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor'])) { $anchor = $sz; break; } }
+                    if (!$anchor) {
+                        foreach ($sizes as $sz) { if ($sz['Price_Mode'] === 'ABS') { $anchor = $sz; break; } }
+                    }
+                    if (!$anchor) { $anchor = $sizes[0]; }
+                    // Choose primary size for display
+                    $chosen = null;
+                    if (!empty($r['Primary_Size_ID'])) {
+                        foreach ($sizes as $sz) { if ($sz['Size_ID'] == $r['Primary_Size_ID']) { $chosen = $sz; break; } }
+                    }
+                    if (!$chosen) {
+                        $sorted = $sizes;
+                        usort($sorted, function($a,$b){
+                            if ($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
+                            if ($a['Is_Anchor'] != $b['Is_Anchor']) return $b['Is_Anchor'] <=> $a['Is_Anchor'];
+                            if ($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS') ? -1 : 1;
+                            return $b['Price_Value'] <=> $a['Price_Value'];
+                        });
+                        $chosen = $sorted[0];
+                    }
+                    // Compute display price under anchor model
+                    $anchorPrice = (float)$anchor['Price_Value'];
+                    if (!empty($chosen['Is_Anchor']) && $chosen['Price_Mode']==='ABS') {
+                        $display = $anchorPrice;
+                    } elseif ($chosen['Price_Mode'] === 'DELTA') {
+                        $display = $anchorPrice + (float)$chosen['Price_Value'];
+                    } else { // non-anchor ABS
+                        $display = (float)$chosen['Price_Value'];
+                    }
+                    $r['Price_Amount'] = $display; // maintain expected key for frontend
+                } else {
+                    // No sizes -> use base price amount
+                    if (!array_key_exists('Price_Amount', $r) || $r['Price_Amount'] === null) {
+                        $r['Price_Amount'] = $r['Base_Price_Amount'] ?? 0;
+                    }
+                }
+            }
+            return $rows;
     }
 
     // Ensure order_item_addons table exists (idempotent)
@@ -338,28 +417,20 @@ function createPasswordResetToken($email) {
         return ['success'=>false,'blocked'=>true,'message'=>'Ordering disabled for this account. Please contact support.'];
     }
 
-    // 2. Calculate total (base products + selected add-ons per item)
+    // 2. Calculate total (anchor-based size pricing). Each cart item now carries unitPrice already resolved (size final price).
     $total = 0;
     foreach ($cart as $item) {
-        $stmt = $con->prepare("SELECT Price_ID FROM product WHERE Product_Name=?");
-        $stmt->execute([$item['name']]);
-        $product = $stmt->fetch();
-        if ($product) {
-            $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
-            $stmt2->execute([$product['Price_ID']]);
-            $price = $stmt2->fetchColumn();
         $prodQty = (int)($item['qty'] ?? 1);
-        $line = ($price ?: 0) * $prodQty;
-            // Add-ons: cart items may include addons: [{id,name,price,qty}]
-            if (!empty($item['addons']) && is_array($item['addons'])) {
-                foreach ($item['addons'] as $ad) {
-            $ap = isset($ad['price']) ? (float)$ad['price'] : 0;
-            $aq = isset($ad['qty']) ? (int)$ad['qty'] : 1;
-            $line += $ap * $aq * $prodQty; // addon price applies per product unit
-                }
+        $unit = isset($item['unitPrice']) ? (float)$item['unitPrice'] : 0.0;
+        $line = $unit * $prodQty;
+        if (!empty($item['addons']) && is_array($item['addons'])) {
+            foreach ($item['addons'] as $ad) {
+                $ap = isset($ad['price']) ? (float)$ad['price'] : 0;
+                $aq = isset($ad['qty']) ? (int)$ad['qty'] : 1;
+                $line += $ap * $aq * $prodQty; // addon price applies per product unit
             }
-            $total += $line;
         }
+        $total += $line;
     }
 
     // 2.1 Delivery fee (distance-based if lat/lng provided, fallback to flat)
@@ -524,44 +595,53 @@ function createPasswordResetToken($email) {
     } catch (Throwable $e) {}
 
     foreach ($cart as $item) {
-        $stmt = $con->prepare("SELECT Product_ID, Price_ID FROM product WHERE Product_Name=?");
+        $stmt = $con->prepare("SELECT Product_ID FROM product WHERE Product_Name=?");
         $stmt->execute([$item['name']]);
         $product = $stmt->fetch();
-        if ($product) {
-            $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
-            $stmt2->execute([$product['Price_ID']]);
-            $price = $stmt2->fetchColumn();
+        if (!$product) continue; // skip unknown
+        $productId = (int)$product['Product_ID'];
+        $instruction = isset($item['instruction']) && $item['instruction'] !== '' ? $item['instruction'] : null;
+        $qty = (int)($item['qty'] ?? 1);
+        $unit = isset($item['unitPrice']) ? (float)$item['unitPrice'] : 0.0; // already anchor+delta resolved
 
-            $instruction = isset($item['instruction']) && $item['instruction'] !== '' ? $item['instruction'] : null;
+        // If order_item has size columns, try to populate them
+        $hasSizeCols = false; $hasSizeCodeCol = false; $hasSizePriceCol = false;
+        try {
+            $c1 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Code'");
+            $c2 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Price'");
+            $hasSizeCodeCol = $c1 && $c1->rowCount()>0; $hasSizePriceCol = $c2 && $c2->rowCount()>0; $hasSizeCols = $hasSizeCodeCol && $hasSizePriceCol;
+        } catch (Throwable $e) { /* ignore */ }
 
-            if ($hasInstructionCol) {
-                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction) VALUES (?, ?, ?, ?, ?)");
-                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price, $instruction]);
-            } else {
-                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price]);
-            }
+        if ($hasInstructionCol && $hasSizeCols) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction, Size_Code, Size_Price) VALUES (?,?,?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $instruction, $item['size'] ?? null, $unit]);
+        } elseif ($hasInstructionCol) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction) VALUES (?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $instruction]);
+        } elseif ($hasSizeCols) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Size_Code, Size_Price) VALUES (?,?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $item['size'] ?? null, $unit]);
+        } else {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit]);
+        }
 
-            $orderItemId = $con->lastInsertId();
-
-            // Persist selected add-ons for this item
-            if (!empty($item['addons']) && is_array($item['addons'])) {
-                $ins = $con->prepare("INSERT INTO order_item_addons (Order_ID, Order_Item_ID, Product_ID, Addon_ID, Addon_Name, Addon_Price, Quantity)
-                                      VALUES (:oid,:oiid,:pid,:aid,:aname,:aprice,:qty)");
-                foreach ($item['addons'] as $ad) {
-                    $prodQty = (int)($item['qty'] ?? 1);
-                    $addonQty = (int)($ad['qty'] ?? 1);
-                    $totalQty = max(1, $prodQty * $addonQty);
-                    $ins->execute([
-                        ':oid' => $order_id,
-                        ':oiid' => $orderItemId ?: null,
-                        ':pid' => $product['Product_ID'],
-                        ':aid' => (int)($ad['id'] ?? 0),
-                        ':aname' => (string)($ad['name'] ?? ''),
-                        ':aprice' => (float)($ad['price'] ?? 0),
-                        ':qty' => $totalQty,
-                    ]);
-                }
+        $orderItemId = $con->lastInsertId();
+        if (!empty($item['addons']) && is_array($item['addons'])) {
+            $ins = $con->prepare("INSERT INTO order_item_addons (Order_ID, Order_Item_ID, Product_ID, Addon_ID, Addon_Name, Addon_Price, Quantity) VALUES (:oid,:oiid,:pid,:aid,:aname,:aprice,:qty)");
+            foreach ($item['addons'] as $ad) {
+                $prodQty = $qty;
+                $addonQty = (int)($ad['qty'] ?? 1);
+                $totalQty = max(1, $prodQty * $addonQty);
+                $ins->execute([
+                    ':oid' => $order_id,
+                    ':oiid' => $orderItemId ?: null,
+                    ':pid' => $productId,
+                    ':aid' => (int)($ad['id'] ?? 0),
+                    ':aname' => (string)($ad['name'] ?? ''),
+                    ':aprice' => (float)($ad['price'] ?? 0),
+                    ':qty' => $totalQty,
+                ]);
             }
         }
     }

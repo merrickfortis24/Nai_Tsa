@@ -59,6 +59,16 @@ class database {
                 $con->exec("ALTER TABLE product ADD COLUMN Primary_Size_ID INT NULL AFTER Price_ID, ADD INDEX (Primary_Size_ID)");
             }
         } catch(Throwable $e) { /* ignore */ }
+        // Ensure Is_Anchor column exists on product_size_price before we select it (prevents HTTP 500 on fresh deploy)
+        try {
+            $c = $con->query("SHOW COLUMNS FROM product_size_price LIKE 'Is_Anchor'");
+            if($c && $c->rowCount()===0){
+                $con->exec("ALTER TABLE product_size_price ADD COLUMN Is_Anchor TINYINT(1) NOT NULL DEFAULT 0 AFTER Price_Source_ID, ADD INDEX (Is_Anchor)");
+                // Migration: mark first ABS row as anchor per product; if no ABS exists mark the very first row
+                try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) mid FROM product_size_price WHERE Price_Mode='ABS' GROUP BY Product_ID) t ON p.Product_ID=t.Product_ID AND p.Product_Size_Price_ID=t.mid SET p.Is_Anchor=1 WHERE p.Is_Anchor=0"); } catch(Throwable $m1){}
+                try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) midAny FROM product_size_price GROUP BY Product_ID) x ON p.Product_ID=x.Product_ID AND p.Product_Size_Price_ID=x.midAny SET p.Is_Anchor=1 WHERE p.Is_Anchor=0 AND NOT EXISTS (SELECT 1 FROM product_size_price z WHERE z.Product_ID=p.Product_ID AND z.Is_Anchor=1)"); } catch(Throwable $m2){}
+            }
+        } catch(Throwable $e) { /* ignore */ }
         $limit = (int)$limit;
         $offset = (int)$offset;
         // Base products with their base price & category/admin and optional primary size id
@@ -77,7 +87,7 @@ class database {
         // Collect product IDs
         $ids = array_column($rows,'Product_ID');
         $in = implode(',', array_fill(0,count($ids),'?'));
-     // Fetch all size prices including anchor flag for these products
+    // Fetch all size prices including anchor flag for these products (column ensured above)
      $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name,
                   psp.Price_Mode, psp.Price_Value, psp.Is_Anchor, s.Sort_Order
               FROM product_size_price psp
