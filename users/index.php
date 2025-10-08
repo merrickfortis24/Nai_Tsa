@@ -1264,7 +1264,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       // Redirect user to GCash checkout
       window.location.href = pmJson.redirect;
       return; // stop normal order creation until success callback
-    } catch(err){
+    } catch(err) {
       Swal.fire({icon:'error', title:'GCash Error', text: err.message||'Unable to start GCash payment', confirmButtonColor:'#FFB27A'});
       return;
     }
@@ -1322,7 +1322,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
           .then(r=> r.ok ? r.json() : {success:false})
           .then(payload=>{ if(payload && payload.success){
               ORDERS_CACHE = Array.isArray(payload.flat) ? payload.flat : [];
-              if(payload.counts && typeof payload.counts.pending==='number'){
+              if(payload.counts && typeof payload.counts.pending==='number){
                 ordersBadge.textContent = payload.counts.pending;
                 ordersBadge.style.display = payload.counts.pending>0? 'inline-block':'none';
               } else { updateOrdersBadgeFromCache(); }
@@ -2274,104 +2274,104 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   }
 });
 
-// Enable clicking stars in the Review Items modal (event delegation)
-(function(){
-  const reviewModalEl = document.getElementById('reviewModal');
-  if(!reviewModalEl) return;
+document.addEventListener('DOMContentLoaded', () => {
+  const allProducts = <?php echo json_encode($all_products); ?>;
+  const recommended = <?php echo json_encode($recommended); ?>;
+  const bestsellers = <?php echo json_encode($bestsellers); ?>;
+  const avgRatings = <?php echo json_encode($avg_ratings); ?>;
+  const menuCardsDiv = document.getElementById('menuCards');
+  const recommendedWrap = document.getElementById('recommendedWrap');
+  const recommendedCardsDiv = document.getElementById('recommendedCards');
+  const showBestsellersBtn = document.getElementById('showBestsellersBtn');
+  const menuSearchInput = document.getElementById('menuSearchInput');
 
-  reviewModalEl.addEventListener('click', (e) => {
-    const star = e.target.closest('.review-star');
-    if (!star) return;
-    const card = star.closest('.product-review-card');
-    if (!card) return;
-  if (card.dataset.locked === '1') return; // ignore interactions on locked cards
-    const val = Number(star.dataset.value) || 0;
-    card.dataset.rating = String(val);
-    const stars = card.querySelectorAll('.review-star');
-    stars.forEach(s => {
-      const active = Number(s.dataset.value) <= val;
-      s.classList.toggle('active', active);
-      s.setAttribute('aria-checked', active ? 'true' : 'false');
-      s.setAttribute('tabindex', '0');
+  // Allergen icons removed per latest requirement (no allergen display).
+
+  function renderRecommendedCards(productsArr) {
+    if (!recommendedCardsDiv) return;
+    if (!Array.isArray(productsArr) || productsArr.length === 0) {
+      recommendedWrap && recommendedWrap.classList.add('d-none');
+      return;
+    }
+    // Cap to 4 suggestions
+    const list = productsArr.slice(0, 4);
+  recommendedCardsDiv.innerHTML = list.map(product => {
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
+      return `
+        <div class="menu-card" data-product-id="${pid}">
+          <div class="menu-card-image">
+            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+          </div>
+          <div class="menu-card-content">
+            <div class="menu-card-header">
+              <h3 class="menu-card-title">${product.Product_Name}</h3>
+              <span class="menu-card-price">${priceDisplay}</span>
+            </div>
+            <p class="menu-card-description">${product.Product_desc || ''}</p>
+            <div class="menu-card-rating">
+              <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span class="rating-value">${avgVal}</span>
+              <span class="rating-count">(${countVal} reviews)</span>
+            </div>
+          </div>
+          <div class="menu-card-footer">
+            <button class="add-to-cart-btn" data-product="${product.Product_Name}">
+              <svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  // Add-to-cart (recommended) -> open product details modal with add-ons
+    recommendedCardsDiv.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const productName = btn.getAttribute('data-product');
+        const allProducts = <?php echo json_encode($all_products); ?>;
+        const prod = (allProducts||[]).find(p => p.Product_Name === productName);
+        if (!prod) return;
+    await openProductDetailsWithAddons(prod);
+      });
     });
-  });
-})();
 
-function buildProductModalHtml(product, addons, sizeOptions, basePrice){
-  basePrice = Number(basePrice||product.Price_Amount||0);
-  const priceDisplay = '₱' + basePrice.toFixed(2);
-  const addonsHtml = (addons||[]).map(a=>`
-    <label class="addon-card d-block py-1 px-2 border rounded">
-      <div class="d-flex align-items-center justify-content-between gap-2">
-        <div class="d-flex align-items-center gap-2">
-          <input class="form-check-input addon-choice" type="checkbox" value="${a.Addon_ID}" data-name="${a.Addon_Name}" data-price="${a.Addon_Price}">
-          <span class="addon-name">${a.Addon_Name}</span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <div class="addon-qty-wrap input-group input-group-sm" style="width:110px; display:none;" data-price="${a.Addon_Price}">
-            <button class="btn btn-outline-secondary addon-minus" type="button">-</button>
-            <input type="number" class="form-control text-center addon-qty" value="1" min="1">
-            <button class="btn btn-outline-secondary addon-plus" type="button">+</button>
-          </div>
-          <span class="addon-price small text-nowrap">₱ ${Number(a.Addon_Price).toFixed(2)}</span>
-        </div>
-      </div>
-    </label>
-  `).join('') || '<div class="text-muted">No add-ons available.</div>';
+  // Card click -> modal (recommended) with add-ons
+    recommendedCardsDiv.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.add-to-cart-btn')) return;
+        const pid = card.dataset.productId;
+        const product = allProducts.find(p => p.Product_ID == pid) || list.find(p => p.Product_ID == pid);
+        if (!product) return;
+    openProductDetailsWithAddons(product);
+      });
+    });
+  }
 
-  return `
-    <div class="product-details-grid">
-      <div>
-        <div class="product-hero">
-          <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
-        </div>
-        <div class="mt-3">
-          <div class="d-flex justify-content-between align-items-start">
-            <h4 class="product-title mb-1">${product.Product_Name}</h4>
-            <div class="product-price" aria-label="Base price">${priceDisplay}</div>
-          </div>
-          <p class="mt-2 mb-0">${product.Product_desc || ''}</p>
-        </div>
-      </div>
-      <div>
-        <div class="mb-3">
-          <h5 class="mb-2">Size</h5>
-          <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
-            ${sizeOptions.map((s,i)=>{
-              const finalPrice = Number(s.final_price||0);
-              // Removed displayed price difference; only show the size label while still storing final price in data attribute.
-              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}\n              </label>`;
-            }).join('')}
-          </div>
-        </div>
-        <div class="addons-section">
-          <h5 class="mb-2">Add-ons</h5>
-          <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
-        </div>
-        <div class="d-flex align-items-center gap-3 mt-3">
-          <div class="input-group" style="width:140px;">
-            <button class="btn btn-outline-secondary" type="button" id="pdQtyMinus">-</button>
-            <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
-            <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
-          </div>
-          <div class="ms-auto text-end modal-total-line small" style="min-width:200px;">
-            <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
-            <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
-            <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
-          </div>
-        </div>
-        <!-- Order instruction textarea -->
-        <div class="mt-3">
-          <label for="pdInstructions" class="form-label small mb-1">Order Instruction (optional)</label>
-          <textarea id="pdInstructions" class="form-control form-control-sm" rows="2" placeholder="e.g., reduce sugar content, no ice, extra spicy"></textarea>
-        </div>
-      </div>
-    </div>`;
-}
+  function renderMenuCards(productsArr) {
+    if (!productsArr || !productsArr.length) {
+      menuCardsDiv.innerHTML = `<div class="text-center text-muted" style="padding:1.5rem;">No products found.</div>`;
+      return;
+    }
+  menuCardsDiv.innerHTML = productsArr.map(product => {
+      const pid = product.Product_ID;
+      const avgInfo = avgRatings[pid];
+      const avgVal = avgInfo ? avgInfo.avg : '0.0';
+      const countVal = avgInfo ? avgInfo.count : 0;
+      const priceDisplay = product.Price_Amount ? `₱${parseFloat(product.Price_Amount).toFixed(2)}` : '₱0.00';
 
-// Compute and display the modal total based on base price, selected add-ons, and quantity
-// In anchor model each radio already exposes the full final unit price (data-final). Upcharge concept deprecated.
-function getSelectedSizeFinal(){
+      return `
+        <div class="menu-card" data-product-id="${pid}">
   const r = document.querySelector('input[name="pdSize"]:checked');
   if(!r) return (window.__currentAnchorPrice||0);
   if(r.hasAttribute('data-final')) return Number(r.getAttribute('data-final'))||0;
