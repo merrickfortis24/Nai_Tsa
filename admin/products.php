@@ -682,28 +682,50 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML='';
   if(!data.success){ tbody.innerHTML = `<tr><td colspan="8" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
   if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
-        data.rows.forEach((row,i)=>{
-          const isLegacy = !!row.LEGACY;
-          const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
-          const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
-          const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
-          const sizeCode = row.Size_Code || row.size_code;
-          const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
-          const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${i+1}</td>
-            <td>${escapeHtml(row.Product_Name||'')}</td>
-            <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
-            <td>${modeLabel}</td>
-            <td>₱${Number(amountVal).toFixed(2)}</td>
-            <td>${sortOrder}</td>
-            <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
-            <td class="d-flex gap-1">
-              ${!isLegacy && mappingId ? `<button class=\"btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn\" data-map=\"${mappingId}\" data-code=\"${escapeHtml(sizeCode)}\" data-mode=\"${row.Price_Mode}\" data-amount=\"${amountVal}\" data-sort=\"${sortOrder}\" data-display=\"${escapeHtml(row.Display_Name||sizeCode)}\" data-price-id=\"${row.Price_Source_ID || ''}\" title=\"Edit\"><i class='bi bi-pencil'></i></button>` : ''}
-              <button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID}" title="Delete"><i class="bi bi-x"></i></button>
-            </td>`;
-          tbody.appendChild(tr);
+        // Group rows by product so product name appears once with rowspan
+        const groups = new Map();
+        data.rows.forEach(row => {
+          const pid = row.Product_ID || row.product_id || row.PID || (row.Product_Name||'__NOPROD');
+          if(!groups.has(pid)) groups.set(pid, { productName: row.Product_Name||row.product_name||'Unknown', variants: [] });
+          groups.get(pid).variants.push(row);
+        });
+
+        let displayIndex = 1;
+        groups.forEach(group => {
+          // Sort variants by Sort_Order then Size_Code for consistency
+            group.variants.sort((a,b)=>{
+              const soA = a.Sort_Order!==undefined?Number(a.Sort_Order):9999;
+              const soB = b.Sort_Order!==undefined?Number(b.Sort_Order):9999;
+              if(soA!==soB) return soA-soB;
+              const scA = (a.Size_Code||a.size_code||'').toString();
+              const scB = (b.Size_Code||b.size_code||'').toString();
+              return scA.localeCompare(scB, undefined, {numeric:true});
+            });
+            const rowSpan = group.variants.length;
+            group.variants.forEach((row, idx) => {
+              const isLegacy = !!row.LEGACY;
+              const mappingId = row.Product_Size_Price_ID || null;
+              const modeRaw = row.Price_Mode || (row.Is_Absolute==1?'ABS':'DELTA');
+              const modeLabel = (modeRaw==='ABS'?'Absolute':'Delta');
+              const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
+              const sizeCode = row.Size_Code || row.size_code || '';
+              const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
+              const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
+              const editBtnHtml = (!isLegacy && mappingId) ? `<button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn" title="Edit" data-map="${mappingId}" data-code="${escapeHtml(sizeCode)}" data-display="${escapeHtml(row.Display_Name||row.display_name||sizeCode)}" data-mode="${modeRaw}" data-price-id="${row.Price_Source_ID||row.Price_ID||''}" data-amount="${amountVal}" data-sort="${sortOrder}"><i class='bi bi-pencil'></i></button>` : '';
+              const delBtnHtml = `<button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID||''}" title="Delete"><i class="bi bi-x"></i></button>`;
+              const tr = document.createElement('tr');
+              const productCell = (idx===0) ? `<td rowspan="${rowSpan}" class="align-middle fw-semibold">${escapeHtml(group.productName)}</td>` : '';
+              tr.innerHTML = `
+                <td>${displayIndex++}</td>
+                ${productCell}
+                <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
+                <td>${modeLabel}</td>
+                <td>₱${Number(amountVal).toFixed(2)}</td>
+                <td>${sortOrder}</td>
+                <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
+                <td class="d-flex gap-1">${editBtnHtml}${delBtnHtml}</td>`;
+              tbody.appendChild(tr);
+            });
         });
       }).catch(()=>{
         const tbody = document.querySelector('#sizesTable tbody');
