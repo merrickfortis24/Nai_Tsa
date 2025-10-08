@@ -1351,9 +1351,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
 
 document.addEventListener('DOMContentLoaded', () => {
   // Safely embed product arrays (hex encoding to avoid breaking script with quotes or tags)
-  window.ALL_PRODUCTS_SAFE = window.ALL_PRODUCTS_SAFE || JSON.parse('\
-    <?php echo json_encode($all_products, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>\
-  ');
+  window.ALL_PRODUCTS_SAFE = <?php echo json_encode($all_products, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>;
   const allProducts = window.ALL_PRODUCTS_SAFE;
   const recommended = <?php echo json_encode($recommended); ?>;
   const bestsellers = <?php echo json_encode($bestsellers); ?>;
