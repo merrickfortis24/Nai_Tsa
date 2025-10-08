@@ -217,3 +217,22 @@ class database {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }
+
+// -------------------------------------------------------------
+// Global helper for legacy / procedural scripts expecting getDB()
+// Several new AJAX endpoints call getDB(), but only the database
+// class with opencon() existed. The absence of this function was
+// causing a fatal error (500) like: "Call to undefined function getDB()".
+// This wrapper reuses a static PDO instance to avoid extra connects.
+// -------------------------------------------------------------
+if (!function_exists('getDB')) {
+    function getDB(): PDO {
+        static $pdo = null;
+        if ($pdo instanceof PDO) {
+            return $pdo;
+        }
+        $db = new database();
+        $pdo = $db->opencon();
+        return $pdo;
+    }
+}
