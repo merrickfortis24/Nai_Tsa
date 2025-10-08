@@ -99,6 +99,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
+                  <i class="bi bi-cash-coin me-1"></i> Add Price
+                </button>
               </div>
           </div>
           <div class="card-body">
@@ -248,7 +251,37 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
-    <!-- Legacy Add Price Modal removed -->
+    <!-- Add Price Modal (restored) -->
+    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <form class="modal-content" id="addPriceForm">
+          <div class="modal-header py-2">
+            <h6 class="modal-title" id="addPriceModalLabel">Add Price</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2">
+              <label class="form-label small mb-1">Amount (₱)</label>
+              <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="price_amount" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Effective From</label>
+              <input type="date" class="form-control form-control-sm" name="effective_from" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Effective To (optional)</label>
+              <input type="date" class="form-control form-control-sm" name="effective_to">
+              <div class="form-text small">Leave blank for open-ended pricing.</div>
+            </div>
+            <div class="alert alert-info p-2 small mb-0">New prices become selectable for products and size variants immediately.</div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Manage Sizes Modal -->
     <div class="modal fade" id="manageSizesModal" tabindex="-1" aria-labelledby="manageSizesModalLabel" aria-hidden="true">
@@ -433,7 +466,61 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-  // Removed legacy add price form handler
+  // Add Price form handler (restored)
+  document.getElementById('addPriceForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const fd = new FormData(this);
+    fetch('ajax/add_price.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+      if(data.success){
+        Swal.fire({icon:'success',title:'Added',text:data.message, timer:1500, showConfirmButton:false});
+        // Refresh all price dropdowns if server returned updated list
+        if(Array.isArray(data.prices)){
+          refreshPriceDropdowns(data.prices);
+        }
+        bootstrap.Modal.getInstance(document.getElementById('addPriceModal')).hide();
+        this.reset();
+      } else {
+        Swal.fire({icon:'error',title:'Failed',text:data.message||'Could not add price'});
+      }
+    }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
+  });
+
+  function refreshPriceDropdowns(prices){
+    const productPriceSel = document.getElementById('price_id');
+    const addSizePriceSel = document.getElementById('addSizePriceId');
+    const editSizePriceSel = document.getElementById('editPriceId');
+    [productPriceSel, addSizePriceSel, editSizePriceSel].forEach(sel=>{
+      if(!sel) return;
+      const currentVal = sel.value;
+      // Preserve first placeholder option
+      const placeholder = sel.querySelector('option[value=""]');
+      sel.innerHTML = '';
+      if(placeholder){ sel.appendChild(placeholder); } else {
+        const opt = document.createElement('option'); opt.value=''; opt.textContent='Select Price'; sel.appendChild(opt);
+      }
+      prices.forEach(p=>{
+        const opt = document.createElement('option');
+        opt.value = p.Price_ID;
+        const fromTxt = formatDate(p.Effective_From);
+        const toTxt = p.Effective_To ? ' to '+formatDate(p.Effective_To) : ' and onwards';
+        opt.textContent = `${p.Price_Amount} (${fromTxt}${toTxt})`;
+        sel.appendChild(opt);
+      });
+      // Attempt to restore selection
+      if(currentVal){ sel.value = currentVal; }
+    });
+  }
+
+  function formatDate(str){
+    if(!str) return '';
+    // Expecting YYYY-MM-DD or datetime
+    const d = new Date(str);
+    if(isNaN(d.getTime())) return str;
+    const mo = d.toLocaleString('en-US',{month:'long'});
+    const day = String(d.getDate()).padStart(2,'0');
+    const yr = d.getFullYear();
+    return `${mo} ${day}, ${yr}`;
+  }
 
     // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
