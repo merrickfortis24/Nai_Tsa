@@ -2460,16 +2460,16 @@ async function openProductDetailsWithAddons(product){
   modal.show();
 
   // Bind qty +/- and total updates for this render
-  const basePrice = window.__currentAnchorPrice;
+  const modalBasePrice = window.__currentAnchorPrice;
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
-  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
-  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
-  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
+  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(modalBasePrice); });
+  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(modalBasePrice); });
+  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(modalBasePrice));
   // Bind size change
   document.getElementById('productDetailsContent').addEventListener('change', e=>{
-    if (e.target.name === 'pdSize' || e.target.name === 'pdFlavor') updateProductModalTotal(basePrice);
+  if (e.target.name === 'pdSize' || e.target.name === 'pdFlavor') updateProductModalTotal(modalBasePrice);
   });
   // Also handle clicking on label itself to toggle the hidden radio (improves hit area reliability)
   document.getElementById('productDetailsContent').addEventListener('click', e=>{
@@ -2478,7 +2478,7 @@ async function openProductDetailsWithAddons(product){
       const input = sizeLab.querySelector('input[name="pdSize"]');
       if(input){
         document.querySelectorAll('#productSizeChoices label').forEach(l=> l.classList.remove('active'));
-        input.checked = true; sizeLab.classList.add('active'); updateProductModalTotal(basePrice);
+  input.checked = true; sizeLab.classList.add('active'); updateProductModalTotal(modalBasePrice);
       }
     }
     const flavorLab = e.target.closest('#productFlavorChoices label');
@@ -2486,7 +2486,7 @@ async function openProductDetailsWithAddons(product){
       const finput = flavorLab.querySelector('input[name="pdFlavor"]');
       if(finput){
         document.querySelectorAll('#productFlavorChoices label').forEach(l=> l.classList.remove('active'));
-        finput.checked = true; flavorLab.classList.add('active'); updateProductModalTotal(basePrice);
+  finput.checked = true; flavorLab.classList.add('active'); updateProductModalTotal(modalBasePrice);
       }
     }
   });
