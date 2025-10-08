@@ -114,22 +114,16 @@ class Order {
     }
 
     private function getProductPrice($product_id) {
-        // Prefer ABS size 'regular', then any ABS, then base product_price
-        try {
-            $q = $this->con->prepare("SELECT psp.Price_Value FROM product_size_price psp JOIN sizes s ON psp.Size_ID=s.Size_ID WHERE psp.Product_ID=? AND psp.Price_Mode='ABS' AND s.Size_Code='regular' LIMIT 1");
-            $q->execute([$product_id]);
-            $v = $q->fetchColumn();
-            if($v !== false) return (float)$v;
-            $q2 = $this->con->prepare("SELECT psp.Price_Value FROM product_size_price psp JOIN sizes s ON psp.Size_ID=s.Size_ID WHERE psp.Product_ID=? AND psp.Price_Mode='ABS' ORDER BY s.Sort_Order, s.Display_Name LIMIT 1");
-            $q2->execute([$product_id]);
-            $v2 = $q2->fetchColumn();
-            if($v2 !== false) return (float)$v2;
-        } catch (Throwable $e) { /* ignore */ }
-        // Fallback legacy base price
-        $stmt = $this->con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID=pp.Price_ID WHERE p.Product_ID=? LIMIT 1");
+        $stmt = $this->con->prepare("SELECT Price_ID FROM product WHERE Product_ID=?");
         $stmt->execute([$product_id]);
-        $base = $stmt->fetchColumn();
-        return $base ? (float)$base : 0.0;
+        $product = $stmt->fetch();
+        if ($product) {
+            $stmt2 = $this->con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
+            $stmt2->execute([$product['Price_ID']]);
+            $price = $stmt2->fetchColumn();
+            return $price ? $price : 0;
+        }
+        return 0;
     }
 
     private function insertOrder($data) {
