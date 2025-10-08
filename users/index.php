@@ -2369,33 +2369,6 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
       </div>
     </div>`;
 }
-            }).join('')}
-          </div>
-        </div>
-        <div class="addons-section">
-          <h5 class="mb-2">Add-ons</h5>
-          <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
-        </div>
-        <div class="d-flex align-items-center gap-3 mt-3">
-          <div class="input-group" style="width:140px;">
-            <button class="btn btn-outline-secondary" type="button" id="pdQtyMinus">-</button>
-            <input type="number" class="form-control text-center" id="pdQty" value="1" min="1">
-            <button class="btn btn-outline-secondary" type="button" id="pdQtyPlus">+</button>
-          </div>
-          <div class="ms-auto text-end modal-total-line small" style="min-width:200px;">
-            <div>Products: <span id="productBaseSubtotal">₱0.00</span></div>
-            <div>Add-ons: <span id="productAddonsSubtotal">₱0.00</span></div>
-            <div class="fw-semibold mt-1">Total: <span id="productWithAddonsTotal">₱0.00</span></div>
-          </div>
-        </div>
-        <!-- Order instruction textarea -->
-        <div class="mt-3">
-          <label for="pdInstructions" class="form-label small mb-1">Order Instruction (optional)</label>
-          <textarea id="pdInstructions" class="form-control form-control-sm" rows="2" placeholder="e.g., reduce sugar content, no ice, extra spicy"></textarea>
-        </div>
-      </div>
-    </div>`;
-}
 
 // Compute and display the modal total based on base price, selected add-ons, and quantity
 // In anchor model each radio already exposes the full final unit price (data-final). Upcharge concept deprecated.
