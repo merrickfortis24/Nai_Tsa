@@ -1244,8 +1244,9 @@ document.getElementById('paymentForm').addEventListener('submit', async function
   if (paymentMethod === 'GCash') {
     // Calculate total locally (reuse summary) to send to PayMongo
     try {
+      // Use pre-encoded product list constant to avoid inline JSON syntax issues
       const subtotal = cart.reduce((sum,i)=>{
-        const prod = (<?php echo json_encode($all_products); ?>||[]).find(p=>p.Product_Name===i.name);
+        const prod = (window.ALL_PRODUCTS_SAFE||[]).find(p=>p.Product_Name===i.name);
         if(!prod) return sum;
         let base = Number(prod.Price_Amount||0) * (i.qty||1);
         if (Array.isArray(i.addons)) {
@@ -1349,7 +1350,11 @@ document.getElementById('paymentForm').addEventListener('submit', async function
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  const allProducts = <?php echo json_encode($all_products); ?>;
+  // Safely embed product arrays (hex encoding to avoid breaking script with quotes or tags)
+  window.ALL_PRODUCTS_SAFE = window.ALL_PRODUCTS_SAFE || JSON.parse('\
+    <?php echo json_encode($all_products, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?>\
+  ');
+  const allProducts = window.ALL_PRODUCTS_SAFE;
   const recommended = <?php echo json_encode($recommended); ?>;
   const bestsellers = <?php echo json_encode($bestsellers); ?>;
   const avgRatings = <?php echo json_encode($avg_ratings); ?>;
