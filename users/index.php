@@ -2339,9 +2339,8 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
           <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
             ${sizeOptions.map((s,i)=>{
               const finalPrice = Number(s.final_price||0);
-              const diff = finalPrice - basePrice;
-              const diffDisp = diff>0 ? ` (+₱${diff.toFixed(2)})` : (diff<0 ? ` (−₱${Math.abs(diff).toFixed(2)})` : '');
-              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}${diffDisp}\n              </label>`;
+              // Removed displayed price difference; only show the size label while still storing final price in data attribute.
+              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}\n              </label>`;
             }).join('')}
           </div>
         </div>
