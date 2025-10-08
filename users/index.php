@@ -2297,7 +2297,8 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
-function buildProductModalHtml(product, addons, sizeOptions, basePrice){
+function buildProductModalHtml(product, addons, sizeOptions, basePrice, sizeHeadingLabel){
+  sizeHeadingLabel = sizeHeadingLabel || 'Size';
   basePrice = Number(basePrice||product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
@@ -2335,7 +2336,7 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
       </div>
       <div>
         <div class="mb-3">
-          <h5 class="mb-2">Size</h5>
+          <h5 class="mb-2">${sizeHeadingLabel}</h5>
           <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
             ${sizeOptions.map((s,i)=>{
               const finalPrice = Number(s.final_price||0);
@@ -2419,20 +2420,53 @@ function updateProductModalTotal(anchorPrice){
 }
 
 async function openProductDetailsWithAddons(product){
-  // Fetch size variants (anchor-based). If variants exist, ignore product.Price_Amount.
-  let sizePayload = { base_price: Number(product.Price_Amount||0), sizes: [] };
+  // Unified variant fetch (sizes + flavors). If only flavors exist, treat them as variant choices.
+  let sizeOptions = [];
+  let sizeHeadingLabel = 'Size';
+  let anchorPrice = Number(product.Price_Amount||0);
   try {
-    const res = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const res = await fetch('ajax/get_product_variants.php?product_id='+product.Product_ID+'&t='+Date.now());
     const js = await res.json();
-    if(js.success) sizePayload = js;
+    if(js.success && js.variants){
+      const sizes = Array.isArray(js.variants.size)? js.variants.size : [];
+      const flavors = Array.isArray(js.variants.flavor)? js.variants.flavor : [];
+      if(sizes.length>0){
+        // Build size options from size variants
+        let primary = sizes.find(v=>Number(v.is_primary)===1) || sizes[0];
+        // Compute anchor price from primary
+        if(primary){
+          anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        }
+        sizeOptions = sizes.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code: v.code, label: v.label, final_price, is_anchor: Number(v.is_primary)||0 };
+        });
+        sizeHeadingLabel = 'Size';
+      } else if(flavors.length>0){
+        // Flavor-only scenario -> show as Variant Choices
+        let primary = flavors.find(v=>Number(v.is_primary)===1) || flavors[0];
+        if(primary){
+          anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        }
+        sizeOptions = flavors.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code: v.code, label: v.label, final_price, is_anchor: Number(v.is_primary)||0 };
+        });
+        sizeHeadingLabel = 'Variant Choices';
+      }
+    }
   } catch(e){ /* ignore */ }
-  if(!Array.isArray(sizePayload.sizes) || sizePayload.sizes.length===0){
-    sizePayload.sizes = [{ code:'default', label:'Regular', final_price:sizePayload.base_price }];
+  // Fallback if still no options
+  if(sizeOptions.length===0){
+    sizeOptions = [{ code:'default', label:'Regular', final_price: anchorPrice, is_anchor:1 }];
+    sizeHeadingLabel = 'Variant Choices';
   }
-  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price), is_anchor: s.is_anchor||0 }));
-  window.__currentAnchorPrice = Number(sizePayload.base_price||0);
-  // Build modal HTML (pass anchor as base for header); markup already expects final prices in data-final attributes
-  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice);
+  // Determine anchor price if none chosen
+  if(!isFinite(anchorPrice) || anchorPrice<=0){
+    anchorPrice = Number(product.Price_Amount||0) || (sizeOptions[0]?.final_price)||0;
+  }
+  window.__currentAnchorPrice = anchorPrice;
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice, sizeHeadingLabel);
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
   modal.show();
 
