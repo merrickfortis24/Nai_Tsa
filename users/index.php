@@ -2297,7 +2297,7 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
-function buildProductModalHtml(product, addons, sizeOptions, basePrice, flavorOptions){
+function buildProductModalHtml(product, addons, sizeOptions, basePrice){
   basePrice = Number(basePrice||product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
@@ -2319,8 +2319,6 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice, flavorOp
     </label>
   `).join('') || '<div class="text-muted">No add-ons available.</div>';
 
-  const hasSizes = Array.isArray(sizeOptions) && sizeOptions.length>0;
-  const hasFlavors = Array.isArray(flavorOptions) && flavorOptions.length>0;
   return `
     <div class="product-details-grid">
       <div>
@@ -2336,9 +2334,16 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice, flavorOp
         </div>
       </div>
       <div>
-        ${hasSizes ? `<div class=\"mb-3\">\n<h5 class=\"mb-2\">Size</h5>\n<div id=\"productSizeChoices\" class=\"d-flex flex-wrap gap-2\">${sizeOptions.map((s,i)=>{ const fp=Number(s.final_price||0); return `<label class=\\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\\" style=\\"position:relative;\\">\n<input type=\\"radio\\" name=\\"pdSize\\" class=\\"d-none\\" value=\\"${s.code}\\" data-final=\\"${fp.toFixed(2)}\\" ${i===0?'checked':''}>\n${s.label}\n</label>`; }).join('')}\n</div>\n</div>`:''}
-        ${!hasSizes && hasFlavors ? `<div class=\"mb-3\">\n<h5 class=\"mb-2\">Variant</h5>\n<div id=\"productFlavorChoices\" class=\"d-flex flex-wrap gap-2\">${flavorOptions.map((f,i)=>`<label class=\\"btn btn-outline-warning btn-sm m-0 ${i===0?'active':''}\\" style=\\"position:relative;\\">\n<input type=\\"radio\\" name=\\"pdFlavor\\" class=\\"d-none\\" value=\\"${f.code}\\" data-mode=\\"${f.price_mode}\\" data-value=\\"${Number(f.price_value).toFixed(2)}\\" ${i===0?'checked':''}>\n${f.label}\n</label>`).join('')}\n</div>\n</div>`:''}
-        ${hasSizes && hasFlavors ? `<div class=\"mb-3\">\n<h5 class=\"mb-2\">Flavor</h5>\n<div id=\"productFlavorChoices\" class=\"d-flex flex-wrap gap-2\">${flavorOptions.map((f,i)=>`<label class=\\"btn btn-outline-warning btn-sm m-0 ${i===0?'active':''}\\" style=\\"position:relative;\\">\n<input type=\\"radio\\" name=\\"pdFlavor\\" class=\\"d-none\\" value=\\"${f.code}\\" data-mode=\\"${f.price_mode}\\" data-value=\\"${Number(f.price_value).toFixed(2)}\\" ${i===0?'checked':''}>\n${f.label}\n</label>`).join('')}\n</div>\n</div>`:''}
+        <div class="mb-3">
+          <h5 class="mb-2">Size</h5>
+          <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
+            ${sizeOptions.map((s,i)=>{
+              const finalPrice = Number(s.final_price||0);
+              // Removed displayed price difference; only show the size label while still storing final price in data attribute.
+              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}\n              </label>`;
+            }).join('')}
+          </div>
+        </div>
         <div class="addons-section">
           <h5 class="mb-2">Add-ons</h5>
           <div id="productAddonsList" class="addons-list">${addonsHtml}</div>
@@ -2366,24 +2371,17 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice, flavorOp
 
 // Compute and display the modal total based on base price, selected add-ons, and quantity
 // In anchor model each radio already exposes the full final unit price (data-final). Upcharge concept deprecated.
-function getSelectedBaseVariantPrice(){
+function getSelectedSizeFinal(){
   const r = document.querySelector('input[name="pdSize"]:checked');
-  if(r && r.hasAttribute('data-final')) return Number(r.getAttribute('data-final'))||0;
+  if(!r) return (window.__currentAnchorPrice||0);
+  if(r.hasAttribute('data-final')) return Number(r.getAttribute('data-final'))||0;
   return (window.__currentAnchorPrice||0);
-}
-function applyFlavorAdjustment(unit){
-  const f = document.querySelector('input[name="pdFlavor"]:checked');
-  if(!f) return unit;
-  const mode = f.getAttribute('data-mode');
-  const val = Number(f.getAttribute('data-value'))||0;
-  return mode==='ABSOLUTE' ? val : unit + val;
 }
 
 function updateProductModalTotal(anchorPrice){
   const qtyEl = document.getElementById('pdQty');
   const productQty = Math.max(1, Number(qtyEl?.value || 1));
-  let selectedUnit = getSelectedBaseVariantPrice();
-  selectedUnit = applyFlavorAdjustment(selectedUnit);
+  const selectedUnit = getSelectedSizeFinal();
   let addonsTotal = 0;
   document.querySelectorAll('#productAddonsList .addon-choice:checked').forEach(chk=>{
     const wrap = chk.closest('.addon-card')?.querySelector('.addon-qty-wrap');
