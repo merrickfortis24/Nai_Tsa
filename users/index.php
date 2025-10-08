@@ -2297,7 +2297,8 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
-function buildProductModalHtml(product, addons, sizeOptions, basePrice){
+function buildProductModalHtml(product, addons, sizeOptions, basePrice, heading){
+  heading = heading || 'Size';
   basePrice = Number(basePrice||product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
@@ -2335,7 +2336,7 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
       </div>
       <div>
         <div class="mb-3">
-          <h5 class="mb-2">Size</h5>
+          <h5 class="mb-2">${heading}</h5>
           <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
             ${sizeOptions.map((s,i)=>{
               const finalPrice = Number(s.final_price||0);
@@ -2419,20 +2420,69 @@ function updateProductModalTotal(anchorPrice){
 }
 
 async function openProductDetailsWithAddons(product){
-  // Fetch size variants (anchor-based). If variants exist, ignore product.Price_Amount.
-  let sizePayload = { base_price: Number(product.Price_Amount||0), sizes: [] };
+  // Unified variant fetch. Logic:
+  // 1. Try new get_product_variants (sizes + flavors in one table)
+  // 2. If sizes exist -> show Size section
+  // 3. Else if only flavors exist -> show Variant Choices section
+  // 4. Else fallback to legacy get_product_sizes (if still populated) or default Regular
+  let sizeOptions = [];
+  let heading = 'Size';
+  let anchorPrice = Number(product.Price_Amount||0);
+  let variantsFetched = false;
   try {
-    const res = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const res = await fetch('ajax/get_product_variants.php?product_id='+product.Product_ID+'&t='+Date.now());
     const js = await res.json();
-    if(js.success) sizePayload = js;
-  } catch(e){ /* ignore */ }
-  if(!Array.isArray(sizePayload.sizes) || sizePayload.sizes.length===0){
-    sizePayload.sizes = [{ code:'default', label:'Regular', final_price:sizePayload.base_price }];
+    if(js.success && js.variants){
+      variantsFetched = true;
+      const sizes = Array.isArray(js.variants.size) ? js.variants.size : [];
+      const flavors = Array.isArray(js.variants.flavor) ? js.variants.flavor : [];
+      if(sizes.length){
+        // pick primary size anchor
+        const primary = sizes.find(v=>Number(v.is_primary)===1) || sizes[0];
+        anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        sizeOptions = sizes.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code:v.code, label:v.label, final_price, is_anchor:Number(v.is_primary)||0 };
+        });
+        heading = 'Size';
+      } else if(flavors.length){
+        const primary = flavors.find(v=>Number(v.is_primary)===1) || flavors[0];
+        anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        sizeOptions = flavors.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code:v.code, label:v.label, final_price, is_anchor:Number(v.is_primary)||0 };
+        });
+        heading = 'Variant Choices';
+      }
+    }
+  } catch(e){ /* ignore unified variant errors */ }
+
+  // Legacy fallback if nothing was fetched
+  if(!sizeOptions.length){
+    try {
+      const res2 = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
+      const js2 = await res2.json();
+      if(js2.success && Array.isArray(js2.sizes) && js2.sizes.length){
+        // legacy structure has base_price + sizes[] each with final_price
+        anchorPrice = Number(js2.base_price||product.Price_Amount||0);
+        sizeOptions = js2.sizes.map(v=>({ code:v.code, label:v.label||v.code, final_price:Number(v.final_price||anchorPrice), is_anchor:Number(v.is_anchor)||0 }));
+        heading = 'Size';
+      }
+    } catch(e){ /* ignore legacy errors */ }
   }
-  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price), is_anchor: s.is_anchor||0 }));
-  window.__currentAnchorPrice = Number(sizePayload.base_price||0);
-  // Build modal HTML (pass anchor as base for header); markup already expects final prices in data-final attributes
-  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice);
+
+  // Final fallback if still empty
+  if(!sizeOptions.length){
+    sizeOptions = [{ code:'default', label:'Regular', final_price:anchorPrice, is_anchor:1 }];
+    heading = variantsFetched ? 'Variant Choices' : 'Size';
+  }
+
+  // Ensure anchorPrice sensible
+  if(!isFinite(anchorPrice) || anchorPrice <= 0){
+    anchorPrice = sizeOptions[0]?.final_price || Number(product.Price_Amount||0) || 0;
+  }
+  window.__currentAnchorPrice = anchorPrice;
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice, heading);
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
   modal.show();
 
