@@ -10,6 +10,7 @@ $product_id   = isset($_POST['product_id'])? (int)$_POST['product_id'] : 0; // O
 $size_code    = isset($_POST['size_code'])? trim($_POST['size_code']) : '';
 $display_name = isset($_POST['display_name'])? trim($_POST['display_name']) : '';
 $price_amount = isset($_POST['price_amount'])? (float)$_POST['price_amount'] : null; // null means don't change
+$price_id = isset($_POST['price_id'])? (int)$_POST['price_id'] : 0; // new: prefer price_id lookup
 $price_mode   = isset($_POST['price_mode'])? strtoupper(trim($_POST['price_mode'])) : '';
 $sort_order   = isset($_POST['sort_order'])? (int)$_POST['sort_order'] : null;
 
@@ -84,8 +85,15 @@ try {
 
 	// Build update fragments
 	$fields = [];$params = [];
-	if($price_mode !== ''){ $fields[] = 'Price_Mode=?'; $params[] = $price_mode; }
-	if($price_amount !== null){ $fields[] = 'Price_Value=?'; $params[] = $price_amount; }
+		if($price_mode !== ''){ $fields[] = 'Price_Mode=?'; $params[] = $price_mode; }
+		// Resolve price_amount from price_id if present
+		if($price_id > 0){
+			$pstmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=? LIMIT 1");
+			$pstmt->execute([$price_id]);
+			$pv = $pstmt->fetchColumn();
+			if($pv !== false){ $price_amount = (float)$pv; }
+		}
+		if($price_amount !== null){ $fields[] = 'Price_Value=?'; $params[] = $price_amount; }
 	// If size id changed from original, update it
 	if($sizeId != (int)$existing['Size_ID']){ $fields[] = 'Size_ID=?'; $params[] = $sizeId; }
 

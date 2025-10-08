@@ -283,8 +283,13 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="display_name">
               </div>
               <div class="col-md-2">
-                <label class="form-label small">Price Amount</label>
-                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" required>
+                <label class="form-label small">Price</label>
+                <select class="form-select form-select-sm" name="price_id" id="addSizePriceId" required>
+                  <option value="">Select Price</option>
+                  <?php foreach ($prices_list as $pr): ?>
+                    <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
+                  <?php endforeach; ?>
+                </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label small">Mode</label>
@@ -343,8 +348,13 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                         </select>
                       </div>
                       <div class="col-6">
-                        <label class="form-label small mb-1">Amount</label>
-                        <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="editPriceAmount" required>
+                        <label class="form-label small mb-1">Price</label>
+                        <select class="form-select form-select-sm" name="price_id" id="editPriceId" required>
+                          <option value="">Select Price</option>
+                          <?php foreach ($prices_list as $pr): ?>
+                            <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
+                          <?php endforeach; ?>
+                        </select>
                       </div>
                     </div>
                     <div class="mt-2">
@@ -487,10 +497,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('addSizeForm').addEventListener('submit', function(e){
       e.preventDefault();
-      const fd = new FormData(this);
+      const form = this;
+      const fd = new FormData();
+      fd.append('product_id', form.product_id.value);
+      fd.append('size_code', form.size_code.value);
+      fd.append('display_name', form.display_name.value);
+      fd.append('price_id', form.price_id ? form.price_id.value : '');
+      fd.append('is_absolute', form.is_absolute.value);
       fetch('ajax/add_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
-          loadSizes(); this.reset();
+          loadSizes(); form.reset();
         } else {
           Swal.fire({icon:'error',title:'Size not added',text:data.message||'Failed'});
         }
@@ -500,17 +516,24 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('#sizesTable').addEventListener('click', function(e){
       const delBtn = e.target.closest('button[data-id]');
       const editBtn = e.target.closest('.edit-size-btn');
-      if(delBtn){
-        const id = delBtn.dataset.id;
-        Swal.fire({title:'Delete size variant?',icon:'warning',showCancelButton:true}).then(res=>{
-          if(res.isConfirmed){
-            fetch('ajax/delete_size.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+encodeURIComponent(id)}).then(r=>r.json()).then(data=>{
-              if(data.success){ loadSizes(); } else { Swal.fire({icon:'error',title:'Failed',text:data.message||'Could not delete'}); }
-            }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Delete failed'}));
-          }
-        });
-      } else if(editBtn){
+      if(editBtn){
         // Populate modal
+        document.getElementById('editMappingId').value = editBtn.dataset.map;
+        document.getElementById('editSizeCode').value = editBtn.dataset.code;
+        document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
+        document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
+        // Try to set price_id if provided in dataset, else attempt to match by amount
+        if(editBtn.dataset.priceId){
+          document.getElementById('editPriceId').value = editBtn.dataset.priceId;
+        } else if(editBtn.dataset.amount){
+          const amount = Number(editBtn.dataset.amount).toFixed(2);
+          const sel = document.getElementById('editPriceId');
+          for(const opt of sel.options){ if(opt.value && opt.text.includes('₱'+amount)){ sel.value = opt.value; break; } }
+        }
+        document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
+        const m = new bootstrap.Modal(document.getElementById('editSizeModal'));
+        m.show();
+      }
         document.getElementById('editMappingId').value = editBtn.dataset.map;
         document.getElementById('editSizeCode').value = editBtn.dataset.code;
         document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
@@ -524,7 +547,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('editSizeForm').addEventListener('submit', function(e){
       e.preventDefault();
-      const fd = new FormData(this);
+      const form = this;
+      const fd = new FormData();
+      fd.append('mapping_id', form.mapping_id.value);
+      fd.append('size_code', form.size_code.value);
+      fd.append('display_name', form.display_name.value);
+      fd.append('price_mode', form.price_mode.value);
+      if(form.price_id) fd.append('price_id', form.price_id.value);
+      fd.append('sort_order', form.sort_order.value||'');
       fetch('ajax/update_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
           bootstrap.Modal.getInstance(document.getElementById('editSizeModal')).hide();

@@ -7,7 +7,8 @@ $db = new database();
 $product_id    = isset($_POST['product_id'])? (int)$_POST['product_id'] : 0;
 $size_code_raw = isset($_POST['size_code'])? trim($_POST['size_code']) : '';
 $display_name  = isset($_POST['display_name'])? trim($_POST['display_name']) : '';
-$price_amount  = isset($_POST['price_amount'])? (float)$_POST['price_amount'] : 0.0;
+$price_amount  = isset($_POST['price_amount'])? (float)$_POST['price_amount'] : null;
+$price_id      = isset($_POST['price_id'])? (int)$_POST['price_id'] : 0;
 $is_absolute   = isset($_POST['is_absolute'])? (int)$_POST['is_absolute'] : 0; // 1 = Absolute, 0 = Delta
 $sort_order    = isset($_POST['sort_order'])? (int)$_POST['sort_order'] : null;
 
@@ -70,10 +71,20 @@ try {
   }
   if($sizeId<=0){ echo json_encode(['success'=>false,'message'=>'Failed to resolve size id']); exit; }
 
+  // Resolve price value: prefer price_id lookup, fallback to provided amount (for backward compatibility)
+  $resolvedPrice = 0.0;
+  if($price_id>0){
+    $pstmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=? LIMIT 1");
+    $pstmt->execute([$price_id]);
+    $pv = $pstmt->fetchColumn();
+    if($pv !== false) $resolvedPrice = (float)$pv;
+  } elseif($price_amount !== null){
+    $resolvedPrice = (float)$price_amount;
+  }
   $mode = $is_absolute ? 'ABS' : 'DELTA';
   $stmt2 = $con->prepare("INSERT INTO product_size_price (Product_ID, Size_ID, Price_Mode, Price_Value) VALUES (?,?,?,?)
               ON DUPLICATE KEY UPDATE Price_Mode=VALUES(Price_Mode), Price_Value=VALUES(Price_Value)");
-  $ok = $stmt2->execute([$product_id,$sizeId,$mode,$price_amount]);
+  $ok = $stmt2->execute([$product_id,$sizeId,$mode,$resolvedPrice]);
 
   echo json_encode(['success'=>$ok,'size_code'=>$norm_code,'mode'=>$mode]);
 } catch(Throwable $e){
