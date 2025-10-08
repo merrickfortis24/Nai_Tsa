@@ -1520,6 +1520,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMenuCards(filtered);
   }
 
+  // Initial render: show all products (or a helpful message if empty)
+  try {
+    console.info('All products loaded (count):', Array.isArray(allProducts)? allProducts.length : 'not an array');
+    if(Array.isArray(allProducts) && allProducts.length){
+      renderMenuCards(allProducts);
+    } else {
+      renderMenuCards([]); // will show 'No products found.' placeholder
+    }
+  } catch(e){ console.warn('Initial product render failed', e); }
+
   document.querySelectorAll('.category-link').forEach(btn => {
     btn.addEventListener('click', () => {
       currentCategory = btn.getAttribute('data-category');
