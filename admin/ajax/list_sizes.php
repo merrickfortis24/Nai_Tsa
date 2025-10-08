@@ -23,12 +23,14 @@ try {
     Price_Mode ENUM('ABS','DELTA') NOT NULL DEFAULT 'ABS',
     Price_Value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     Price_Source_ID INT NULL,
+    Is_Anchor TINYINT(1) NOT NULL DEFAULT 0,
     Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_prod_size (Product_ID, Size_ID),
     INDEX (Product_ID),
     INDEX (Size_ID),
     INDEX (Price_Source_ID),
+    INDEX (Is_Anchor),
     CONSTRAINT fk_psp_product FOREIGN KEY (Product_ID) REFERENCES product(Product_ID) ON DELETE CASCADE,
     CONSTRAINT fk_psp_size FOREIGN KEY (Size_ID) REFERENCES sizes(Size_ID) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -63,29 +65,29 @@ try {
     if($productFilter){
       // Filter by specific product (optimized for primary size selection modal)
       $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID
                 WHERE psp.Product_ID = ?
-                ORDER BY s.Sort_Order, s.Display_Name");
+                ORDER BY psp.Is_Anchor DESC, s.Sort_Order, s.Display_Name");
       $stmt->execute([$productFilter]);
     } elseif($categoryFilter){
       $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID
                 WHERE p.Category_ID = ?
-                ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+                ORDER BY p.Product_Name, psp.Is_Anchor DESC, s.Sort_Order, s.Display_Name");
       $stmt->execute([$categoryFilter]);
     } else {
       $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
-                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary, psp.Is_Anchor
                 FROM product_size_price psp
                 JOIN sizes s ON psp.Size_ID = s.Size_ID
                 JOIN product p ON psp.Product_ID = p.Product_ID
-                ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+                ORDER BY p.Product_Name, psp.Is_Anchor DESC, s.Sort_Order, s.Display_Name");
     }
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
   } catch (Throwable $inner) { /* ignore */ }

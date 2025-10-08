@@ -77,12 +77,12 @@ class database {
         // Collect product IDs
         $ids = array_column($rows,'Product_ID');
         $in = implode(',', array_fill(0,count($ids),'?'));
-        // Fetch all size prices for these products; we will choose primary or heuristic after
-        $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name,
-                           psp.Price_Mode, psp.Price_Value, s.Sort_Order
-                    FROM product_size_price psp
-                    JOIN sizes s ON psp.Size_ID = s.Size_ID
-                    WHERE psp.Product_ID IN ($in)";
+     // Fetch all size prices including anchor flag for these products
+     $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name,
+                  psp.Price_Mode, psp.Price_Value, psp.Is_Anchor, s.Sort_Order
+              FROM product_size_price psp
+              JOIN sizes s ON psp.Size_ID = s.Size_ID
+              WHERE psp.Product_ID IN ($in)";
         $sizeStmt = $con->prepare($sizeSql);
         $sizeStmt->execute($ids);
         $sizesByProduct = [];
@@ -97,21 +97,28 @@ class database {
             $r['Size_Display_Name'] = null;
             $r['Size_Display_Mode'] = null;
             $r['Size_Display_Price'] = null;
-            $r['Size_Display_Base'] = null; // base component if DELTA
-            $r['Size_Display_Delta'] = null; // delta component if DELTA
-            $base = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : null;
-            if(isset($sizesByProduct[$pid]) && $sizesByProduct[$pid]){
-                $chosen = null;
-                // Prefer explicit Primary_Size_ID if set
-                if(!empty($r['Primary_Size_ID'])){
-                    foreach($sizesByProduct[$pid] as $sz){ if($sz['Size_ID']==$r['Primary_Size_ID']){ $chosen = $sz; break; } }
+            $r['Size_Display_Base'] = null; // anchor base
+            $r['Size_Display_Delta'] = null; // delta component
+            $sizes = $sizesByProduct[$pid] ?? [];
+            if($sizes){
+                // Anchor model: find anchor (Is_Anchor=1 & Price_Mode='ABS')
+                $anchor = null;
+                foreach($sizes as $sz){ if(!empty($sz['Is_Anchor'])) { $anchor = $sz; break; } }
+                if(!$anchor){
+                    // Fallback: pick first ABS as implicit anchor
+                    foreach($sizes as $sz){ if($sz['Price_Mode']==='ABS'){ $anchor=$sz; break; } }
                 }
-                // Heuristic fallback
+                // Determine chosen display size (primary override else heuristic)
+                $chosen = null;
+                if(!empty($r['Primary_Size_ID'])){
+                    foreach($sizes as $sz){ if($sz['Size_ID']==$r['Primary_Size_ID']){ $chosen=$sz; break; } }
+                }
                 if(!$chosen){
-                    // Sort copy: by Sort_Order ASC, ABS before DELTA, Price_Value DESC
-                    $sorted = $sizesByProduct[$pid];
+                    // Heuristic: sort by Sort_Order then anchor first then ABS then DELTA
+                    $sorted = $sizes;
                     usort($sorted,function($a,$b){
                         if($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
+                        if($a['Is_Anchor'] != $b['Is_Anchor']) return $b['Is_Anchor'] <=> $a['Is_Anchor'];
                         if($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS')? -1:1;
                         return $b['Price_Value'] <=> $a['Price_Value'];
                     });
@@ -120,15 +127,25 @@ class database {
                 $r['Size_Display_Code'] = $chosen['Size_Code'];
                 $r['Size_Display_Name'] = $chosen['Display_Name'];
                 $r['Size_Display_Mode'] = $chosen['Price_Mode'];
-                if($chosen['Price_Mode']==='ABS'){
-                    $r['Size_Display_Price'] = (float)$chosen['Price_Value'];
+                if($anchor){
+                    $r['Size_Display_Base'] = (float)$anchor['Price_Value'];
+                    if($chosen['Price_Mode']==='ABS' && $chosen['Is_Anchor']){
+                        $r['Size_Display_Price'] = (float)$anchor['Price_Value'];
+                    } elseif($chosen['Price_Mode']==='ABS' && !$chosen['Is_Anchor']){
+                        // Non-anchor ABS (should not normally exist in strict model) treat as its own full price
+                        $r['Size_Display_Price'] = (float)$chosen['Price_Value'];
+                    } else { // DELTA
+                        $r['Size_Display_Delta'] = (float)$chosen['Price_Value'];
+                        $r['Size_Display_Price'] = $r['Size_Display_Base'] + $r['Size_Display_Delta'];
+                    }
                 } else {
-                    $r['Size_Display_Base'] = $base!==null? (float)$base : 0.00;
-                    $r['Size_Display_Delta'] = (float)$chosen['Price_Value'];
-                    $r['Size_Display_Price'] = $r['Size_Display_Base'] + $r['Size_Display_Delta'];
+                    // No anchor found: fallback to chosen raw value
+                    $r['Size_Display_Price'] = (float)$chosen['Price_Value'];
                 }
             } else {
-                $r['Size_Display_Price'] = $base!==null? (float)$base : null;
+                // No sizes: use product base price
+                $base = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : null;
+                $r['Size_Display_Price'] = $base!==null? $base : null;
             }
         }
         unset($r);

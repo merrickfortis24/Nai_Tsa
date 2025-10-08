@@ -39,14 +39,20 @@ try {
 		Price_Mode ENUM('ABS','DELTA') NOT NULL DEFAULT 'ABS',
 		Price_Value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
 		Price_Source_ID INT NULL,
+		Is_Anchor TINYINT(1) NOT NULL DEFAULT 0,
 		Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 		UNIQUE KEY uq_prod_size (Product_ID, Size_ID),
-		INDEX (Price_Source_ID)
+		INDEX (Price_Source_ID),
+		INDEX (Is_Anchor)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
 	// Ensure Price_Source_ID exists for legacy tables
 	try { $cc=$con->query("SHOW COLUMNS FROM product_size_price LIKE 'Price_Source_ID'"); if($cc && $cc->rowCount()==0){ $con->exec("ALTER TABLE product_size_price ADD COLUMN Price_Source_ID INT NULL AFTER Price_Value, ADD INDEX (Price_Source_ID)"); } } catch(Throwable $ign) {}
+	// Ensure Is_Anchor column
+	try { $cc2=$con->query("SHOW COLUMNS FROM product_size_price LIKE 'Is_Anchor'"); if($cc2 && $cc2->rowCount()==0){ $con->exec("ALTER TABLE product_size_price ADD COLUMN Is_Anchor TINYINT(1) NOT NULL DEFAULT 0 AFTER Price_Source_ID, ADD INDEX (Is_Anchor)"); } } catch(Throwable $ign) {}
+	// One-time migrate first ABS per product
+	try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) mid FROM product_size_price WHERE Price_Mode='ABS' GROUP BY Product_ID) t ON p.Product_ID=t.Product_ID AND p.Product_Size_Price_ID=t.mid SET p.Is_Anchor=1 WHERE p.Is_Anchor=0"); } catch(Throwable $m) {}
 
 	// Fetch existing mapping
 	$cur = $con->prepare("SELECT Product_ID, Size_ID FROM product_size_price WHERE Product_Size_Price_ID=? LIMIT 1");
@@ -89,7 +95,27 @@ try {
 
 	// Build update fragments
 	$fields = [];$params = [];
-		if($price_mode !== ''){ $fields[] = 'Price_Mode=?'; $params[] = $price_mode; }
+	// Anchor rules:
+	$anchorExistStmt = $con->prepare("SELECT Product_Size_Price_ID FROM product_size_price WHERE Product_ID=? AND Is_Anchor=1 LIMIT 1");
+	$anchorExistStmt->execute([$productIdActual]);
+	$anchorId = $anchorExistStmt->fetchColumn();
+
+	if($price_mode !== ''){
+		if($price_mode==='ABS'){
+			// If another anchor exists and it's not this mapping, reject
+			if($anchorId && (int)$anchorId !== $map_id){ echo json_encode(['success'=>false,'message'=>'This product already has an anchor size.']); exit; }
+			$fields[] = 'Price_Mode=?'; $params[] = 'ABS';
+			$fields[] = 'Is_Anchor=1';
+		} else { // DELTA
+			if(!$anchorId || (int)$anchorId === $map_id){
+				// cannot set current anchor to DELTA if it is the only anchor without replacing
+				if((int)$anchorId === $map_id){ echo json_encode(['success'=>false,'message'=>'Cannot downgrade the only anchor to DELTA. Create another ABS first.']); exit; }
+				else { echo json_encode(['success'=>false,'message'=>'Add an anchor (ABS) size first.']); exit; }
+			}
+			$fields[] = 'Price_Mode=?'; $params[] = 'DELTA';
+			$fields[] = 'Is_Anchor=0';
+		}
+	}
 		// Resolve price_amount from price_id if present
 		$price_source_id_to_set = null;
 		if($price_id > 0){
