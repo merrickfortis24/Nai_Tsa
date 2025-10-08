@@ -29,14 +29,93 @@ class database {
 
     public function fetchAllProducts() {
         $con = $this->opencon();
-        $stmt = $con->prepare("
-            SELECT p.*, c.Category_Name, pp.Price_Amount
-            FROM product p
-            JOIN category c ON p.Category_ID = c.Category_ID
-            JOIN product_price pp ON p.Price_ID = pp.Price_ID
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Ensure Primary_Size_ID column exists (idempotent) to stay consistent with admin side
+            try {
+                $col = $con->query("SHOW COLUMNS FROM product LIKE 'Primary_Size_ID'");
+                if ($col && $col->rowCount() === 0) {
+                    $con->exec("ALTER TABLE product ADD COLUMN Primary_Size_ID INT NULL AFTER Price_ID, ADD INDEX (Primary_Size_ID)");
+                }
+            } catch (Throwable $e) { /* ignore */ }
+            // Ensure Is_Anchor exists for anchor-based pricing
+            try {
+                $c = $con->query("SHOW COLUMNS FROM product_size_price LIKE 'Is_Anchor'");
+                if ($c && $c->rowCount() === 0) {
+                    $con->exec("ALTER TABLE product_size_price ADD COLUMN Is_Anchor TINYINT(1) NOT NULL DEFAULT 0 AFTER Price_Source_ID, ADD INDEX (Is_Anchor)");
+                    // Migration: mark first ABS row as anchor else first any
+                    try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) mid FROM product_size_price WHERE Price_Mode='ABS' GROUP BY Product_ID) t ON p.Product_ID=t.Product_ID AND p.Product_Size_Price_ID=t.mid SET p.Is_Anchor=1 WHERE p.Is_Anchor=0"); } catch(Throwable $m1){}
+                    try { $con->exec("UPDATE product_size_price p JOIN (SELECT Product_ID, MIN(Product_Size_Price_ID) midAny FROM product_size_price GROUP BY Product_ID) x ON p.Product_ID=x.Product_ID AND p.Product_Size_Price_ID=x.midAny SET p.Is_Anchor=1 WHERE p.Is_Anchor=0 AND NOT EXISTS (SELECT 1 FROM product_size_price z WHERE z.Product_ID=p.Product_ID AND z.Is_Anchor=1)"); } catch(Throwable $m2){}
+                }
+            } catch (Throwable $e) { /* ignore */ }
+
+            // Use LEFT JOIN so products without a base Price_ID (anchor-only) still appear
+            $sql = "SELECT p.*, c.Category_Name, pp.Price_Amount AS Base_Price_Amount, p.Primary_Size_ID
+                    FROM product p
+                    LEFT JOIN category c ON p.Category_ID = c.Category_ID
+                    LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID";
+            $stmt = $con->prepare($sql);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!$rows) return [];
+            $ids = array_column($rows, 'Product_ID');
+            $in = implode(',', array_fill(0, count($ids), '?'));
+            // Fetch size variants (if any) for these products
+            $sizesByProduct = [];
+            try {
+                $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name, psp.Price_Mode, psp.Price_Value, psp.Is_Anchor, s.Sort_Order
+                             FROM product_size_price psp
+                             JOIN sizes s ON psp.Size_ID = s.Size_ID
+                             WHERE psp.Product_ID IN ($in)";
+                $sizeStmt = $con->prepare($sizeSql);
+                $sizeStmt->execute($ids);
+                while($r = $sizeStmt->fetch(PDO::FETCH_ASSOC)){
+                    $sizesByProduct[$r['Product_ID']][] = $r;
+                }
+            } catch (Throwable $e) { /* sizes table may not exist */ }
+
+            foreach ($rows as &$r) {
+                $pid = $r['Product_ID'];
+                $sizes = $sizesByProduct[$pid] ?? [];
+                if ($sizes) {
+                    // Find anchor
+                    $anchor = null;
+                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor'])) { $anchor = $sz; break; } }
+                    if (!$anchor) {
+                        foreach ($sizes as $sz) { if ($sz['Price_Mode'] === 'ABS') { $anchor = $sz; break; } }
+                    }
+                    if (!$anchor) { $anchor = $sizes[0]; }
+                    // Choose primary size for display
+                    $chosen = null;
+                    if (!empty($r['Primary_Size_ID'])) {
+                        foreach ($sizes as $sz) { if ($sz['Size_ID'] == $r['Primary_Size_ID']) { $chosen = $sz; break; } }
+                    }
+                    if (!$chosen) {
+                        $sorted = $sizes;
+                        usort($sorted, function($a,$b){
+                            if ($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
+                            if ($a['Is_Anchor'] != $b['Is_Anchor']) return $b['Is_Anchor'] <=> $a['Is_Anchor'];
+                            if ($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS') ? -1 : 1;
+                            return $b['Price_Value'] <=> $a['Price_Value'];
+                        });
+                        $chosen = $sorted[0];
+                    }
+                    // Compute display price under anchor model
+                    $anchorPrice = (float)$anchor['Price_Value'];
+                    if (!empty($chosen['Is_Anchor']) && $chosen['Price_Mode']==='ABS') {
+                        $display = $anchorPrice;
+                    } elseif ($chosen['Price_Mode'] === 'DELTA') {
+                        $display = $anchorPrice + (float)$chosen['Price_Value'];
+                    } else { // non-anchor ABS
+                        $display = (float)$chosen['Price_Value'];
+                    }
+                    $r['Price_Amount'] = $display; // maintain expected key for frontend
+                } else {
+                    // No sizes -> use base price amount
+                    if (!array_key_exists('Price_Amount', $r) || $r['Price_Amount'] === null) {
+                        $r['Price_Amount'] = $r['Base_Price_Amount'] ?? 0;
+                    }
+                }
+            }
+            return $rows;
     }
 
     // Ensure order_item_addons table exists (idempotent)
