@@ -2419,61 +2419,46 @@ function updateProductModalTotal(anchorPrice){
 }
 
 async function openProductDetailsWithAddons(product){
-  // Unified variant fetch (sizes + flavors). If only flavors exist, display them alone.
-  let sizes = [], flavors = [];
-  const basePrice = Number(product.Price_Amount||0);
-  window.__currentAnchorPrice = basePrice;
+  // Fetch size variants (anchor-based). If variants exist, ignore product.Price_Amount.
+  let sizePayload = { base_price: Number(product.Price_Amount||0), sizes: [] };
   try {
-    const res = await fetch('ajax/get_product_variants.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const res = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
     const js = await res.json();
-    if(js.success && js.variants){
-      sizes = Array.isArray(js.variants.size)? js.variants.size: [];
-      flavors = Array.isArray(js.variants.flavor)? js.variants.flavor: [];
-    }
+    if(js.success) sizePayload = js;
   } catch(e){ /* ignore */ }
-  // Precompute size final price relative to base; flavor adjustments applied later.
-  const sizeOptions = sizes.map(v=>{
-    let finalP = basePrice;
-    if(v.price_mode==='ABSOLUTE') finalP = Number(v.price_value||0); else finalP = basePrice + Number(v.price_value||0);
-    return { code:v.code, label:v.label||v.code, final_price:finalP };
-  });
-  const flavorOptions = flavors.map(v=>({ code:v.code, label:v.label||v.code, price_mode:v.price_mode, price_value:Number(v.price_value||0) }));
-  // If no sizes and no flavors: synthetic default
-  if(sizeOptions.length===0 && flavorOptions.length===0){
-    sizeOptions.push({ code:'default', label:'Regular', final_price: basePrice });
+  if(!Array.isArray(sizePayload.sizes) || sizePayload.sizes.length===0){
+    sizePayload.sizes = [{ code:'default', label:'Regular', final_price:sizePayload.base_price }];
   }
-  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, basePrice, flavorOptions);
+  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price), is_anchor: s.is_anchor||0 }));
+  window.__currentAnchorPrice = Number(sizePayload.base_price||0);
+  // Build modal HTML (pass anchor as base for header); markup already expects final prices in data-final attributes
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice);
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
   modal.show();
-  // Bind qty +/-
+
+  // Bind qty +/- and total updates for this render
+  const basePrice = window.__currentAnchorPrice;
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
   minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
   plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
   qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
-  // Changes in size or flavor selections
+  // Bind size change
   document.getElementById('productDetailsContent').addEventListener('change', e=>{
-    if (e.target.name === 'pdSize' || e.target.name === 'pdFlavor') updateProductModalTotal(basePrice);
+    if (e.target.name === 'pdSize') updateProductModalTotal(basePrice);
   });
-  // Click labels delegation
+  // Also handle clicking on label itself to toggle the hidden radio (improves hit area reliability)
   document.getElementById('productDetailsContent').addEventListener('click', e=>{
-    const sizeLab = e.target.closest('#productSizeChoices label');
-    if(sizeLab){
-      const input = sizeLab.querySelector('input[name="pdSize"]');
-      if(input){
-        document.querySelectorAll('#productSizeChoices label').forEach(l=> l.classList.remove('active'));
-        input.checked = true; sizeLab.classList.add('active'); updateProductModalTotal(basePrice);
-      }
-    }
-    const flavorLab = e.target.closest('#productFlavorChoices label');
-    if(flavorLab){
-      const finput = flavorLab.querySelector('input[name="pdFlavor"]');
-      if(finput){
-        document.querySelectorAll('#productFlavorChoices label').forEach(l=> l.classList.remove('active'));
-        finput.checked = true; flavorLab.classList.add('active'); updateProductModalTotal(basePrice);
-      }
-    }
+    const lab = e.target.closest('#productSizeChoices label');
+    if(!lab) return;
+    const input = lab.querySelector('input[name="pdSize"]');
+    if(!input) return;
+    // Manually set checked and remove from others
+    document.querySelectorAll('#productSizeChoices label').forEach(l=> l.classList.remove('active'));
+    input.checked = true;
+    lab.classList.add('active');
+    updateProductModalTotal(basePrice);
   });
   updateProductModalTotal(basePrice);
 
@@ -2488,15 +2473,11 @@ async function openProductDetailsWithAddons(product){
     const productQty = Math.max(1, Number(document.getElementById('pdQty').value||1));
     const instruction = document.getElementById('pdInstructions')?.value?.trim() || '';
     const sizeRadio = document.querySelector('input[name="pdSize"]:checked');
-    const flavorRadio = document.querySelector('input[name="pdFlavor"]:checked');
-    const sizeCode = sizeRadio ? sizeRadio.value : '';
-    const flavorCode = flavorRadio ? flavorRadio.value : '';
-    // Base + size final (already in data-final) then flavor adjustment
-    let effectiveUnitPrice = sizeRadio && sizeRadio.hasAttribute('data-final') ? Number(sizeRadio.getAttribute('data-final'))||window.__currentAnchorPrice : window.__currentAnchorPrice;
-    if(flavorRadio){
-      const mode = flavorRadio.getAttribute('data-mode');
-      const val = Number(flavorRadio.getAttribute('data-value'))||0;
-      effectiveUnitPrice = (mode==='ABSOLUTE') ? val : (effectiveUnitPrice + val);
+    const sizeCode = sizeRadio ? sizeRadio.value : 'default';
+    // New model: effective unit price is just the selected size's final price (anchor-relative already computed server-side)
+    let effectiveUnitPrice = window.__currentAnchorPrice;
+    if(sizeRadio && sizeRadio.hasAttribute('data-final')){
+      effectiveUnitPrice = Number(sizeRadio.getAttribute('data-final'))||effectiveUnitPrice;
     }
     const found = cart.find(i => i.name === product.Product_Name);
     if (found) {
@@ -2510,16 +2491,15 @@ async function openProductDetailsWithAddons(product){
       if (instruction) {
         if (!found.instruction) found.instruction = instruction; else if (!found.instruction.includes(instruction)) found.instruction += ' | ' + instruction;
       }
-      // Different size or flavor => new cart line
-      if ((found.size && found.size !== sizeCode) || (found.flavor && found.flavor !== flavorCode)) {
-        cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, flavor: flavorCode, unitPrice: effectiveUnitPrice });
+      // If size differs, we create a new entry instead (avoid mixing sizes)
+      if (found.size && found.size !== sizeCode) {
+  cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
       } else {
         found.size = sizeCode;
-        found.flavor = flavorCode;
         found.unitPrice = effectiveUnitPrice;
       }
     } else {
-      cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, flavor: flavorCode, unitPrice: effectiveUnitPrice });
+  cart.push({ name: product.Product_Name, qty: productQty, addons: selected, instruction, size: sizeCode, unitPrice: effectiveUnitPrice });
     }
     updateCartBadge();
     renderCartItems();
