@@ -253,27 +253,55 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
 
     <!-- Add Price Modal (restored) -->
     <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-sm">
+      <div class="modal-dialog modal-lg">
         <form class="modal-content" id="addPriceForm">
           <div class="modal-header py-2">
             <h6 class="modal-title" id="addPriceModalLabel">Add Price</h6>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="mb-2">
-              <label class="form-label small mb-1">Amount (₱)</label>
-              <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="price_amount" required>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="mb-2">
+                  <label class="form-label small mb-1">Amount (₱)</label>
+                  <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="price_amount" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small mb-1">Effective From</label>
+                  <input type="date" class="form-control form-control-sm" name="effective_from" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label small mb-1">Effective To (optional)</label>
+                  <input type="date" class="form-control form-control-sm" name="effective_to">
+                  <div class="form-text small">Leave blank for open-ended pricing.</div>
+                </div>
+                <div class="alert alert-info p-2 small mb-0">New prices appear in dropdowns instantly.</div>
+              </div>
+              <div class="col-md-8">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <strong class="small mb-0">Existing Prices</strong>
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Pagination" id="pricePager" data-page="1">
+                    <button type="button" class="btn btn-outline-secondary" id="pricePrev" disabled>&laquo;</button>
+                    <button type="button" class="btn btn-outline-secondary" id="priceNext" disabled>&raquo;</button>
+                  </div>
+                </div>
+                <div class="table-responsive border rounded" style="max-height:300px; overflow:auto;">
+                  <table class="table table-sm mb-0 align-middle" id="priceListTable">
+                    <thead class="table-light sticky-top">
+                      <tr>
+                        <th style="width:70px;">ID</th>
+                        <th>Amount</th>
+                        <th>Effective Range</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="small text-muted mt-1" id="priceMeta"></div>
+              </div>
             </div>
-            <div class="mb-2">
-              <label class="form-label small mb-1">Effective From</label>
-              <input type="date" class="form-control form-control-sm" name="effective_from" required>
-            </div>
-            <div class="mb-2">
-              <label class="form-label small mb-1">Effective To (optional)</label>
-              <input type="date" class="form-control form-control-sm" name="effective_to">
-              <div class="form-text small">Leave blank for open-ended pricing.</div>
-            </div>
-            <div class="alert alert-info p-2 small mb-0">New prices become selectable for products and size variants immediately.</div>
           </div>
           <div class="modal-footer py-2">
             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -512,6 +540,52 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function formatDate(str){
+  // Load price list when Add Price modal opens
+  document.getElementById('addPriceModal').addEventListener('shown.bs.modal', function(){
+    loadPricePage(1);
+  });
+
+  document.getElementById('pricePrev').addEventListener('click', function(){
+    const pager = document.getElementById('pricePager');
+    const cur = parseInt(pager.getAttribute('data-page'))||1;
+    if(cur>1) loadPricePage(cur-1);
+  });
+  document.getElementById('priceNext').addEventListener('click', function(){
+    const pager = document.getElementById('pricePager');
+    const cur = parseInt(pager.getAttribute('data-page'))||1;
+    loadPricePage(cur+1);
+  });
+
+  function loadPricePage(page){
+    const tbody = document.querySelector('#priceListTable tbody');
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>';
+    fetch(`ajax/list_prices.php?page=${page}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if(!data.success){ tbody.innerHTML = `<tr><td colspan=3 class='text-danger small text-center'>${data.message||'Error'}</td></tr>`; return; }
+        const rows = data.rows;
+        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">No prices found.</td></tr>'; }
+        else {
+          tbody.innerHTML = '';
+          rows.forEach(rw=>{
+            const tr = document.createElement('tr');
+            const effFrom = formatDate(rw.Effective_From);
+            const effTo = rw.Effective_To ? formatDate(rw.Effective_To) : 'Open';
+            tr.innerHTML = `<td>${rw.Price_ID}</td><td>₱${Number(rw.Price_Amount).toFixed(2)}</td><td>${effFrom} - ${effTo}</td>`;
+            tbody.appendChild(tr);
+          });
+        }
+        // Update pager state
+        const pager = document.getElementById('pricePager');
+        pager.setAttribute('data-page', data.current_page);
+        document.getElementById('pricePrev').disabled = (data.current_page <= 1);
+        document.getElementById('priceNext').disabled = (data.current_page >= data.total_pages);
+        document.getElementById('priceMeta').textContent = `Page ${data.current_page} of ${data.total_pages} • Total Prices: ${data.total}`;
+      })
+      .catch(()=>{
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger small">Load failed.</td></tr>';
+      });
+  }
     if(!str) return '';
     // Expecting YYYY-MM-DD or datetime
     const d = new Date(str);
