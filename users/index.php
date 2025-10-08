@@ -773,37 +773,34 @@ function computeDeliveryFee(distanceKm){
   return 99 + (8 * extra);
 }
 
+// Rewritten (previous version malformed causing syntax error)
 function updateOrderSummary(){
-  const subtotal = computeCartSubtotal();
-  const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
-  let s = 0;
-  const allProducts = <?php echo json_encode($all_products); ?> || [];
-  cart.forEach(i=>{
-    const prod = allProducts.find(p=>p.Product_Name===i.name);
-    const unit = (i.unitPrice != null) ? Number(i.unitPrice) : Number(prod?.Price_Amount||0);
-    let line = unit * (i.qty||1);
-    if (Array.isArray(i.addons)) {
-      i.addons.forEach(a=>{ line += Number(a.price||0) * Number(a.qty||1); });
-    }
-    s += line;
-  });
-          return s;
+  try {
+    const subtotal = computeCartSubtotal();
+    const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
+    let fee = 0;
+    if (orderType === 'Delivery') {
+      // Attempt distance-based fee only if we have coords
+      const latVal = parseFloat(summary.latInput?.value || '');
+      const lngVal = parseFloat(summary.lngInput?.value || '');
+      if (isFinite(latVal) && isFinite(lngVal)) {
+        const distKm = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, latVal, lngVal);
+        fee = computeDeliveryFee(distKm);
+        if(summary.distanceInfo){
+          summary.distanceInfo.textContent = `Distance: ${distKm.toFixed(2)} km • Delivery Fee: ₱${fee.toFixed(2)}`;
         }
-        if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
       } else {
-        if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+        if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location or pin the map to estimate the delivery fee.'; }
       }
-      if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
-      if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
-      if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
-      if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
+    } else {
+      if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
     }
-  } else {
-    if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+    if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
+    if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
+    if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
+  } catch(err){
+    console.warn('updateOrderSummary failed', err);
   }
-  if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
-  if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
-  if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
 }
 
 // Show/hide delivery fields based on order type
@@ -1824,37 +1821,36 @@ function renderOrders(){
 function renderOrdersPagination(totalPages){
   let pagEl = document.getElementById('ordersPagination');
   if(!pagEl){
-    // Create container just after ordersList
     const listEl = document.getElementById('ordersList');
     if(!listEl) return;
     pagEl = document.createElement('div');
     pagEl.id = 'ordersPagination';
     pagEl.className = 'mt-2';
     listEl.after(pagEl);
-    list.innerHTML = cart.map((item, idx) => {
-  if(totalPages <= 1){ pagEl.innerHTML=''; return; }
-  let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0">';
-      const unit = item.unitPrice != null ? Number(item.unitPrice) : base;
+  }
+  if(totalPages <= 1){ pagEl.innerHTML = ''; return; }
+  let html = '<nav aria-label="Orders pages"><ul class="pagination pagination-sm justify-content-end mb-0">';
   const disabledPrev = ORDERS_PAGE === 1 ? ' disabled' : '';
   html += `<li class="page-item${disabledPrev}"><a class="page-link" data-page="prev" href="#">Previous</a></li>`;
   for(let i=1;i<=totalPages;i++){
     const active = i===ORDERS_PAGE ? ' active' : '';
-      return `<li class="list-group-item d-flex align-items-start justify-content-between">
-        <div>
-          <div><strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark'>${item.size}</span>`:''} <span class="badge bg-secondary">x${item.qty}</span></div>
+    html += `<li class="page-item${active}"><a class="page-link" data-page="${i}" href="#">${i}</a></li>`;
+  }
+  const disabledNext = ORDERS_PAGE === totalPages ? ' disabled' : '';
   html += `<li class="page-item${disabledNext}"><a class="page-link" data-page="next" href="#">Next</a></li>`;
   html += '</ul></nav>';
   pagEl.innerHTML = html;
-        <div class="text-end">₱${(unit * item.qty).toFixed(2)}<br>
+  pagEl.querySelectorAll('.page-link').forEach(a=>{
     a.addEventListener('click', e=>{
       e.preventDefault();
       const val = a.getAttribute('data-page');
       if(val==='prev' && ORDERS_PAGE>1){ ORDERS_PAGE--; }
       else if(val==='next' && ORDERS_PAGE < totalPages){ ORDERS_PAGE++; }
-      else if(/^[0-9]+$/.test(val)){ const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; } }
+      else if(/^[0-9]+$/.test(val)){
+        const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; }
+      }
       renderOrders();
-      // Scroll to top of modal body for better UX
-      try{ document.querySelector('#myOrdersModal .modal-body').scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+      try{ document.querySelector('#myOrdersModal .modal-body')?.scrollTo({top:0,behavior:'smooth'}); }catch(_){ }
     });
   });
 }
