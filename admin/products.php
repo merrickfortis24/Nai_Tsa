@@ -104,6 +104,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#manageVariantsModal">
+                  <i class="bi bi-sliders me-1"></i> Manage Variants (New)
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
                   <i class="bi bi-cash-coin me-1"></i> Add Price
                 </button>
@@ -916,6 +919,309 @@ document.addEventListener('DOMContentLoaded', function() {
         }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
     });
 });
+    </script>
+        <!-- Unified Manage Variants Modal (Sizes & Flavors) -->
+        <div class="modal fade" id="manageVariantsModal" tabindex="-1" aria-labelledby="manageVariantsModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header py-2">
+                <h5 class="modal-title" id="manageVariantsModalLabel">Manage Variants (Sizes & Flavors)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-2">
+                <div class="alert alert-info small mb-2">This new interface stores both size and flavor variants in <code>product_variant</code>. Mark one primary per type. Absolute replaces prior price; Delta adds on top.</div>
+                <ul class="nav nav-tabs" id="variantTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="sizes-tab" data-bs-toggle="tab" data-bs-target="#sizesPane" type="button" role="tab">Sizes</button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="flavors-tab" data-bs-toggle="tab" data-bs-target="#flavorsPane" type="button" role="tab">Flavors</button>
+                  </li>
+                </ul>
+                <div class="tab-content border border-top-0 p-2 bg-light-subtle" id="variantTabsContent">
+                  <!-- Sizes Pane -->
+                  <div class="tab-pane fade show active" id="sizesPane" role="tabpanel" aria-labelledby="sizes-tab">
+                    <form id="addSizeVariantForm" class="row g-2 align-items-end mb-2">
+                      <div class="col-md-3">
+                        <label class="form-label small mb-1">Product</label>
+                        <select class="form-select form-select-sm" name="product_id" required id="sizeVarProduct">
+                          <option value="">Select...</option>
+                          <?php foreach($products as $p): ?>
+                            <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Code</label>
+                        <input type="text" name="code" class="form-control form-control-sm" maxlength="50" required placeholder="e.g. 16OZ">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Label</label>
+                        <input type="text" name="label" class="form-control form-control-sm" maxlength="100" required placeholder="Display name">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Mode</label>
+                        <select name="price_mode" class="form-select form-select-sm" required>
+                          <option value="ABSOLUTE">ABSOLUTE</option>
+                          <option value="DELTA" selected>DELTA (+)</option>
+                        </select>
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-1">Value</label>
+                        <input type="number" step="0.01" name="price_value" value="0" class="form-control form-control-sm" required>
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-1">Sort</label>
+                        <input type="number" name="sort_order" class="form-control form-control-sm" value="0">
+                      </div>
+                      <div class="col-md-1 text-center">
+                        <div class="form-check mt-4">
+                          <input class="form-check-input" type="checkbox" name="is_primary" id="sizePrimaryChk">
+                          <label class="form-check-label small" for="sizePrimaryChk">Primary</label>
+                        </div>
+                      </div>
+                      <div class="col-md-12 d-flex gap-2">
+                        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus"></i> Add Size Variant</button>
+                        <div id="sizeVarMsg" class="small text-muted"></div>
+                      </div>
+                    </form>
+                    <div class="table-responsive border rounded" style="max-height:320px;overflow:auto;">
+                      <table class="table table-sm table-hover align-middle mb-0" id="sizeVariantsTable">
+                        <thead class="table-light sticky-top"><tr>
+                          <th style="width:40px;">#</th><th>Product</th><th>Code</th><th>Label</th><th>Mode</th><th>Value</th><th>P</th><th>Sort</th><th>Updated</th><th style="width:95px;">Actions</th>
+                        </tr></thead>
+                        <tbody><tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <!-- Flavors Pane -->
+                  <div class="tab-pane fade" id="flavorsPane" role="tabpanel" aria-labelledby="flavors-tab">
+                    <form id="addFlavorVariantForm" class="row g-2 align-items-end mb-2">
+                      <div class="col-md-3">
+                        <label class="form-label small mb-1">Product</label>
+                        <select class="form-select form-select-sm" name="product_id" required id="flavorVarProduct">
+                          <option value="">Select...</option>
+                          <?php foreach($products as $p): ?>
+                            <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Code</label>
+                        <input type="text" name="code" class="form-control form-control-sm" maxlength="50" required placeholder="e.g. PORK">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Label</label>
+                        <input type="text" name="label" class="form-control form-control-sm" maxlength="100" required placeholder="Display name">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-1">Mode</label>
+                        <select name="price_mode" class="form-select form-select-sm" required>
+                          <option value="DELTA" selected>DELTA (+)</option>
+                          <option value="ABSOLUTE">ABSOLUTE</option>
+                        </select>
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-1">Value</label>
+                        <input type="number" step="0.01" name="price_value" value="0" class="form-control form-control-sm" required>
+                      </div>
+                      <div class="col-md-1">
+                        <label class="form-label small mb-1">Sort</label>
+                        <input type="number" name="sort_order" class="form-control form-control-sm" value="0">
+                      </div>
+                      <div class="col-md-1 text-center">
+                        <div class="form-check mt-4">
+                          <input class="form-check-input" type="checkbox" name="is_primary" id="flavorPrimaryChk">
+                          <label class="form-check-label small" for="flavorPrimaryChk">Primary</label>
+                        </div>
+                      </div>
+                      <div class="col-md-12 d-flex gap-2">
+                        <button class="btn btn-sm btn-warning" type="submit"><i class="bi bi-plus"></i> Add Flavor Variant</button>
+                        <div id="flavorVarMsg" class="small text-muted"></div>
+                      </div>
+                    </form>
+                    <div class="table-responsive border rounded" style="max-height:320px;overflow:auto;">
+                      <table class="table table-sm table-hover align-middle mb-0" id="flavorVariantsTable">
+                        <thead class="table-light sticky-top"><tr>
+                          <th style="width:40px;">#</th><th>Product</th><th>Code</th><th>Label</th><th>Mode</th><th>Value</th><th>P</th><th>Sort</th><th>Updated</th><th style="width:95px;">Actions</th>
+                        </tr></thead>
+                        <tbody><tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    <script>
+    // Variant Management JS (Unified)
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const manageVariantsModal = document.getElementById('manageVariantsModal');
+      if(!manageVariantsModal) return;
+
+      const sizeTblBody = document.querySelector('#sizeVariantsTable tbody');
+      const flavorTblBody = document.querySelector('#flavorVariantsTable tbody');
+
+      manageVariantsModal.addEventListener('shown.bs.modal', ()=>{
+        loadVariantType('size');
+        loadVariantType('flavor');
+      });
+
+      function loadVariantType(type){
+        const targetBody = type==='size'? sizeTblBody : flavorTblBody;
+        targetBody.innerHTML = `<tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr>`;
+        fetch(`ajax/list_variants.php?type=${type}`)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success){ targetBody.innerHTML = `<tr><td colspan="10" class="text-danger small text-center">${data.error||'Load failed'}</td></tr>`; return; }
+            const rows = data.data||[];
+            if(!rows.length){ targetBody.innerHTML = `<tr><td colspan="10" class="text-muted small text-center">No ${type} variants found.</td></tr>`; return; }
+            // Group by product
+            const groups = new Map();
+            rows.forEach(v=>{ if(!groups.has(v.Product_ID)) groups.set(v.Product_ID, { product: v.Product_Name, list: []}); groups.get(v.Product_ID).list.push(v); });
+            let idx=1; targetBody.innerHTML='';
+            groups.forEach(g=>{
+              g.list.sort((a,b)=>{ if(a.sort_order!=b.sort_order) return a.sort_order-b.sort_order; return a.label.localeCompare(b.label); });
+              const span = g.list.length;
+              g.list.forEach((v,i)=>{
+                const tr = document.createElement('tr');
+                const modeBadge = v.price_mode==='ABSOLUTE'? '<span class="badge bg-danger-subtle text-danger">ABS</span>' : '<span class="badge bg-success-subtle text-success">Δ</span>';
+                const primaryStar = v.is_primary==1? '<span class="text-warning" title="Primary">★</span>' : '';
+                const productCell = i===0? `<td rowspan="${span}" class="align-middle fw-semibold">${escapeHtml(g.product)}</td>`:'';
+                tr.innerHTML = `
+                  <td>${idx++}</td>
+                  ${productCell}
+                  <td><code>${escapeHtml(v.code)}</code></td>
+                  <td>${escapeHtml(v.label)}</td>
+                  <td>${modeBadge}</td>
+                  <td>₱${Number(v.price_value).toFixed(2)}</td>
+                  <td>${primaryStar}</td>
+                  <td>${v.sort_order}</td>
+                  <td>${v.updated_at?escapeHtml(v.updated_at):''}</td>
+                  <td class="d-flex gap-1 flex-wrap">
+                    <button class="btn btn-sm btn-outline-secondary px-1 py-0 edit-variant-btn" title="Edit" data-vid="${v.Variant_ID}" data-type="${v.variant_type}" data-pid="${v.Product_ID}" data-code="${escapeHtml(v.code)}" data-label="${escapeHtml(v.label)}" data-mode="${v.price_mode}" data-value="${v.price_value}" data-sort="${v.sort_order}" data-primary="${v.is_primary}"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-primary px-1 py-0 make-primary-btn" title="Set Primary" data-vid="${v.Variant_ID}" ${v.is_primary==1?'disabled':''}><i class="bi bi-star"></i></button>
+                    <button class="btn btn-sm btn-outline-danger px-1 py-0 delete-variant-btn" title="Delete" data-vid="${v.Variant_ID}"><i class="bi bi-x"></i></button>
+                  </td>`;
+                targetBody.appendChild(tr);
+              });
+            });
+          })
+          .catch(()=> targetBody.innerHTML = `<tr><td colspan="10" class="text-danger small text-center">Error</td></tr>`);
+      }
+
+      function submitVariant(formEl, type){
+        const msgEl = type==='size'? document.getElementById('sizeVarMsg'): document.getElementById('flavorVarMsg');
+        const fd = new FormData(formEl);
+        fd.append('variant_type', type);
+        fetch('ajax/add_variant.php',{method:'POST',body:fd})
+          .then(r=>r.json())
+          .then(data=>{
+            if(data.success){
+              msgEl.textContent = 'Added'; msgEl.classList.remove('text-danger'); msgEl.classList.add('text-success');
+              formEl.reset();
+              loadVariantType(type);
+            } else {
+              msgEl.textContent = data.error||'Failed'; msgEl.classList.add('text-danger');
+            }
+            setTimeout(()=> msgEl.textContent='',1600);
+          })
+          .catch(()=>{ msgEl.textContent='Error'; msgEl.classList.add('text-danger'); setTimeout(()=> msgEl.textContent='',1600); });
+      }
+
+      document.getElementById('addSizeVariantForm')?.addEventListener('submit', e=>{ e.preventDefault(); submitVariant(e.target,'size'); });
+      document.getElementById('addFlavorVariantForm')?.addEventListener('submit', e=>{ e.preventDefault(); submitVariant(e.target,'flavor'); });
+
+      // Delegated actions (edit, primary, delete)
+      manageVariantsModal.addEventListener('click', e=>{
+        const editBtn = e.target.closest('.edit-variant-btn');
+        const primaryBtn = e.target.closest('.make-primary-btn');
+        const delBtn = e.target.closest('.delete-variant-btn');
+        if(editBtn){ openVariantEdit(editBtn); }
+        if(primaryBtn){ setPrimaryVariant(primaryBtn.dataset.vid); }
+        if(delBtn){ deleteVariant(delBtn.dataset.vid); }
+      });
+
+      function setPrimaryVariant(id){
+        fetch('ajax/set_primary_variant.php',{method:'POST',body:new URLSearchParams({variant_id:id})})
+          .then(r=>r.json()).then(data=>{
+            if(data.success){ loadVariantType('size'); loadVariantType('flavor'); } else { Swal.fire({icon:'error',title:'Primary failed',text:data.error||'Error'}); }
+          }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
+      }
+
+      function deleteVariant(id){
+        Swal.fire({title:'Delete variant?',text:'This cannot be undone.',icon:'warning',showCancelButton:true,confirmButtonText:'Delete'}).then(res=>{
+          if(!res.isConfirmed) return;
+          fetch('ajax/delete_variant.php',{method:'POST',body:new URLSearchParams({variant_id:id})})
+            .then(r=>r.json()).then(data=>{
+              if(data.success){ loadVariantType('size'); loadVariantType('flavor'); } else { Swal.fire({icon:'error',title:'Failed',text:data.error||'Delete failed'}); }
+            }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Delete failed'}));
+        });
+      }
+
+      // Inline edit via SweetAlert for speed (lightweight instead of extra modal)
+      function openVariantEdit(btn){
+        const vid = btn.dataset.vid;
+        const cur = {
+          code: btn.dataset.code,
+          label: btn.dataset.label,
+          mode: btn.dataset.mode,
+          value: btn.dataset.value,
+          sort: btn.dataset.sort,
+          primary: btn.dataset.primary
+        };
+        const html = `<div class='text-start'>
+          <label class='form-label small mt-1'>Code</label>
+          <input id='vCode' class='form-control form-control-sm' value='${cur.code}' disabled>
+          <label class='form-label small mt-1'>Label</label>
+          <input id='vLabel' class='form-control form-control-sm' value='${cur.label}'>
+          <label class='form-label small mt-1'>Mode</label>
+          <select id='vMode' class='form-select form-select-sm'>
+            <option value='ABSOLUTE' ${cur.mode==='ABSOLUTE'?'selected':''}>ABSOLUTE</option>
+            <option value='DELTA' ${cur.mode==='DELTA'?'selected':''}>DELTA</option>
+          </select>
+          <label class='form-label small mt-1'>Value</label>
+          <input id='vValue' type='number' step='0.01' class='form-control form-control-sm' value='${Number(cur.value).toFixed(2)}'>
+          <label class='form-label small mt-1'>Sort</label>
+          <input id='vSort' type='number' class='form-control form-control-sm' value='${cur.sort}'>
+          <div class='form-check mt-2'>
+            <input id='vPrimary' type='checkbox' class='form-check-input' ${cur.primary==1?'checked':''}>
+            <label for='vPrimary' class='form-check-label small'>Primary</label>
+          </div>
+        </div>`;
+        Swal.fire({title:'Edit Variant', html, showCancelButton:true, confirmButtonText:'Save', focusConfirm:false,
+          preConfirm:()=>{
+            return {
+              label: document.getElementById('vLabel').value.trim(),
+              mode: document.getElementById('vMode').value,
+              value: document.getElementById('vValue').value,
+              sort: document.getElementById('vSort').value,
+              primary: document.getElementById('vPrimary').checked
+            };
+          }
+        }).then(res=>{
+          if(!res.isConfirmed) return;
+          const payload = new URLSearchParams();
+          payload.append('variant_id', vid);
+          payload.append('label', res.value.label);
+          payload.append('price_mode', res.value.mode);
+          payload.append('price_value', res.value.value);
+          payload.append('sort_order', res.value.sort);
+          if(res.value.primary) payload.append('is_primary','1');
+          fetch('ajax/update_variant.php',{method:'POST',body:payload})
+            .then(r=>r.json()).then(data=>{
+              if(data.success){ loadVariantType('size'); loadVariantType('flavor'); Swal.fire({icon:'success',title:'Saved',timer:1200,showConfirmButton:false}); }
+              else Swal.fire({icon:'error',title:'Save failed',text:data.error||'Error'});
+            }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Update failed'}));
+        });
+      }
+
+      function escapeHtml(str=''){ return str.replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
+    });
     </script>
 </body>
 </html>
