@@ -788,6 +788,31 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editSizeModal')).show();
       }
+      if(delBtn){
+        const id = delBtn.getAttribute('data-id');
+        if(!id) return;
+        Swal.fire({
+          title:'Delete size variant?',
+          text:'This cannot be undone.',
+          icon:'warning',
+          showCancelButton:true,
+          confirmButtonText:'Delete',
+          confirmButtonColor:'#d33'
+        }).then(res=>{
+          if(!res.isConfirmed) return;
+          fetch('ajax/delete_size.php',{method:'POST',body:new URLSearchParams({id})})
+            .then(r=>r.json())
+            .then(data=>{
+              if(data.success){
+                Swal.fire({icon:'success',title:'Deleted',timer:1200,showConfirmButton:false});
+                loadSizes();
+              } else {
+                Swal.fire({icon:'error',title:'Delete failed',text:data.message||'Unable to delete'});
+              }
+            })
+            .catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
+        });
+      }
     });
 
     document.getElementById('editSizeForm').addEventListener('submit', function(e){
