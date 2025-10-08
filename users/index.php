@@ -609,7 +609,7 @@ function renderCartItems() {
     return `
     <div class=\"d-flex align-items-center justify-content-between border-bottom py-2\">
       <div>
-  <strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark ms-1'>${item.size}</span>` : ''} ${(!item.size && item.flavor) ? `<span class='badge bg-warning text-dark ms-1'>${item.flavor}</span>` : (item.flavor ? `<span class='badge bg-warning text-dark ms-1'>${item.flavor}</span>` : '')}
+        <strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark ms-1'>${item.size}</span>`:''}
         ${addonsHtml}
         ${item.instruction ? `<div class=\"small fst-italic text-muted ms-2\">${item.instruction}</div>`:''}
       </div>
@@ -2460,16 +2460,16 @@ async function openProductDetailsWithAddons(product){
   modal.show();
 
   // Bind qty +/- and total updates for this render
-  const modalBasePrice = window.__currentAnchorPrice;
+  const basePrice = window.__currentAnchorPrice;
   const qtyEl = document.getElementById('pdQty');
   const minusEl = document.getElementById('pdQtyMinus');
   const plusEl = document.getElementById('pdQtyPlus');
-  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(modalBasePrice); });
-  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(modalBasePrice); });
-  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(modalBasePrice));
+  minusEl && minusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)-1); updateProductModalTotal(basePrice); });
+  plusEl && plusEl.addEventListener('click', ()=>{ qtyEl.value = Math.max(1, Number(qtyEl.value||1)+1); updateProductModalTotal(basePrice); });
+  qtyEl && qtyEl.addEventListener('change', ()=> updateProductModalTotal(basePrice));
   // Bind size change
   document.getElementById('productDetailsContent').addEventListener('change', e=>{
-  if (e.target.name === 'pdSize' || e.target.name === 'pdFlavor') updateProductModalTotal(modalBasePrice);
+    if (e.target.name === 'pdSize' || e.target.name === 'pdFlavor') updateProductModalTotal(basePrice);
   });
   // Also handle clicking on label itself to toggle the hidden radio (improves hit area reliability)
   document.getElementById('productDetailsContent').addEventListener('click', e=>{
@@ -2478,7 +2478,7 @@ async function openProductDetailsWithAddons(product){
       const input = sizeLab.querySelector('input[name="pdSize"]');
       if(input){
         document.querySelectorAll('#productSizeChoices label').forEach(l=> l.classList.remove('active'));
-  input.checked = true; sizeLab.classList.add('active'); updateProductModalTotal(modalBasePrice);
+        input.checked = true; sizeLab.classList.add('active'); updateProductModalTotal(basePrice);
       }
     }
     const flavorLab = e.target.closest('#productFlavorChoices label');
@@ -2486,7 +2486,7 @@ async function openProductDetailsWithAddons(product){
       const finput = flavorLab.querySelector('input[name="pdFlavor"]');
       if(finput){
         document.querySelectorAll('#productFlavorChoices label').forEach(l=> l.classList.remove('active'));
-  finput.checked = true; flavorLab.classList.add('active'); updateProductModalTotal(modalBasePrice);
+        finput.checked = true; flavorLab.classList.add('active'); updateProductModalTotal(basePrice);
       }
     }
   });
