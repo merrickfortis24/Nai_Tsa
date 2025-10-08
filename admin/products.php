@@ -53,6 +53,11 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Custom Admin CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+      /* Clamp long descriptions to avoid tall rows / overflow */
+      .prod-desc-clamp{max-width:260px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25rem;font-size:.875rem;}
+      @media (min-width:1400px){.prod-desc-clamp{max-width:340px;}}
+    </style>
 </head>
 <body class="dashboard-page">
   <div class="container-fluid">
@@ -137,7 +142,16 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                       <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($product['Product_Name']) ?></td>
-                    <td><?= htmlspecialchars($product['Product_desc']) ?></td>
+                    <td>
+                      <?php 
+                        $descRaw = trim($product['Product_desc'] ?? '');
+                        if($descRaw===''){ echo '<span class="text-muted">—</span>'; }
+                        else {
+                          $safeFull = htmlspecialchars($descRaw, ENT_QUOTES, 'UTF-8');
+                          echo '<div class="prod-desc-clamp" data-bs-toggle="tooltip" data-bs-title="'.$safeFull.'">'.$safeFull.'</div>';
+                        }
+                      ?>
+                    </td>
                     <!-- Allergens data removed -->
                     <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
                     <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
