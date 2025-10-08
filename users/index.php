@@ -636,7 +636,7 @@ document.querySelectorAll('.add-to-cart-btn').forEach(function(btn) {
   btn.addEventListener('click', async function(e) {
     e.preventDefault();
     const productName = this.getAttribute('data-product');
-    const allProducts = <?php echo json_encode($all_products); ?>;
+    const allProducts = window.ALL_PRODUCTS_SAFE;
     const prod = (allProducts||[]).find(p => p.Product_Name === productName);
     if (!prod) return;
     await openProductDetailsWithAddons(prod);
@@ -738,7 +738,7 @@ function moneyPhp(n){ return '₱' + (Number(n||0).toFixed(2)); }
 
 function getProductPriceByName(name){
   try{
-    const allProducts = <?php echo json_encode($all_products); ?>;
+    const allProducts = window.ALL_PRODUCTS_SAFE;
     const p = (allProducts||[]).find(pp => pp.Product_Name === name);
     return Number(p?.Price_Amount || 0);
   }catch(e){ return 0; }
@@ -1416,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         e.stopPropagation();
         const productName = btn.getAttribute('data-product');
-        const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (!prod) return;
     await openProductDetailsWithAddons(prod);
@@ -1485,7 +1485,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         e.stopPropagation();
         const productName = btn.getAttribute('data-product');
-        const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (!prod) return;
     await openProductDetailsWithAddons(prod);
@@ -2278,7 +2278,7 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
   const recommended = <?php echo json_encode($recommended); ?>;
   const bestsellers = <?php echo json_encode($bestsellers); ?>;
   const avgRatings = <?php echo json_encode($avg_ratings); ?>;
@@ -2342,7 +2342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         e.stopPropagation();
         const productName = btn.getAttribute('data-product');
-        const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (!prod) return;
     await openProductDetailsWithAddons(prod);
@@ -2578,7 +2578,7 @@ async function openProductDetailsWithAddons(product){
       card.addEventListener('click', e => {
         if (e.target.closest('.add-to-cart-btn')) return; // handled separately
         const pid = card.dataset.productId;
-        const product = (<?php echo json_encode($all_products); ?> || []).find(p => String(p.Product_ID) === String(pid));
+  const product = (window.ALL_PRODUCTS_SAFE || []).find(p => String(p.Product_ID) === String(pid));
         if (!product) return;
         openProductDetailsWithAddons(product);
       });
@@ -2587,7 +2587,7 @@ async function openProductDetailsWithAddons(product){
       btn.addEventListener('click', e => {
         e.preventDefault(); e.stopPropagation();
         const name = btn.getAttribute('data-product');
-        const product = (<?php echo json_encode($all_products); ?> || []).find(p => p.Product_Name === name);
+  const product = (window.ALL_PRODUCTS_SAFE || []).find(p => p.Product_Name === name);
         if (!product) return;
         openProductDetailsWithAddons(product);
       });
@@ -2678,7 +2678,7 @@ async function openProductDetailsWithAddons(product){
       e.stopPropagation();
       const productName = addBtn.getAttribute('data-product');
       try{
-        const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
         const prod = (allProducts||[]).find(p => p.Product_Name === productName);
         if (prod) openProductDetailsWithAddons(prod);
       }catch(err){ console.warn('delegate add-to-cart failed', err); }
@@ -2690,7 +2690,7 @@ async function openProductDetailsWithAddons(product){
       e.preventDefault();
       try{
         const pid = card.getAttribute('data-product-id');
-        const allProducts = <?php echo json_encode($all_products); ?>;
+  const allProducts = window.ALL_PRODUCTS_SAFE;
         const prod = (allProducts||[]).find(p => String(p.Product_ID) === String(pid));
         if (prod) openProductDetailsWithAddons(prod);
       }catch(err){ console.warn('delegate card click failed', err); }
