@@ -338,28 +338,20 @@ function createPasswordResetToken($email) {
         return ['success'=>false,'blocked'=>true,'message'=>'Ordering disabled for this account. Please contact support.'];
     }
 
-    // 2. Calculate total (base products + selected add-ons per item)
+    // 2. Calculate total (anchor-based size pricing). Each cart item now carries unitPrice already resolved (size final price).
     $total = 0;
     foreach ($cart as $item) {
-        $stmt = $con->prepare("SELECT Price_ID FROM product WHERE Product_Name=?");
-        $stmt->execute([$item['name']]);
-        $product = $stmt->fetch();
-        if ($product) {
-            $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
-            $stmt2->execute([$product['Price_ID']]);
-            $price = $stmt2->fetchColumn();
         $prodQty = (int)($item['qty'] ?? 1);
-        $line = ($price ?: 0) * $prodQty;
-            // Add-ons: cart items may include addons: [{id,name,price,qty}]
-            if (!empty($item['addons']) && is_array($item['addons'])) {
-                foreach ($item['addons'] as $ad) {
-            $ap = isset($ad['price']) ? (float)$ad['price'] : 0;
-            $aq = isset($ad['qty']) ? (int)$ad['qty'] : 1;
-            $line += $ap * $aq * $prodQty; // addon price applies per product unit
-                }
+        $unit = isset($item['unitPrice']) ? (float)$item['unitPrice'] : 0.0;
+        $line = $unit * $prodQty;
+        if (!empty($item['addons']) && is_array($item['addons'])) {
+            foreach ($item['addons'] as $ad) {
+                $ap = isset($ad['price']) ? (float)$ad['price'] : 0;
+                $aq = isset($ad['qty']) ? (int)$ad['qty'] : 1;
+                $line += $ap * $aq * $prodQty; // addon price applies per product unit
             }
-            $total += $line;
         }
+        $total += $line;
     }
 
     // 2.1 Delivery fee (distance-based if lat/lng provided, fallback to flat)
@@ -524,44 +516,53 @@ function createPasswordResetToken($email) {
     } catch (Throwable $e) {}
 
     foreach ($cart as $item) {
-        $stmt = $con->prepare("SELECT Product_ID, Price_ID FROM product WHERE Product_Name=?");
+        $stmt = $con->prepare("SELECT Product_ID FROM product WHERE Product_Name=?");
         $stmt->execute([$item['name']]);
         $product = $stmt->fetch();
-        if ($product) {
-            $stmt2 = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
-            $stmt2->execute([$product['Price_ID']]);
-            $price = $stmt2->fetchColumn();
+        if (!$product) continue; // skip unknown
+        $productId = (int)$product['Product_ID'];
+        $instruction = isset($item['instruction']) && $item['instruction'] !== '' ? $item['instruction'] : null;
+        $qty = (int)($item['qty'] ?? 1);
+        $unit = isset($item['unitPrice']) ? (float)$item['unitPrice'] : 0.0; // already anchor+delta resolved
 
-            $instruction = isset($item['instruction']) && $item['instruction'] !== '' ? $item['instruction'] : null;
+        // If order_item has size columns, try to populate them
+        $hasSizeCols = false; $hasSizeCodeCol = false; $hasSizePriceCol = false;
+        try {
+            $c1 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Code'");
+            $c2 = $con->query("SHOW COLUMNS FROM order_item LIKE 'Size_Price'");
+            $hasSizeCodeCol = $c1 && $c1->rowCount()>0; $hasSizePriceCol = $c2 && $c2->rowCount()>0; $hasSizeCols = $hasSizeCodeCol && $hasSizePriceCol;
+        } catch (Throwable $e) { /* ignore */ }
 
-            if ($hasInstructionCol) {
-                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction) VALUES (?, ?, ?, ?, ?)");
-                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price, $instruction]);
-            } else {
-                $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?, ?, ?, ?)");
-                $stmt3->execute([$order_id, $product['Product_ID'], $item['qty'], $price]);
-            }
+        if ($hasInstructionCol && $hasSizeCols) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction, Size_Code, Size_Price) VALUES (?,?,?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $instruction, $item['size'] ?? null, $unit]);
+        } elseif ($hasInstructionCol) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Instruction) VALUES (?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $instruction]);
+        } elseif ($hasSizeCols) {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price, Size_Code, Size_Price) VALUES (?,?,?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit, $item['size'] ?? null, $unit]);
+        } else {
+            $stmt3 = $con->prepare("INSERT INTO order_item (Order_ID, Product_ID, Quantity, Price) VALUES (?,?,?,?)");
+            $stmt3->execute([$order_id, $productId, $qty, $unit]);
+        }
 
-            $orderItemId = $con->lastInsertId();
-
-            // Persist selected add-ons for this item
-            if (!empty($item['addons']) && is_array($item['addons'])) {
-                $ins = $con->prepare("INSERT INTO order_item_addons (Order_ID, Order_Item_ID, Product_ID, Addon_ID, Addon_Name, Addon_Price, Quantity)
-                                      VALUES (:oid,:oiid,:pid,:aid,:aname,:aprice,:qty)");
-                foreach ($item['addons'] as $ad) {
-                    $prodQty = (int)($item['qty'] ?? 1);
-                    $addonQty = (int)($ad['qty'] ?? 1);
-                    $totalQty = max(1, $prodQty * $addonQty);
-                    $ins->execute([
-                        ':oid' => $order_id,
-                        ':oiid' => $orderItemId ?: null,
-                        ':pid' => $product['Product_ID'],
-                        ':aid' => (int)($ad['id'] ?? 0),
-                        ':aname' => (string)($ad['name'] ?? ''),
-                        ':aprice' => (float)($ad['price'] ?? 0),
-                        ':qty' => $totalQty,
-                    ]);
-                }
+        $orderItemId = $con->lastInsertId();
+        if (!empty($item['addons']) && is_array($item['addons'])) {
+            $ins = $con->prepare("INSERT INTO order_item_addons (Order_ID, Order_Item_ID, Product_ID, Addon_ID, Addon_Name, Addon_Price, Quantity) VALUES (:oid,:oiid,:pid,:aid,:aname,:aprice,:qty)");
+            foreach ($item['addons'] as $ad) {
+                $prodQty = $qty;
+                $addonQty = (int)($ad['qty'] ?? 1);
+                $totalQty = max(1, $prodQty * $addonQty);
+                $ins->execute([
+                    ':oid' => $order_id,
+                    ':oiid' => $orderItemId ?: null,
+                    ':pid' => $productId,
+                    ':aid' => (int)($ad['id'] ?? 0),
+                    ':aname' => (string)($ad['name'] ?? ''),
+                    ':aprice' => (float)($ad['price'] ?? 0),
+                    ':qty' => $totalQty,
+                ]);
             }
         }
     }
