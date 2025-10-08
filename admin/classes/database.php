@@ -54,31 +54,65 @@ class database {
         $con = $this->opencon();
         $limit = (int)$limit;
         $offset = (int)$offset;
-        $sql = "
-            SELECT 
-                p.*, 
-                pp.Price_Amount, 
-                c.Category_Name, 
-                a.Admin_Name
-            FROM product p
-            LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
-            LEFT JOIN category c ON p.Category_ID = c.Category_ID
-            LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
-        ";
+        // Base products with their base price & category/admin
+        $sql = "SELECT p.*, pp.Price_Amount AS Base_Price_Amount, c.Category_Name, a.Admin_Name
+                FROM product p
+                LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
+                LEFT JOIN category c ON p.Category_ID = c.Category_ID
+                LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID";
         $params = [];
-        if ($category_id) {
-            $sql .= " WHERE p.Category_ID = ?";
-            $params[] = $category_id;
-        }
+        if ($category_id) { $sql .= " WHERE p.Category_ID = ?"; $params[] = $category_id; }
         $sql .= " ORDER BY p.Created_at DESC LIMIT $limit OFFSET $offset";
-
         $stmt = $con->prepare($sql);
-        if ($category_id) {
-            $stmt->execute($params);
-        } else {
-            $stmt->execute();
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if(!$rows) return [];
+        // Collect product IDs
+        $ids = array_column($rows,'Product_ID');
+        $in = implode(',', array_fill(0,count($ids),'?'));
+        // Fetch one representative size price per product (choose lowest Sort_Order then ABS over DELTA, then price desc)
+        // We compute an effective display price: for ABS = Price_Value; for DELTA = Base + Price_Value
+        $sizeSql = "SELECT psp.Product_ID, s.Size_Code, s.Display_Name,
+                           psp.Price_Mode, psp.Price_Value,
+                           s.Sort_Order
+                    FROM product_size_price psp
+                    JOIN sizes s ON psp.Size_ID = s.Size_ID
+                    WHERE psp.Product_ID IN ($in)
+                    ORDER BY psp.Product_ID, s.Sort_Order ASC, 
+                             FIELD(Price_Mode,'ABS','DELTA'), 
+                             psp.Price_Value DESC"; // pick deterministic first
+        $sizeStmt = $con->prepare($sizeSql);
+        $sizeStmt->execute($ids);
+        $firstSize = [];
+        while($r = $sizeStmt->fetch(PDO::FETCH_ASSOC)){
+            $pid = $r['Product_ID'];
+            if(!isset($firstSize[$pid])){ $firstSize[$pid] = $r; }
         }
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Attach effective display price and size info
+        foreach($rows as &$r){
+            $pid = $r['Product_ID'];
+            $r['Size_Display_Code'] = null;
+            $r['Size_Display_Name'] = null;
+            $r['Size_Display_Mode'] = null;
+            $r['Size_Display_Price'] = null;
+            $base = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : null;
+            if(isset($firstSize[$pid])){
+                $sz = $firstSize[$pid];
+                $r['Size_Display_Code'] = $sz['Size_Code'];
+                $r['Size_Display_Name'] = $sz['Display_Name'];
+                $r['Size_Display_Mode'] = $sz['Price_Mode'];
+                if($sz['Price_Mode'] === 'ABS'){
+                    $r['Size_Display_Price'] = (float)$sz['Price_Value'];
+                } else {
+                    $r['Size_Display_Price'] = ($base!==null? $base:0) + (float)$sz['Price_Value'];
+                }
+            } else {
+                // Fallback to base price only
+                $r['Size_Display_Price'] = $base!==null? (float)$base : null;
+            }
+        }
+        unset($r);
+        return $rows;
     }
 
     // Fetch all categories

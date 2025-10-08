@@ -121,7 +121,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <th>Updated At</th>
                     <th>Admin Name</th>
                     <th>Category</th>
-                    <th>Price</th>
+                    <th>Price / Size</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -142,7 +142,18 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
                     <td><?= htmlspecialchars($product['Admin_Name']) ?></td>
                     <td><?= htmlspecialchars($product['Category_Name']) ?></td>
-                    <td><?= htmlspecialchars($product['Price_Amount']) ?></td>
+                    <td>
+                      <?php
+                        $dispPrice = $product['Size_Display_Price'] ?? $product['Base_Price_Amount'] ?? $product['Price_Amount'] ?? null;
+                        $sizeLabel = $product['Size_Display_Code'] ? ($product['Size_Display_Code']) : '';
+                        if($dispPrice !== null){
+                          echo htmlspecialchars(number_format((float)$dispPrice,2));
+                          if($sizeLabel){ echo ' <span class="badge bg-secondary">'.htmlspecialchars($sizeLabel).'</span>'; }
+                        } else {
+                          echo '<span class="text-muted">n/a</span>';
+                        }
+                      ?>
+                    </td>
                     <td>
                       <a href="#" class="action-btn edit-product-btn"
                          data-product-id="<?= htmlspecialchars($product['Product_ID']) ?>"
