@@ -52,32 +52,41 @@ class database {
 
     function getAllProducts($limit = 10, $offset = 0, $category_id = null) {
         $con = $this->opencon();
-        $limit = (int)$limit;
-        $offset = (int)$offset;
-        $sql = "
-            SELECT 
-                p.*, 
-                pp.Price_Amount, 
-                c.Category_Name, 
-                a.Admin_Name
+        $limit = (int)$limit; $offset = (int)$offset;
+        // Derive display price priority:
+        // 1. ABS size with Size_Code='regular'
+        // 2. Any ABS size (lowest Sort_Order)
+        // 3. Base product_price + smallest DELTA (if exists)
+        // 4. Fallback product_price amount
+        $sql = "SELECT p.*, c.Category_Name, a.Admin_Name,
+            COALESCE(
+               -- regular ABS
+               (SELECT psp.Price_Value FROM product_size_price psp
+                   JOIN sizes s ON psp.Size_ID=s.Size_ID
+                   WHERE psp.Product_ID=p.Product_ID AND psp.Price_Mode='ABS' AND s.Size_Code='regular' LIMIT 1),
+               -- any ABS (lowest sort)
+               (SELECT psp.Price_Value FROM product_size_price psp
+                   JOIN sizes s ON psp.Size_ID=s.Size_ID
+                   WHERE psp.Product_ID=p.Product_ID AND psp.Price_Mode='ABS'
+                   ORDER BY s.Sort_Order, s.Display_Name LIMIT 1),
+               -- base + smallest DELTA
+               (SELECT (pp.Price_Amount + psp.Price_Value) FROM product_size_price psp
+                   JOIN sizes s ON psp.Size_ID=s.Size_ID
+                   JOIN product_price pp2 ON p.Price_ID = pp2.Price_ID
+                   JOIN product_price pp ON p.Price_ID = pp.Price_ID
+                   WHERE psp.Product_ID=p.Product_ID AND psp.Price_Mode='DELTA'
+                   ORDER BY s.Sort_Order, s.Display_Name LIMIT 1),
+               -- fallback legacy base price
+               (SELECT pp.Price_Amount FROM product_price pp WHERE pp.Price_ID = p.Price_ID LIMIT 1)
+            ) AS Price_Amount
             FROM product p
-            LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
             LEFT JOIN category c ON p.Category_ID = c.Category_ID
-            LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID
-        ";
-        $params = [];
-        if ($category_id) {
-            $sql .= " WHERE p.Category_ID = ?";
-            $params[] = $category_id;
-        }
+            LEFT JOIN admin a ON p.Admin_ID = a.Admin_ID";
+        $params=[];
+        if($category_id){ $sql .= " WHERE p.Category_ID=?"; $params[]=$category_id; }
         $sql .= " ORDER BY p.Created_at DESC LIMIT $limit OFFSET $offset";
-
         $stmt = $con->prepare($sql);
-        if ($category_id) {
-            $stmt->execute($params);
-        } else {
-            $stmt->execute();
-        }
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

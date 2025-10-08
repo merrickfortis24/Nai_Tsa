@@ -99,6 +99,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
+                  <button type="button" id="runPriceMigrationBtn" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-arrow-repeat me-1"></i> Migrate Base Prices
+                  </button>
               </div>
           </div>
           <div class="card-body">
