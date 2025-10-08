@@ -33,7 +33,7 @@ try {
     CONSTRAINT fk_psp_size FOREIGN KEY (Size_ID) REFERENCES sizes(Size_ID) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
-  // If table existed already, ensure Price_Source_ID column (idempotent)
+  // Ensure Price_Source_ID column (idempotent)
   try {
     $colChk = $con->query("SHOW COLUMNS FROM product_size_price LIKE 'Price_Source_ID'");
     if($colChk && $colChk->rowCount() === 0){
@@ -41,38 +41,73 @@ try {
     }
   } catch (Throwable $cEx) { /* ignore */ }
 
-  // Attempt to load from new mapping
-  $rows = [];
+  // Ensure Primary_Size_ID column on product (for Is_Primary flag & filtering)
   try {
+    $colChk2 = $con->query("SHOW COLUMNS FROM product LIKE 'Primary_Size_ID'");
+    if($colChk2 && $colChk2->rowCount() === 0){
+      $con->exec("ALTER TABLE product ADD COLUMN Primary_Size_ID INT NULL AFTER Category_ID");
+    }
+  } catch (Throwable $cEx2) { /* ignore */ }
+
+  $rows = [];
+  $productFilter = null;
   $categoryFilter = null;
+  if(isset($_REQUEST['product_id']) && $_REQUEST['product_id'] !== '') {
+    $productFilter = (int)$_REQUEST['product_id'];
+  }
   if(isset($_REQUEST['category_id']) && $_REQUEST['category_id'] !== '') {
     $categoryFilter = (int)$_REQUEST['category_id'];
   }
-  if($categoryFilter){
-    $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
-              JOIN sizes s ON psp.Size_ID = s.Size_ID
-              JOIN product p ON psp.Product_ID = p.Product_ID
-              WHERE p.Category_ID = ?
-              ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
-    $stmt->execute([$categoryFilter]);
-  } else {
-    $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name FROM product_size_price psp
-              JOIN sizes s ON psp.Size_ID = s.Size_ID
-              JOIN product p ON psp.Product_ID = p.Product_ID
-              ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
-  }
+
+  try {
+    if($productFilter){
+      // Filter by specific product (optimized for primary size selection modal)
+      $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                FROM product_size_price psp
+                JOIN sizes s ON psp.Size_ID = s.Size_ID
+                JOIN product p ON psp.Product_ID = p.Product_ID
+                WHERE psp.Product_ID = ?
+                ORDER BY s.Sort_Order, s.Display_Name");
+      $stmt->execute([$productFilter]);
+    } elseif($categoryFilter){
+      $stmt = $con->prepare("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                FROM product_size_price psp
+                JOIN sizes s ON psp.Size_ID = s.Size_ID
+                JOIN product p ON psp.Product_ID = p.Product_ID
+                WHERE p.Category_ID = ?
+                ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+      $stmt->execute([$categoryFilter]);
+    } else {
+      $stmt = $con->query("SELECT psp.*, s.Size_Code, s.Display_Name, s.Sort_Order, p.Product_Name, 
+                (p.Primary_Size_ID = psp.Product_Size_Price_ID) AS Is_Primary
+                FROM product_size_price psp
+                JOIN sizes s ON psp.Size_ID = s.Size_ID
+                JOIN product p ON psp.Product_ID = p.Product_ID
+                ORDER BY p.Product_Name, s.Sort_Order, s.Display_Name");
+    }
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
   } catch (Throwable $inner) { /* ignore */ }
 
-  // Fallback: legacy table product_sizes (if still present, include them so admin can migrate)
+  // Fallback: legacy table product_sizes (provide compatible shape if no new rows)
   if(empty($rows)) {
     try {
       $stmt2 = $con->query("SELECT ps.ID, ps.Product_ID, ps.Size_Code, ps.Price_Amount, ps.Is_Absolute, ps.Updated_At, p.Product_Name
                              FROM product_sizes ps JOIN product p ON ps.Product_ID=p.Product_ID
                              ORDER BY p.Product_Name, ps.Size_Code");
       $legacy = $stmt2->fetchAll(PDO::FETCH_ASSOC) ?: [];
-      // Tag legacy rows
-      foreach($legacy as &$l){ $l['LEGACY'] = 1; }
+      foreach($legacy as &$l){
+        $l['LEGACY'] = 1;
+        // Provide placeholders for new-structure fields so UI code can rely on keys existing
+        $l['Size_ID'] = null;
+        $l['Price_Mode'] = isset($l['Is_Absolute']) && (int)$l['Is_Absolute'] === 1 ? 'ABS' : 'DELTA';
+        $l['Price_Value'] = $l['Price_Amount'] ?? 0;
+        $l['Is_Primary'] = 0;
+        $l['Product_Size_Price_ID'] = null;
+        $l['Display_Name'] = $l['Size_Code'];
+        $l['Sort_Order'] = 0;
+      }
       $rows = $legacy;
     } catch (Throwable $legacyE) { /* none */ }
   }

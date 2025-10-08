@@ -52,10 +52,17 @@ class database {
 
     function getAllProducts($limit = 10, $offset = 0, $category_id = null) {
         $con = $this->opencon();
+        // Ensure Primary_Size_ID column exists (idempotent)
+        try {
+            $col = $con->query("SHOW COLUMNS FROM product LIKE 'Primary_Size_ID'");
+            if($col && $col->rowCount()===0){
+                $con->exec("ALTER TABLE product ADD COLUMN Primary_Size_ID INT NULL AFTER Price_ID, ADD INDEX (Primary_Size_ID)");
+            }
+        } catch(Throwable $e) { /* ignore */ }
         $limit = (int)$limit;
         $offset = (int)$offset;
-        // Base products with their base price & category/admin
-        $sql = "SELECT p.*, pp.Price_Amount AS Base_Price_Amount, c.Category_Name, a.Admin_Name
+        // Base products with their base price & category/admin and optional primary size id
+        $sql = "SELECT p.*, pp.Price_Amount AS Base_Price_Amount, c.Category_Name, a.Admin_Name, p.Primary_Size_ID
                 FROM product p
                 LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
                 LEFT JOIN category c ON p.Category_ID = c.Category_ID
@@ -70,23 +77,18 @@ class database {
         // Collect product IDs
         $ids = array_column($rows,'Product_ID');
         $in = implode(',', array_fill(0,count($ids),'?'));
-        // Fetch one representative size price per product (choose lowest Sort_Order then ABS over DELTA, then price desc)
-        // We compute an effective display price: for ABS = Price_Value; for DELTA = Base + Price_Value
-        $sizeSql = "SELECT psp.Product_ID, s.Size_Code, s.Display_Name,
-                           psp.Price_Mode, psp.Price_Value,
-                           s.Sort_Order
+        // Fetch all size prices for these products; we will choose primary or heuristic after
+        $sizeSql = "SELECT psp.Product_ID, psp.Size_ID, s.Size_Code, s.Display_Name,
+                           psp.Price_Mode, psp.Price_Value, s.Sort_Order
                     FROM product_size_price psp
                     JOIN sizes s ON psp.Size_ID = s.Size_ID
-                    WHERE psp.Product_ID IN ($in)
-                    ORDER BY psp.Product_ID, s.Sort_Order ASC, 
-                             FIELD(Price_Mode,'ABS','DELTA'), 
-                             psp.Price_Value DESC"; // pick deterministic first
+                    WHERE psp.Product_ID IN ($in)";
         $sizeStmt = $con->prepare($sizeSql);
         $sizeStmt->execute($ids);
-        $firstSize = [];
+        $sizesByProduct = [];
         while($r = $sizeStmt->fetch(PDO::FETCH_ASSOC)){
             $pid = $r['Product_ID'];
-            if(!isset($firstSize[$pid])){ $firstSize[$pid] = $r; }
+            $sizesByProduct[$pid][] = $r;
         }
         // Attach effective display price and size info
         foreach($rows as &$r){
@@ -95,19 +97,37 @@ class database {
             $r['Size_Display_Name'] = null;
             $r['Size_Display_Mode'] = null;
             $r['Size_Display_Price'] = null;
+            $r['Size_Display_Base'] = null; // base component if DELTA
+            $r['Size_Display_Delta'] = null; // delta component if DELTA
             $base = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : null;
-            if(isset($firstSize[$pid])){
-                $sz = $firstSize[$pid];
-                $r['Size_Display_Code'] = $sz['Size_Code'];
-                $r['Size_Display_Name'] = $sz['Display_Name'];
-                $r['Size_Display_Mode'] = $sz['Price_Mode'];
-                if($sz['Price_Mode'] === 'ABS'){
-                    $r['Size_Display_Price'] = (float)$sz['Price_Value'];
+            if(isset($sizesByProduct[$pid]) && $sizesByProduct[$pid]){
+                $chosen = null;
+                // Prefer explicit Primary_Size_ID if set
+                if(!empty($r['Primary_Size_ID'])){
+                    foreach($sizesByProduct[$pid] as $sz){ if($sz['Size_ID']==$r['Primary_Size_ID']){ $chosen = $sz; break; } }
+                }
+                // Heuristic fallback
+                if(!$chosen){
+                    // Sort copy: by Sort_Order ASC, ABS before DELTA, Price_Value DESC
+                    $sorted = $sizesByProduct[$pid];
+                    usort($sorted,function($a,$b){
+                        if($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
+                        if($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS')? -1:1;
+                        return $b['Price_Value'] <=> $a['Price_Value'];
+                    });
+                    $chosen = $sorted[0];
+                }
+                $r['Size_Display_Code'] = $chosen['Size_Code'];
+                $r['Size_Display_Name'] = $chosen['Display_Name'];
+                $r['Size_Display_Mode'] = $chosen['Price_Mode'];
+                if($chosen['Price_Mode']==='ABS'){
+                    $r['Size_Display_Price'] = (float)$chosen['Price_Value'];
                 } else {
-                    $r['Size_Display_Price'] = ($base!==null? $base:0) + (float)$sz['Price_Value'];
+                    $r['Size_Display_Base'] = $base!==null? (float)$base : 0.00;
+                    $r['Size_Display_Delta'] = (float)$chosen['Price_Value'];
+                    $r['Size_Display_Price'] = $r['Size_Display_Base'] + $r['Size_Display_Delta'];
                 }
             } else {
-                // Fallback to base price only
                 $r['Size_Display_Price'] = $base!==null? (float)$base : null;
             }
         }

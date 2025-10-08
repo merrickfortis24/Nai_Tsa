@@ -122,6 +122,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <th>Admin Name</th>
                     <th>Category</th>
                     <th>Price / Size</th>
+                    <th>Primary Size</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -145,14 +146,31 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     <td>
                       <?php
                         $dispPrice = $product['Size_Display_Price'] ?? $product['Base_Price_Amount'] ?? $product['Price_Amount'] ?? null;
-                        $sizeLabel = $product['Size_Display_Code'] ? ($product['Size_Display_Code']) : '';
+                        $mode = $product['Size_Display_Mode'] ?? null;
+                        $code = $product['Size_Display_Code'] ?? null;
+                        $fullName = $product['Size_Display_Name'] ?? $code;
+                        $baseComponent = $product['Size_Display_Base'] ?? null;
+                        $deltaComponent = $product['Size_Display_Delta'] ?? null;
                         if($dispPrice !== null){
-                          echo htmlspecialchars(number_format((float)$dispPrice,2));
-                          if($sizeLabel){ echo ' <span class="badge bg-secondary">'.htmlspecialchars($sizeLabel).'</span>'; }
+                          if($mode === 'DELTA' && $baseComponent !== null && $deltaComponent !== null){
+                            echo '<span class=\'fw-semibold\'>'.htmlspecialchars(number_format($baseComponent,2)).' + '.htmlspecialchars(number_format($deltaComponent,2)).' = '.htmlspecialchars(number_format($dispPrice,2)).'</span>';
+                          } else {
+                            echo '<span class=\'fw-semibold\'>'.htmlspecialchars(number_format((float)$dispPrice,2)).'</span>';
+                          }
+                          if($code){
+                            $tooltip = htmlspecialchars(($fullName?:$code).' ('.($mode?:'BASE').')');
+                            echo ' <span class="badge bg-secondary" data-bs-toggle="tooltip" data-bs-title="'.$tooltip.'">'.htmlspecialchars($code).'</span>';
+                            if($mode==='DELTA'){
+                              echo ' <span class="text-muted small">(base + delta)</span>';
+                            }
+                          }
                         } else {
                           echo '<span class="text-muted">n/a</span>';
                         }
                       ?>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-primary set-primary-size-btn" data-product-id="<?= (int)$product['Product_ID'] ?>">Set</button>
                     </td>
                     <td>
                       <a href="#" class="action-btn edit-product-btn"
@@ -316,6 +334,32 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
           </div>
           <div class="modal-footer py-2">
             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Set Primary Size Modal -->
+    <div class="modal fade" id="primarySizeModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="primarySizeForm">
+          <div class="modal-header py-2">
+            <h6 class="modal-title">Set Primary Size</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="product_id" id="primaryProductId">
+            <div class="mb-2">
+              <label class="form-label small">Choose size variant to display as primary:</label>
+              <select class="form-select form-select-sm" id="primarySizeSelect" name="size_id" required>
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div class="form-text small">The primary size controls which size code & computed price show in the Products table.</div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary btn-sm">Save</button>
           </div>
         </form>
@@ -787,6 +831,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    });
+
+    // Bootstrap tooltips init
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(el=> new bootstrap.Tooltip(el));
+
+    // Open primary size modal
+    document.querySelectorAll('.set-primary-size-btn').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        const pid = this.getAttribute('data-product-id');
+        document.getElementById('primaryProductId').value = pid;
+        const sel = document.getElementById('primarySizeSelect');
+        sel.innerHTML = '<option value="">Loading...</option>';
+        fetch('ajax/list_sizes.php?product_id='+encodeURIComponent(pid))
+          .then(r=>r.json())
+          .then(data=>{
+            sel.innerHTML = '';
+            if(!data.success || !data.rows.length){ sel.innerHTML='<option value="">No sizes found</option>'; return; }
+            const sizes = data.rows.filter(r=>r.Product_ID==pid || r.Product_ID==pid); // ensure only correct product
+            sizes.forEach(s=>{
+              if(!s.Product_Size_Price_ID) return; // skip legacy
+              const opt = document.createElement('option');
+              opt.value = s.Size_ID || ''; // may need size id, ensure list_sizes returns it
+              opt.textContent = (s.Size_Code||'') + ' - ' + (s.Display_Name||'') + ' ('+ (s.Price_Mode|| (s.Is_Absolute==1?'ABS':'DELTA')) + ')';
+              sel.appendChild(opt);
+            });
+            if(!sel.options.length){ sel.innerHTML='<option value="">No eligible sizes</option>'; }
+          }).catch(()=> sel.innerHTML='<option value="">Load failed</option>');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('primarySizeModal')).show();
+      });
+    });
+
+    document.getElementById('primarySizeForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const fd = new FormData(this);
+      fetch('ajax/set_primary_size.php',{method:'POST',body:fd})
+        .then(r=>r.json())
+        .then(data=>{
+          if(data.success){
+            Swal.fire({icon:'success',title:'Primary size set',timer:1200,showConfirmButton:false});
+            bootstrap.Modal.getInstance(document.getElementById('primarySizeModal')).hide();
+            // Refresh page to show updated primary size result
+            setTimeout(()=>location.reload(),600);
+          } else {
+            Swal.fire({icon:'error',title:'Failed',text:data.message||'Unable to set primary size'});
+          }
+        }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
     });
 });
     </script>
