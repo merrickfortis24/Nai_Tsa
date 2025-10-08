@@ -22,14 +22,24 @@ try {
     Size_ID INT NOT NULL,
     Price_Mode ENUM('ABS','DELTA') NOT NULL DEFAULT 'ABS',
     Price_Value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Price_Source_ID INT NULL,
     Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_prod_size (Product_ID, Size_ID),
     INDEX (Product_ID),
     INDEX (Size_ID),
+    INDEX (Price_Source_ID),
     CONSTRAINT fk_psp_product FOREIGN KEY (Product_ID) REFERENCES product(Product_ID) ON DELETE CASCADE,
     CONSTRAINT fk_psp_size FOREIGN KEY (Size_ID) REFERENCES sizes(Size_ID) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+  // If table existed already, ensure Price_Source_ID column (idempotent)
+  try {
+    $colChk = $con->query("SHOW COLUMNS FROM product_size_price LIKE 'Price_Source_ID'");
+    if($colChk && $colChk->rowCount() === 0){
+      $con->exec("ALTER TABLE product_size_price ADD COLUMN Price_Source_ID INT NULL AFTER Price_Value, ADD INDEX (Price_Source_ID)");
+    }
+  } catch (Throwable $cEx) { /* ignore */ }
 
   // Attempt to load from new mapping
   $rows = [];

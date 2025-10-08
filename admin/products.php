@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <td>${sortOrder}</td>
             <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
             <td class="d-flex gap-1">
-              ${!isLegacy && mappingId ? `<button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn" data-map="${mappingId}" data-code="${escapeHtml(sizeCode)}" data-mode="${row.Price_Mode}" data-amount="${amountVal}" data-sort="${sortOrder}" data-display="${escapeHtml(row.Display_Name||sizeCode)}" title="Edit"><i class='bi bi-pencil'></i></button>` : ''}
+              ${!isLegacy && mappingId ? `<button class=\"btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn\" data-map=\"${mappingId}\" data-code=\"${escapeHtml(sizeCode)}\" data-mode=\"${row.Price_Mode}\" data-amount=\"${amountVal}\" data-sort=\"${sortOrder}\" data-display=\"${escapeHtml(row.Display_Name||sizeCode)}\" data-price-id=\"${row.Price_Source_ID || ''}\" title=\"Edit\"><i class='bi bi-pencil'></i></button>` : ''}
               <button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID}" title="Delete"><i class="bi bi-x"></i></button>
             </td>`;
           tbody.appendChild(tr);
@@ -517,12 +517,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const delBtn = e.target.closest('button[data-id]');
       const editBtn = e.target.closest('.edit-size-btn');
       if(editBtn){
-        // Populate modal
+        // Populate modal with canonical identifiers
         document.getElementById('editMappingId').value = editBtn.dataset.map;
         document.getElementById('editSizeCode').value = editBtn.dataset.code;
         document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
         document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
-        // Try to set price_id if provided in dataset, else attempt to match by amount
+        // Prefer direct price id
         if(editBtn.dataset.priceId){
           document.getElementById('editPriceId').value = editBtn.dataset.priceId;
         } else if(editBtn.dataset.amount){
@@ -531,17 +531,7 @@ document.addEventListener('DOMContentLoaded', function() {
           for(const opt of sel.options){ if(opt.value && opt.text.includes('₱'+amount)){ sel.value = opt.value; break; } }
         }
         document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
-        const m = new bootstrap.Modal(document.getElementById('editSizeModal'));
-        m.show();
-      }
-        document.getElementById('editMappingId').value = editBtn.dataset.map;
-        document.getElementById('editSizeCode').value = editBtn.dataset.code;
-        document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
-        document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
-        document.getElementById('editPriceAmount').value = editBtn.dataset.amount || '0';
-        document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
-        const m = new bootstrap.Modal(document.getElementById('editSizeModal'));
-        m.show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('editSizeModal')).show();
       }
     });
 

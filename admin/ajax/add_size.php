@@ -37,14 +37,18 @@ try {
     Size_ID INT NOT NULL,
     Price_Mode ENUM('ABS','DELTA') NOT NULL DEFAULT 'ABS',
     Price_Value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    Price_Source_ID INT NULL,
     Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_prod_size (Product_ID, Size_ID),
     INDEX (Product_ID),
     INDEX (Size_ID),
+    INDEX (Price_Source_ID),
     CONSTRAINT fk_psp_product FOREIGN KEY (Product_ID) REFERENCES product(Product_ID) ON DELETE CASCADE,
     CONSTRAINT fk_psp_size FOREIGN KEY (Size_ID) REFERENCES sizes(Size_ID) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+  // Ensure column exists if table was old
+  try { $cc=$con->query("SHOW COLUMNS FROM product_size_price LIKE 'Price_Source_ID'"); if($cc&&$cc->rowCount()==0){ $con->exec("ALTER TABLE product_size_price ADD COLUMN Price_Source_ID INT NULL AFTER Price_Value, ADD INDEX (Price_Source_ID)"); } } catch(Throwable $ignore) {}
 
   // Ensure size in master
   // If sort_order provided ensure uniqueness per size if not used; we keep simple incremental otherwise
@@ -82,9 +86,9 @@ try {
     $resolvedPrice = (float)$price_amount;
   }
   $mode = $is_absolute ? 'ABS' : 'DELTA';
-  $stmt2 = $con->prepare("INSERT INTO product_size_price (Product_ID, Size_ID, Price_Mode, Price_Value) VALUES (?,?,?,?)
-              ON DUPLICATE KEY UPDATE Price_Mode=VALUES(Price_Mode), Price_Value=VALUES(Price_Value)");
-  $ok = $stmt2->execute([$product_id,$sizeId,$mode,$resolvedPrice]);
+  $stmt2 = $con->prepare("INSERT INTO product_size_price (Product_ID, Size_ID, Price_Mode, Price_Value, Price_Source_ID) VALUES (?,?,?,?,?)
+              ON DUPLICATE KEY UPDATE Price_Mode=VALUES(Price_Mode), Price_Value=VALUES(Price_Value), Price_Source_ID=VALUES(Price_Source_ID)");
+  $ok = $stmt2->execute([$product_id,$sizeId,$mode,$resolvedPrice, $price_id>0 ? $price_id : null]);
 
   echo json_encode(['success'=>$ok,'size_code'=>$norm_code,'mode'=>$mode]);
 } catch(Throwable $e){

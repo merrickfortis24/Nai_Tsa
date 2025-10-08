@@ -38,11 +38,15 @@ try {
 		Size_ID INT NOT NULL,
 		Price_Mode ENUM('ABS','DELTA') NOT NULL DEFAULT 'ABS',
 		Price_Value DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+		Price_Source_ID INT NULL,
 		Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		Updated_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-		UNIQUE KEY uq_prod_size (Product_ID, Size_ID)
+		UNIQUE KEY uq_prod_size (Product_ID, Size_ID),
+		INDEX (Price_Source_ID)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-	");
+");
+	// Ensure Price_Source_ID exists for legacy tables
+	try { $cc=$con->query("SHOW COLUMNS FROM product_size_price LIKE 'Price_Source_ID'"); if($cc && $cc->rowCount()==0){ $con->exec("ALTER TABLE product_size_price ADD COLUMN Price_Source_ID INT NULL AFTER Price_Value, ADD INDEX (Price_Source_ID)"); } } catch(Throwable $ign) {}
 
 	// Fetch existing mapping
 	$cur = $con->prepare("SELECT Product_ID, Size_ID FROM product_size_price WHERE Product_Size_Price_ID=? LIMIT 1");
@@ -87,13 +91,18 @@ try {
 	$fields = [];$params = [];
 		if($price_mode !== ''){ $fields[] = 'Price_Mode=?'; $params[] = $price_mode; }
 		// Resolve price_amount from price_id if present
+		$price_source_id_to_set = null;
 		if($price_id > 0){
 			$pstmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=? LIMIT 1");
 			$pstmt->execute([$price_id]);
 			$pv = $pstmt->fetchColumn();
-			if($pv !== false){ $price_amount = (float)$pv; }
+			if($pv !== false){ 
+				$price_amount = (float)$pv; 
+				$price_source_id_to_set = $price_id; 
+			}
 		}
 		if($price_amount !== null){ $fields[] = 'Price_Value=?'; $params[] = $price_amount; }
+		if($price_source_id_to_set !== null){ $fields[] = 'Price_Source_ID=?'; $params[] = $price_source_id_to_set; }
 	// If size id changed from original, update it
 	if($sizeId != (int)$existing['Size_ID']){ $fields[] = 'Size_ID=?'; $params[] = $sizeId; }
 
