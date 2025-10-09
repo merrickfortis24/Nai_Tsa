@@ -102,8 +102,11 @@ try {
         if ($secure === 'ssl' || $secure === 'smtps') { $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; if ($port === 587) { $port = 465; } }
         else { $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; }
         $mail->Port    = $port;
+        $mail->SMTPAutoTLS = true;
+        $mail->Timeout = 20;
         $mail->CharSet = 'UTF-8';
         $mail->setFrom($from, $fromName);
+        $mail->Sender = $from; // envelope-from
     }
     if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; $mail->Debugoutput = 'error_log'; }
 
@@ -131,8 +134,11 @@ try {
             $ack->Password   = $pass;
             if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
             else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
+            $ack->SMTPAutoTLS = true;
+            $ack->Timeout = 20;
             $ack->CharSet = 'UTF-8';
             $ack->setFrom($from, $fromName);
+            $ack->Sender = $from;
         }
         $ack->addAddress($email, $name);
         $ack->Subject = 'Thank you for contacting ' . $fromName;
@@ -151,7 +157,19 @@ try {
 
     header('Location: index.php?contact=success#contact');
 } catch (Exception $e) {
-    error_log('Contact form mail error: ' . $e->getMessage());
-    header('Location: index.php?contact=sendfail#contact');
+    $msg = $e->getMessage();
+    error_log('Contact form mail error: ' . $msg);
+    $code = 'sendfail';
+    $low = strtolower($msg);
+    if (strpos($low, 'authenticate') !== false) {
+        $code = 'auth';
+    } elseif (strpos($low, 'connect') !== false || strpos($low, 'timed out') !== false) {
+        $code = 'connect';
+    } elseif (strpos($low, 'certificate') !== false || strpos($low, 'verify failed') !== false) {
+        $code = 'cert';
+    } elseif (strpos($low, 'invalid address') !== false || strpos($low, 'data not accepted') !== false || strpos($low, 'recipient rejected') !== false) {
+        $code = 'addr';
+    }
+    header('Location: index.php?contact=' . $code . '#contact');
 }
 exit;

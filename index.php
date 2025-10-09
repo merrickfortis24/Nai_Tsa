@@ -249,6 +249,14 @@ Open daily from 10AM to midnight..</p>
           <div class="alert alert-danger">Mail server is not configured on this site. Please contact the site administrator.</div>
         <?php elseif ($c === 'sendfail'): ?>
           <div class="alert alert-danger">We couldn’t send your message due to a temporary email issue. Please try again in a few minutes.</div>
+        <?php elseif ($c === 'auth'): ?>
+          <div class="alert alert-danger">Email server rejected the credentials. Please verify the mailbox email and password in the site settings.</div>
+        <?php elseif ($c === 'connect'): ?>
+          <div class="alert alert-danger">Cannot connect to the email server. If this persists, try again later or contact support.</div>
+        <?php elseif ($c === 'cert'): ?>
+          <div class="alert alert-danger">Certificate validation failed when contacting the email server. Please try again later.</div>
+        <?php elseif ($c === 'addr'): ?>
+          <div class="alert alert-danger">The email address was not accepted by the server. Please double-check your email address and try again.</div>
         <?php endif; ?>
       <?php endif; ?>
       <form method="POST" action="send_contact.php" novalidate>
