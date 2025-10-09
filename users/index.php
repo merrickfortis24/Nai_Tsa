@@ -535,6 +535,7 @@ try {
       } catch (_) { /* noop */ }
     })();
   </script>
+  <script>
     // If SweetAlert2 failed to load from jsDelivr, try another CDN
     (function(){
       if (!window.Swal) {
