@@ -60,8 +60,16 @@ try {
     .menu-card-description { font-size:0.9rem; line-height:1.35rem; margin:0 0 .75rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-height:4.05rem; }
     .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
     .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
-    .add-to-cart-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:.55rem; font-weight:600; }
-    .menu-card-price { color:#c97234; font-weight:600; font-size:.9rem; }
+        try {
+          var url = new URL(window.location.href);
+          var params = new URLSearchParams(url.search);
+          if (params.has('contact')) {
+            params.delete('contact');
+            var newSearch = params.toString();
+            var cleanUrl = url.origin + url.pathname + (newSearch ? ('?' + newSearch) : '') + url.hash;
+            history.replaceState(null, '', cleanUrl);
+          }
+        } catch (_) { /* noop */ }
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
   </style>
 </head>
