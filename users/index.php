@@ -207,16 +207,41 @@ try {
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
-      <form>
+      <?php if (isset($_GET['contact'])): $c = $_GET['contact']; ?>
+        <?php if ($c === 'success'): ?>
+          <div class="alert alert-success">Thank you! Your message has been sent.</div>
+        <?php elseif ($c === 'invalid'): ?>
+          <div class="alert alert-danger">Please check your inputs: make sure name, a valid email, and message are provided.</div>
+        <?php elseif ($c === 'limited'): ?>
+          <div class="alert alert-warning">You’ve reached the limit for submissions. Please try again later.</div>
+        <?php elseif ($c === 'mailcfg'): ?>
+          <div class="alert alert-danger">Mail server is not configured on this site. Please contact the site administrator.</div>
+        <?php elseif ($c === 'sendfail'): ?>
+          <div class="alert alert-danger">We couldn’t send your message due to a temporary email issue. Please try again in a few minutes.</div>
+        <?php elseif ($c === 'auth'): ?>
+          <div class="alert alert-danger">Email server rejected the credentials. Please verify the mailbox email and password in the site settings.</div>
+        <?php elseif ($c === 'connect'): ?>
+          <div class="alert alert-danger">Cannot connect to the email server. If this persists, try again later or contact support.</div>
+        <?php elseif ($c === 'cert'): ?>
+          <div class="alert alert-danger">Certificate validation failed when contacting the email server. Please try again later.</div>
+        <?php elseif ($c === 'addr'): ?>
+          <div class="alert alert-danger">The email address was not accepted by the server. Please double-check your email address and try again.</div>
+        <?php endif; ?>
+      <?php endif; ?>
+      <form method="POST" action="../send_contact.php" novalidate>
         <div class="row">
           <div class="col-md-6 mb-3">
-            <input type="text" class="form-control" placeholder="Your Name" required>
+            <input type="text" class="form-control" name="name" placeholder="Your Name" maxlength="100" value="<?= htmlspecialchars($_SESSION['customer_name'] ?? '') ?>" required>
           </div>
           <div class="col-md-6 mb-3">
-            <input type="email" class="form-control" placeholder="Your Email" required>
+            <input type="email" class="form-control" name="email" placeholder="Your Email" maxlength="150" value="<?= htmlspecialchars($_SESSION['customer_email'] ?? '') ?>" required>
           </div>
         </div>
-        <textarea class="form-control mb-3" rows="3" placeholder="Your Message" required></textarea>
+        <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
+        <!-- Honeypot field to reduce spam -->
+        <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+        <!-- Tell handler to return to users page -->
+        <input type="hidden" name="return_to" value="users/index.php">
         <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
       </form>
 
@@ -496,6 +521,18 @@ try {
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    // If SweetAlert2 failed to load from jsDelivr, try another CDN
+    (function(){
+      if (!window.Swal) {
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/sweetalert2@11/dist/sweetalert2.min.js';
+        s.async = true;
+        s.onload = function(){ console.log('SweetAlert2 fallback loaded from unpkg'); };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
   <!-- Leaflet JS for map picker -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>

@@ -30,17 +30,30 @@ require_once $phpmailerSrc . '/PHPMailer.php';
 require_once $phpmailerSrc . '/SMTP.php';
 
 // 2. Only accept POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: index.php#contact'); exit; }
+// Determine safe return target (default to public index)
+$returnTo = 'index.php';
+if (isset($_POST['return_to'])) {
+    $cand = trim((string)$_POST['return_to']);
+    // Allow only relative paths within this site to avoid open redirects
+    if ($cand !== '' && !preg_match('~^https?://~i', $cand) && strpos($cand, "\0") === false) {
+        // Normalize simple directory traversal attempts
+        $cand = ltrim($cand, '/\\');
+        if ($cand === 'users/index.php' || $cand === 'index.php') {
+            $returnTo = $cand;
+        }
+    }
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: ' . $returnTo . '#contact'); exit; }
 
 // 3. Honeypot anti-spam
-if (!empty($_POST['website'])) { header('Location: index.php?contact=success#contact'); exit; }
+if (!empty($_POST['website'])) { header('Location: ' . $returnTo . '?contact=success#contact'); exit; }
 
 // 4. Sanitize input
 $name    = trim($_POST['name'] ?? '');
 $email   = trim($_POST['email'] ?? '');
 $message = trim($_POST['message'] ?? '');
-if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: index.php?contact=invalid#contact'); exit; }
-if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: index.php?contact=invalid#contact'); exit; }
+if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: ' . $returnTo . '?contact=invalid#contact'); exit; }
+if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: ' . $returnTo . '?contact=invalid#contact'); exit; }
 
 // 5. Simple rate limit (per IP)
 function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
@@ -58,7 +71,7 @@ function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
     return false;
 }
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-if (rate_limited($ip)) { header('Location: index.php?contact=limited#contact'); exit; }
+if (rate_limited($ip)) { header('Location: ' . $returnTo . '?contact=limited#contact'); exit; }
 
 // 6. Load .mail.env.php if present (sets putenv values)
 if (file_exists(__DIR__ . '/.mail.env.php')) { include __DIR__ . '/.mail.env.php'; }
@@ -81,7 +94,7 @@ if (!$user || !$pass || !$from) {
         $usingUtilsMailer = true; // we'll construct PHPMailer via mailer_instance() below
     } catch (Throwable $te) {
         error_log('Mail config missing and utils/mailer.php not available: ' . $te->getMessage());
-        header('Location: index.php?contact=mailcfg#contact');
+    header('Location: ' . $returnTo . '?contact=mailcfg#contact');
         exit;
     }
 }
@@ -155,7 +168,7 @@ try {
         error_log('Ack mail failed: ' . $e2->getMessage());
     }
 
-    header('Location: index.php?contact=success#contact');
+    header('Location: ' . $returnTo . '?contact=success#contact');
 } catch (Exception $e) {
     $msg = $e->getMessage();
     error_log('Contact form mail error: ' . $msg);
@@ -170,6 +183,6 @@ try {
     } elseif (strpos($low, 'invalid address') !== false || strpos($low, 'data not accepted') !== false || strpos($low, 'recipient rejected') !== false) {
         $code = 'addr';
     }
-    header('Location: index.php?contact=' . $code . '#contact');
+    header('Location: ' . $returnTo . '?contact=' . $code . '#contact');
 }
 exit;
