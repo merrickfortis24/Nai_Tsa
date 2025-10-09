@@ -269,8 +269,8 @@ Open daily from 10AM to midnight..</p>
     </div>
   </div>
   <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
-  <!-- Honeypot field to reduce spam -->
-  <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+  <!-- Honeypot field to reduce spam (hidden to avoid browser autofill) -->
+  <input type="hidden" name="website" value="">
   <input type="hidden" name="return_to" value="index.php">
   <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
 </form>

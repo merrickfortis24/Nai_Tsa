@@ -239,7 +239,7 @@ try {
         </div>
         <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
         <!-- Honeypot field to reduce spam -->
-        <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+  <input type="hidden" name="website" value="">
         <!-- Tell handler to return to users page -->
         <input type="hidden" name="return_to" value="users/index.php">
         <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
