@@ -298,6 +298,26 @@ Open daily from 10AM to midnight..</p>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
+    // Remove stray contact param and suppress alert unless coming from send_contact.php
+    (function(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const contact = params.get('contact');
+        const ref = document.referrer || '';
+        if (contact && !/send_contact\.php$/i.test(ref)) {
+          const container = document.querySelector('#contact .section-content');
+          if (container) {
+            container.querySelectorAll('.alert').forEach(a => a.remove());
+          }
+        }
+        if (contact) {
+          params.delete('contact');
+          const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + window.location.hash;
+          history.replaceState({}, '', newUrl);
+        }
+      } catch (_) { /* noop */ }
+    })();
+  </script>
     // If SweetAlert2 failed to load from jsDelivr, try another CDN
     (function(){
       if (!window.Swal) {
