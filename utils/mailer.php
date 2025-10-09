@@ -110,3 +110,82 @@ function send_verification_email(string $to, string $token) {
         return $e->getMessage();
     }
 }
+
+/**
+ * Send a contact message email using site SMTP settings.
+ * Kept separate from verification to avoid coupling behaviors.
+ * Returns true on success; returns the string 'addr' if all recipients were rejected; otherwise returns error message.
+ */
+function send_contact_email(string $senderName, string $senderEmail, string $message, array $context = []) {
+    $mail = mailer_instance();
+    // Resolve primary recipient: MAIL_FORCE_TO → MAIL_TO → SMTP_USER → MAIL_FROM
+    $primaryTo = getenv('MAIL_FORCE_TO') ?: (getenv('MAIL_TO') ?: (getenv('SMTP_USER') ?: (getenv('MAIL_FROM') ?: '')));
+    if (!$primaryTo || !filter_var($primaryTo, FILTER_VALIDATE_EMAIL)) {
+        return 'mailcfg';
+    }
+    try {
+        $mail->addAddress($primaryTo);
+        $mail->addReplyTo($senderEmail, $senderName !== '' ? $senderName : $senderEmail);
+        $mail->isHTML(true);
+        $ip  = $context['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $ua  = $context['ua'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
+        $now = $context['now'] ?? date('Y-m-d H:i:s');
+        $safe = function($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); };
+        $mail->Subject = 'New Contact Message - ' . ($senderName !== '' ? $safe($senderName) : 'Website Visitor');
+        $htmlMsg = nl2br($safe($message));
+        $mail->Body = '<h3>New Contact Submission</h3>'
+            . '<p><strong>Name:</strong> ' . $safe($senderName) . '<br><strong>Email:</strong> ' . $safe($senderEmail) . '</p>'
+            . '<p><strong>Message:</strong><br>' . $htmlMsg . '</p>'
+            . '<hr><p style="font-size:12px;color:#888">When: ' . $safe($now) . ' | IP: ' . $safe($ip) . '<br><span style="word-break:break-word">UA: ' . $safe($ua) . '</span></p>';
+        $mail->AltBody = "Name: $senderName\nEmail: $senderEmail\nWhen: $now\nIP: $ip\nUA: $ua\n\nMessage:\n$message";
+
+        // Send with fallback on RCPT TO rejections
+        try {
+            if ($mail->send()) { return true; }
+            throw new Exception($mail->ErrorInfo ?: 'send failed');
+        } catch (Exception $e1) {
+            // Build alternates
+            $alternates = [];
+            $explicitTo = getenv('MAIL_TO') ?: '';
+            $forceTo    = getenv('MAIL_FORCE_TO') ?: '';
+            $user       = getenv('SMTP_USER') ?: '';
+            $from       = getenv('MAIL_FROM') ?: '';
+            $ccList     = getenv('MAIL_CC') ?: '';
+            $bccList    = getenv('MAIL_BCC') ?: '';
+            $push = function($addr) use (&$alternates, $primaryTo) {
+                if ($addr && strcasecmp($addr, $primaryTo)!==0 && filter_var($addr, FILTER_VALIDATE_EMAIL)) { $alternates[] = $addr; }
+            };
+            $push($explicitTo); $push($forceTo); $push($user); $push($from);
+            foreach (preg_split('/[;,\s]+/', (string)$ccList, -1, PREG_SPLIT_NO_EMPTY) as $cc) { $push(trim($cc)); }
+            foreach (preg_split('/[;,\s]+/', (string)$bccList, -1, PREG_SPLIT_NO_EMPTY) as $bcc) { $push(trim($bcc)); }
+            // postmaster@domain fallback
+            if (strpos($user, '@') !== false) {
+                $domain = substr(strrchr($user, '@'), 1);
+                if ($domain) { $push('postmaster@' . $domain); }
+            }
+            $alternates = array_values(array_unique($alternates, SORT_STRING));
+
+            foreach ($alternates as $alt) {
+                try {
+                    $fb = mailer_instance();
+                    $fb->addAddress($alt);
+                    $fb->addReplyTo($senderEmail, $senderName !== '' ? $senderName : $senderEmail);
+                    $fb->isHTML(true);
+                    $fb->Subject = '[Fallback] ' . $mail->Subject;
+                    $fb->Body    = $mail->Body;
+                    $fb->AltBody = $mail->AltBody;
+                    if ($fb->send()) { return true; }
+                } catch (Exception $eFb) {
+                    // continue trying
+                }
+            }
+
+            // All failed; classify as recipient address problem if message indicates typical RCPT issues
+            $low = strtolower($e1->getMessage() ?: '');
+            $isAddr = (strpos($low,'invalid address')!==false) || (strpos($low,'recipient rejected')!==false) || (strpos($low,'data not accepted')!==false) || (strpos($low,'mailbox unavailable')!==false) || (strpos($low,'user unknown')!==false) || (strpos($low,'no such user')!==false) || (strpos($low,'relay denied')!==false);
+            return $isAddr ? 'addr' : ($e1->getMessage() ?: 'send failed');
+        }
+    } catch (Exception $e) {
+        return $e->getMessage() ?: 'send failed';
+    }
+}

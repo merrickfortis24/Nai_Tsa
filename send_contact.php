@@ -36,82 +36,58 @@ try {
 
     $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $now = date('Y-m-d H:i:s');
-
-    $mail = mailer_instance();
-
-    $to = mail_primary_to();
-    if (!$to) {
-        error_log('Contact mail: No valid recipient resolved.');
-        contact_redirect('mailcfg');
-    }
-    $mail->addAddress($to);
-
-    $mail->Subject = 'New Contact Message - ' . ($name ?: 'Website Visitor');
-    $plainBody = "New contact message from naitsa.online\n\n"
-               . "Name: {$name}\n"
-               . "Email: {$email}\n"
-               . "When: {$now}\n"
-               . "IP: {$ip}\n"
-               . "User-Agent: {$ua}\n\n"
-               . "Message:\n" . safe_ellipsize($message, 4000);
-    $mail->Body    = $plainBody;
-    $mail->AltBody = $plainBody;
-    $mail->addReplyTo($email, $name ?: $email);
-
-    $sendOk = false;
+    // 8. Send mail using dedicated contact sender (kept separate from verification)
     try {
-        $sendOk = $mail->send();
-    } catch (Exception $e) {
-        error_log('Contact mail send error (primary): ' . $mail->ErrorInfo);
-        $mail->clearAddresses();
+        require_once __DIR__ . '/utils/mailer.php';
+        $result = send_contact_email($name, $email, $message, [
+            'ip' => $ip,
+            'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'now' => date('Y-m-d H:i:s')
+        ]);
 
-        $alternates = [];
-        $envTo  = getenv('MAIL_TO') ?: '';
-        $envFTo = getenv('MAIL_FORCE_TO') ?: '';
-        $envUser= getenv('SMTP_USER') ?: '';
-        $envFrom= getenv('MAIL_FROM') ?: '';
-        $envCC  = getenv('MAIL_CC') ?: '';
-        $envBCC = getenv('MAIL_BCC') ?: '';
-
-        foreach ([$envTo, $envFTo, $envUser, $envFrom] as $addr) {
-            if ($addr && $addr !== $to && filter_var($addr, FILTER_VALIDATE_EMAIL)) $alternates[] = $addr;
+        if ($result === true) {
+            // Acknowledgment to the user (best-effort)
+            try {
+                $ack = mailer_instance();
+                if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; }
+                $ack->addAddress($email, $name);
+                $ack->Subject = 'Thank you for contacting ' . $fromName;
+                $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
+                    . "<p>Thank you for your message. We've received it and will get back to you shortly.</p>"
+                    . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(safe_ellipsize($message,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
+                    . "<p style='font-size:12px;color:#888'>This is an automated acknowledgement. Please do not reply directly; use the website contact form if needed.</p>";
+                $ack->isHTML(true);
+                $ack->Body    = $ackBody;
+                $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . safe_ellipsize($message,500,'...');
+                $ack->send();
+            } catch (Exception $e2) { error_log('Ack mail failed: ' . $e2->getMessage()); }
+            header('Location: ' . $returnTo . '?contact=success#contact');
+            exit;
         }
-        foreach (mail_parse_list($envCC) as $cc)  { if ($cc  && $cc  !== $to) $alternates[] = $cc; }
-        foreach (mail_parse_list($envBCC) as $bc) { if ($bc  && $bc  !== $to) $alternates[] = $bc; }
 
-        if ($envUser && strpos($envUser, '@') !== false) {
-            $domain = substr(strrchr($envUser, '@'), 1);
-            $postmaster = 'postmaster@' . $domain;
-            if (filter_var($postmaster, FILTER_VALIDATE_EMAIL)) $alternates[] = $postmaster;
-        }
-        $alternates = array_values(array_unique($alternates));
-
-        if (!empty($alternates)) {
-            foreach ($alternates as $alt) { $mail->addAddress($alt); }
-            try { $sendOk = $mail->send(); } catch (Exception $e2) {
-                error_log('Contact mail send error (alternates): ' . $mail->ErrorInfo);
+        // Map result codes/messages to UI
+        $code = 'sendfail';
+        if ($result === 'mailcfg') {
+            $code = 'mailcfg';
+        } elseif ($result === 'addr') {
+            $code = 'addr';
+        } elseif (is_string($result)) {
+            $low = strtolower($result);
+            if (strpos($low, 'authenticate') !== false) {
+                $code = 'auth';
+            } elseif (strpos($low, 'connect') !== false || strpos($low, 'timed out') !== false) {
+                $code = 'connect';
+            } elseif (strpos($low, 'certificate') !== false || strpos($low, 'verify failed') !== false) {
+                $code = 'cert';
+            } elseif (strpos($low, 'invalid address') !== false || strpos($low, 'data not accepted') !== false || strpos($low, 'recipient rejected') !== false) {
+                $code = 'addr';
             }
         }
+        header('Location: ' . $returnTo . '?contact=' . $code . '#contact');
+        exit;
+    } catch (Exception $e) {
+        error_log('Contact form handler error: ' . $e->getMessage());
+        header('Location: ' . $returnTo . '?contact=sendfail#contact');
+        exit;
     }
-
-    if ($sendOk) {
-        try {
-            $ack = mailer_instance();
-            $ack->addAddress($email, $name ?: $email);
-            $ack->Subject = 'We received your message';
-            $ack->Body    = "Hi {$name},\n\nThanks for reaching out to Nai Tsa! We received your message and will get back to you soon.\n\n— Nai Tsa";
-            $ack->AltBody = $ack->Body;
-            $ack->send();
-        } catch (Exception $e) {
-            error_log('Contact ack send error: ' . ($e->getMessage() ?: 'unknown'));
-        }
-        contact_redirect('success');
-    } else {
-        contact_redirect('addr');
-    }
-
-} catch (Throwable $t) {
-    error_log('Contact handler fatal: ' . $t->getMessage());
-    contact_redirect('sendfail');
-}
+                error_log('Contact mail send error (alternates): ' . $mail->ErrorInfo);
