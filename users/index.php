@@ -1811,7 +1811,7 @@ function renderOrders(){
         <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
         <span>${it.Product_Name} x ${it.Quantity}</span>
       </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
-    const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
+    /*const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
     const needsTracking = isDelivery && !['Delivered','Received','Cancelled'].includes(uiStatus);
     const trackingHtml = needsTracking ? `
       <div class="mt-3 p-2 border rounded bg-white" style="border-radius:12px;">
@@ -1820,7 +1820,7 @@ function renderOrders(){
           <button type="button" class="btn btn-outline-soft-orange btn-sm" data-track="${o.Order_ID}">Track</button>
         </div>
         <div id="track-map-${o.Order_ID}" class="mt-2" style="height:160px;border-radius:10px;overflow:hidden;display:none;"></div>
-      </div>` : '';
+      </div>` : '';*/
 
     return `
       <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
