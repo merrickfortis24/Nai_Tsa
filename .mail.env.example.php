@@ -16,6 +16,10 @@ putenv('MAIL_FROM_NAME=Nai Tsa');
 // Optional: force all outgoing test emails to one address (safe for dev)
 // putenv('MAIL_FORCE_TO=you@example.com');
 
+// Optional: add CC/BCC recipients (comma or semicolon separated)
+// putenv('MAIL_CC=yourgmail@gmail.com, teammate@example.com');
+// putenv('MAIL_BCC=archive@example.com');
+
 // Optional: enable SMTP debug (logs via PHP error_log)
 // putenv('MAIL_DEBUG=1');
 

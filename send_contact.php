@@ -85,6 +85,8 @@ $pass      = getenv('SMTP_PASS') ?: '';
 $from      = getenv('MAIL_FROM') ?: $user;
 $fromName  = getenv('MAIL_FROM_NAME') ?: 'Website';
 $forceTo   = getenv('MAIL_FORCE_TO') ?: '';
+$ccList    = getenv('MAIL_CC') ?: '';
+$bccList   = getenv('MAIL_BCC') ?: '';
 $debugFlag = getenv('MAIL_DEBUG');
 // Fallback: if env config is missing, try the shared utils\mailer.php
 $usingUtilsMailer = false;
@@ -125,6 +127,15 @@ try {
 
     if ($forceTo) { $mail->addAddress($forceTo, 'Forced Recipient'); }
     else { $mail->addAddress($from, $fromName); }
+    // Optional CC/BCC additional recipients (comma/semicolon separated)
+    foreach (preg_split('/[;,]+/', $ccList, -1, PREG_SPLIT_NO_EMPTY) as $cc) {
+        $cc = trim($cc);
+        if ($cc) { $mail->addCC($cc); }
+    }
+    foreach (preg_split('/[;,]+/', $bccList, -1, PREG_SPLIT_NO_EMPTY) as $bcc) {
+        $bcc = trim($bcc);
+        if ($bcc) { $mail->addBCC($bcc); }
+    }
     $mail->addReplyTo($email, $name);
 
     $mail->isHTML(true);
