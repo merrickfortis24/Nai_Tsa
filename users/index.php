@@ -1997,14 +1997,35 @@ async function confirmOrder(orderId){
       const data = await res.json().catch(()=>({success:false,message:'Invalid response'}));
       console.log('confirm_order.php response', res.status, data);
       if(res.ok && data.success){
-        // Update cache
+        // Update cache and re-render
         const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
-        if(idx!==-1){ ORDERS_CACHE[idx].order_status = data.final_status; }
+        if(idx!==-1 && data.final_status){ ORDERS_CACHE[idx].order_status = data.final_status; }
         renderStatusChips();
         renderOrders();
-        Swal.fire({icon:'success', title: isNaN(orderId)?'Confirmed':'Order confirmed', timer:1200, showConfirmButton:false});
+
+        // For pickup: backend returns success only when already Received by admin
+        // For delivery: we set Delivered. In both cases we can offer a review prompt.
+        if (data.review_prompt) {
+          Swal.fire({
+            icon:'success',
+            title:'Confirmed',
+            text:'Would you like to leave a review?',
+            showCancelButton:true,
+            confirmButtonText:'Yes',
+            cancelButtonText:'Later',
+            confirmButtonColor:'#FFB27A'
+          }).then(r=>{ if(r.isConfirmed){
+            // Open review modal for this order
+            if (typeof openReviewModalByOrderId === 'function') {
+              openReviewModalByOrderId(orderId);
+            }
+          }});
+        } else {
+          Swal.fire({icon:'success', title:'Confirmed', timer:1200, showConfirmButton:false});
+        }
       } else {
-        Swal.fire({icon:'error', title:data.message||'Unable to confirm', timer:1800, showConfirmButton:false});
+        const msg = (data && data.message) ? data.message : 'Unable to confirm';
+        Swal.fire({icon:'error', title:msg, timer:2000, showConfirmButton:false});
         if(btn){ btn.disabled = false; btn.textContent = original; }
       }
     } catch(err){
