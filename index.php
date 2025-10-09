@@ -271,6 +271,7 @@ Open daily from 10AM to midnight..</p>
   <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
   <!-- Honeypot field to reduce spam -->
   <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+  <input type="hidden" name="return_to" value="index.php">
   <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
 </form>
       <!-- Social / Contact quick links -->
@@ -318,6 +319,7 @@ Open daily from 10AM to midnight..</p>
       } catch (_) { /* noop */ }
     })();
   </script>
+  <script>
     // If SweetAlert2 failed to load from jsDelivr, try another CDN
     (function(){
       if (!window.Swal) {
