@@ -6,9 +6,11 @@ require_once __DIR__ . '/classes/fraud_blocker.php';
 $db = new database();
 $con = $db->opencon();
 
-// Ensure tables exist (idempotent)
+// Ensure tables exist (idempotent) without triggering auto-block logic on page load
 $fb = new FraudBlocker();
-$fb->runDetection(); // passive run to ensure structures; actual blocking only if heuristics trigger
+// IMPORTANT: Do not auto-run detection here; it can immediately re-block recently unblocked users
+// Run detection explicitly via the "Run Scan" button (ajax/fraud_scan.php) or a scheduled job instead.
+// $fb->runDetection();
 
 // Fetch blocked list with extra metrics (cancel ratio & recent order counts)
 $blocked = [];
@@ -62,6 +64,9 @@ try {
       </div>
       <div class="card shadow-sm mb-4">
         <div class="card-body">
+          <div class="alert alert-warning py-2 small">
+            Manual unblocks are respected for 48 hours. The auto-scan will skip re-blocking those users during this grace period.
+          </div>
           <div class="row g-3 mb-3">
             <div class="col-md-4 col-lg-3">
               <input type="text" id="searchInput" class="form-control" placeholder="Search name/email/ID">

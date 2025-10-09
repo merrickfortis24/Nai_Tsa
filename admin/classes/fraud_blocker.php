@@ -26,6 +26,8 @@ class FraudBlocker extends database {
         'burst_minutes'               => 20,
         'burst_count_block'           => 4,
         'simulate'                    => false, // set true for dry-run
+        // Respect manual admin decisions: do not auto-reblock within this grace window (hours)
+        'manual_unblock_grace_hours'  => 48,
     ];
 
     public function __construct(array $overrides = []) {
@@ -145,9 +147,23 @@ class FraudBlocker extends database {
         return $m;
     }
 
+    /** Was this customer manually unblocked within the grace window? */
+    private function recentlyUnblocked(int $customerId): bool {
+        try {
+            $con = $this->opencon();
+            $stmt = $con->prepare("SELECT created_at FROM blocked_users_log WHERE customer_id=? AND action='UNBLOCK' ORDER BY created_at DESC LIMIT 1");
+            $stmt->execute([$customerId]);
+            $ts = $stmt->fetchColumn();
+            if (!$ts) return false;
+            $graceSeconds = max(0, (int)$this->config['manual_unblock_grace_hours']) * 3600;
+            return (strtotime($ts) >= (time() - $graceSeconds));
+        } catch(Throwable $e) { return false; }
+    }
+
     /** Execute detection across candidates */
     public function runDetection(): array {
         $blocked = [];
+        $skipped_grace = [];
         $evaluated = [];
         $already = 0;
         $con = $this->opencon();
@@ -155,6 +171,11 @@ class FraudBlocker extends database {
             $metrics = $this->evaluateCustomer($cid);
             $evaluated[] = $metrics;
             if ($metrics['decision'] === 'block' && !$this->isCustomerBlocked($cid)) {
+                // Honor manual unblocks within grace period; do not re-block immediately
+                if ($this->recentlyUnblocked($cid)) {
+                    $skipped_grace[] = $cid;
+                    continue;
+                }
                 if (!$this->config['simulate']) {
                     $this->blockCustomer($cid, $metrics['reason']);
                 }
@@ -167,6 +188,7 @@ class FraudBlocker extends database {
             'success' => true,
             'simulate' => (bool)$this->config['simulate'],
             'blocked_now' => $blocked,
+            'skipped_due_to_grace' => $skipped_grace,
             'already_blocked' => $already,
             'evaluated_count' => count($evaluated),
             'evaluated' => $evaluated
