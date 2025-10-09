@@ -36,9 +36,9 @@ try {
 
     $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $fromName = getenv('MAIL_FROM_NAME') ?: 'Nai Tsa';
     // 8. Send mail using dedicated contact sender (kept separate from verification)
     try {
-        require_once __DIR__ . '/utils/mailer.php';
         $result = send_contact_email($name, $email, $message, [
             'ip' => $ip,
             'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
@@ -49,7 +49,6 @@ try {
             // Acknowledgment to the user (best-effort)
             try {
                 $ack = mailer_instance();
-                if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; }
                 $ack->addAddress($email, $name);
                 $ack->Subject = 'Thank you for contacting ' . $fromName;
                 $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
@@ -61,8 +60,7 @@ try {
                 $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . safe_ellipsize($message,500,'...');
                 $ack->send();
             } catch (Exception $e2) { error_log('Ack mail failed: ' . $e2->getMessage()); }
-            header('Location: ' . $returnTo . '?contact=success#contact');
-            exit;
+            contact_redirect('success');
         }
 
         // Map result codes/messages to UI
@@ -83,11 +81,9 @@ try {
                 $code = 'addr';
             }
         }
-        header('Location: ' . $returnTo . '?contact=' . $code . '#contact');
-        exit;
+        contact_redirect($code);
     } catch (Exception $e) {
         error_log('Contact form handler error: ' . $e->getMessage());
-        header('Location: ' . $returnTo . '?contact=sendfail#contact');
-        exit;
+        contact_redirect('sendfail');
     }
-                error_log('Contact mail send error (alternates): ' . $mail->ErrorInfo);
+    // end outer try
