@@ -23,7 +23,20 @@ if ($order_id <= 0) {
 
 try {
     $con = $db->opencon();
-    $stmt = $con->prepare("SELECT order_status, Driver_Status, driver_lat, driver_lng FROM orders WHERE Order_ID = :oid AND Customer_ID = :cid LIMIT 1");
+    // Some deployments may not have driver_lat/driver_lng columns on orders. Detect and fallback to NULLs.
+    $hasLat = false; $hasLng = false;
+    try {
+        $chkLat = $con->query("SHOW COLUMNS FROM orders LIKE 'driver_lat'");
+        $hasLat = $chkLat && $chkLat->rowCount() > 0;
+    } catch (Throwable $e) { /* ignore */ }
+    try {
+        $chkLng = $con->query("SHOW COLUMNS FROM orders LIKE 'driver_lng'");
+        $hasLng = $chkLng && $chkLng->rowCount() > 0;
+    } catch (Throwable $e) { /* ignore */ }
+    $latSel = $hasLat ? 'o.driver_lat' : 'NULL AS driver_lat';
+    $lngSel = $hasLng ? 'o.driver_lng' : 'NULL AS driver_lng';
+    $sql = "SELECT o.order_status, o.Driver_Status, $latSel, $lngSel FROM orders o WHERE o.Order_ID = :oid AND o.Customer_ID = :cid LIMIT 1";
+    $stmt = $con->prepare($sql);
     $stmt->execute([':oid' => $order_id, ':cid' => $_SESSION['customer_id']]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
