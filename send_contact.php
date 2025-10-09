@@ -3,6 +3,17 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// Helper: safe ellipsize without requiring mbstring
+function safe_ellipsize($str, $max = 500, $ellipsis = '...') {
+    if ($max <= 0) return '';
+    if (function_exists('mb_strimwidth')) {
+        return mb_strimwidth($str, 0, $max, $ellipsis, 'UTF-8');
+    }
+    if (strlen($str) <= $max) return $str;
+    $cut = max(0, $max - strlen($ellipsis));
+    return substr($str, 0, $cut) . $ellipsis;
+}
+
 // 1. Locate PHPMailer sources
 $phpmailerSrc = null;
 foreach ([
@@ -62,23 +73,40 @@ $from      = getenv('MAIL_FROM') ?: $user;
 $fromName  = getenv('MAIL_FROM_NAME') ?: 'Website';
 $forceTo   = getenv('MAIL_FORCE_TO') ?: '';
 $debugFlag = getenv('MAIL_DEBUG');
-if (!$user || !$pass || !$from) { error_log('Mail config missing'); header('Location: index.php?contact=error#contact'); exit; }
+// Fallback: if env config is missing, try the shared utils\mailer.php
+$usingUtilsMailer = false;
+if (!$user || !$pass || !$from) {
+    try {
+        require_once __DIR__ . '/utils/mailer.php';
+        $usingUtilsMailer = true; // we'll construct PHPMailer via mailer_instance() below
+    } catch (Throwable $te) {
+        error_log('Mail config missing and utils/mailer.php not available: ' . $te->getMessage());
+        header('Location: index.php?contact=error#contact');
+        exit;
+    }
+}
 
 // 8. Send mail
-$mail = new PHPMailer(true);
+$mail = null;
 try {
-    if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; }
-    $mail->isSMTP();
-    $mail->Host     = $host;
-    $mail->SMTPAuth = true;
-    $mail->Username = $user;
-    $mail->Password = $pass;
-    if ($secure === 'ssl' || $secure === 'smtps') { $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; if ($port === 587) $port = 465; }
-    else { $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; }
-    $mail->Port    = $port;
-    $mail->CharSet = 'UTF-8';
+    if ($usingUtilsMailer) {
+        // Use centralized mailer config
+        $mail = mailer_instance();
+    } else {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host     = $host;
+        $mail->SMTPAuth = true;
+        $mail->Username = $user;
+        $mail->Password = $pass;
+        if ($secure === 'ssl' || $secure === 'smtps') { $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; if ($port === 587) { $port = 465; } }
+        else { $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; }
+        $mail->Port    = $port;
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom($from, $fromName);
+    }
+    if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; $mail->Debugoutput = 'error_log'; }
 
-    $mail->setFrom($from, $fromName);
     if ($forceTo) { $mail->addAddress($forceTo, 'Forced Recipient'); }
     else { $mail->addAddress($from, $fromName); }
     $mail->addReplyTo($email, $name);
@@ -93,27 +121,28 @@ try {
 
     // Send acknowledgment to the user (separate mail instance for clean headers)
     try {
-        $ack = new PHPMailer(true);
-        if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; } // keep quiet
-        $ack->isSMTP();
-        $ack->Host       = $host;
-        $ack->SMTPAuth   = true;
-        $ack->Username   = $user;
-        $ack->Password   = $pass;
-        if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
-        else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
-        $ack->CharSet = 'UTF-8';
-
-        $ack->setFrom($from, $fromName);
+        $ack = $usingUtilsMailer ? mailer_instance() : new PHPMailer(true);
+        if (!$usingUtilsMailer) {
+            if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; }
+            $ack->isSMTP();
+            $ack->Host       = $host;
+            $ack->SMTPAuth   = true;
+            $ack->Username   = $user;
+            $ack->Password   = $pass;
+            if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
+            else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
+            $ack->CharSet = 'UTF-8';
+            $ack->setFrom($from, $fromName);
+        }
         $ack->addAddress($email, $name);
         $ack->Subject = 'Thank you for contacting ' . $fromName;
         $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
             . "<p>Thank you for your message. We've received it and will get back to you shortly.</p>"
-            . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(mb_strimwidth($message,0,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
+            . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(safe_ellipsize($message,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
             . "<p style='font-size:12px;color:#888'>This is an automated acknowledgement. Please do not reply directly; use the website contact form if needed.</p>";
         $ack->isHTML(true);
         $ack->Body    = $ackBody;
-        $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . mb_strimwidth($message,0,500,'...');
+        $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . safe_ellipsize($message,500,'...');
         // Ignore failure of acknowledgment to user (no throw)
         $ack->send();
     } catch (Exception $e2) {
