@@ -597,13 +597,13 @@ function toast(message, type){
             <td>₱${Number(r.Order_Amount||0).toFixed(2)}</td>
             <td>
               <form method=\"post\" class=\"mb-0\">
-                <input type=\"hidden\" name=\"order_id\" value=\"${r.Order_ID}\">
-                <select name=\"order_status\" class=\"form-select form-select-sm\" onchange=\"this.form.submit()\">${statusSelect}</select>
+                <input type=\"hidden\" name=\"order_id\" value=\"${r.Order_ID}\"> 
+                <select name=\"order_status\" class=\"form-select form-select-sm order-status-select\" data-order-id=\"${r.Order_ID}\" data-prev=\"${(r.order_status||'').replace(/"/g,'&quot;')}\">${statusSelect}</select>
               </form>
             </td>
             <td>${ r.Payment_ID ? `<form method=\"post\" class=\"mb-0\"><input type=\"hidden\" name=\"payment_id\" value=\"${r.Payment_ID}\">${paySelect}</form>` : '<span class=\"badge bg-warning text-dark\">Unpaid</span>' }</td>
             <td>${ r.Payment_Method ? r.Payment_Method : '<span class=\"text-muted\">-</span>' }</td>
-            <td><span class=\"badge bg-info text-dark\">New</span></td>`;
+            <td><button class=\"btn btn-sm btn-outline-info\" data-bs-toggle=\"modal\" data-bs-target=\"#itemsModal${r.Order_ID}\" aria-label=\"View items\"><i class=\"bi bi-eye\"></i></button></td>`;
           tbody.prepend(tr);
           if(r.Order_ID > lastId) lastId = r.Order_ID;
           // Ensure modal is available for this new row: fetch on-demand when Items button clicked
