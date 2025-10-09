@@ -298,6 +298,18 @@ Open daily from 10AM to midnight..</p>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
+    // If SweetAlert2 failed to load from jsDelivr, try another CDN
+    (function(){
+      if (!window.Swal) {
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/sweetalert2@11/dist/sweetalert2.min.js';
+        s.async = true;
+        s.onload = function(){ console.log('SweetAlert2 fallback loaded from unpkg'); };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
+  <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
       link.addEventListener('click', function(e) {
@@ -407,19 +419,28 @@ Open daily from 10AM to midnight..</p>
 
     // Force login on any menu interactions
     function promptLogin(e){
-      e.preventDefault();
-      Swal.fire({
-        icon: 'warning',
-        title: 'Not Logged In',
-        text: 'You must log in first to continue.',
-        showCancelButton: true,
-        confirmButtonText: 'Log In',
-        cancelButtonText: 'Cancel'
-      }).then((result) => {
-        if (result.isConfirmed) {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      // Use SweetAlert2 when available; otherwise fall back to native confirm
+      if (window.Swal && typeof Swal.fire === 'function') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Not Logged In',
+          text: 'You must log in first to continue.',
+          showCancelButton: true,
+          confirmButtonText: 'Log In',
+          cancelButtonText: 'Cancel'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = 'login.php';
+          }
+        });
+      } else {
+        // Fallback if CDN blocked/offline
+        console.warn('SweetAlert2 not loaded; using native confirm fallback.');
+        if (window.confirm('You must log in first to continue.\n\nPress OK to go to the login page.')) {
           window.location.href = 'login.php';
         }
-      });
+      }
     }
 
     // Apply login prompt to menu buttons, cards, and More Products
@@ -430,6 +451,15 @@ Open daily from 10AM to midnight..</p>
     }));
     const moreBtn = document.getElementById('moreProductsBtn');
     if (moreBtn) { moreBtn.addEventListener('click', promptLogin); }
+
+    // Defensive: also delegate in case cards/buttons render later or markup varies
+    document.addEventListener('click', function(e){
+      const addBtn = e.target.closest('.add-to-cart-btn');
+      if (addBtn) { return promptLogin(e); }
+      const cardEl = e.target.closest('#menuCards .menu-card');
+      if (cardEl && !e.target.closest('button')) { return promptLogin(e); }
+      if (e.target.closest('#moreProductsBtn')) { return promptLogin(e); }
+    });
 
     // --- Real-time My Orders Modal Refresh ---
     // Place this after your other <script> code, before </body>
