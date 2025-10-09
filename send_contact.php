@@ -24,6 +24,11 @@ function contact_redirect(string $code, string $anchor = '#contact'): void {
     exit;
 }
 
+// Only accept POST submissions
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    contact_redirect('invalid');
+}
+
 try {
     $name    = trim($_POST['name'] ?? '');
     $email   = trim($_POST['email'] ?? '');
@@ -86,4 +91,8 @@ try {
         error_log('Contact form handler error: ' . $e->getMessage());
         contact_redirect('sendfail');
     }
-    // end outer try
+} catch (Throwable $t) {
+    error_log('Contact handler fatal: ' . $t->getMessage());
+    contact_redirect('sendfail');
+}
+?>
