@@ -41,6 +41,8 @@ try {
   <!-- <link rel="manifest" href="/manifest.webmanifest"> -->
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons for social/phone logos -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <!-- Google Fonts: Poppins for modern look -->
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
@@ -255,6 +257,19 @@ Open daily from 10AM to midnight..</p>
   <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
   <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
 </form>
+      <!-- Social / Contact quick links -->
+      <div class="mt-4 d-flex flex-wrap align-items-center justify-content-center gap-3">
+        <a href="https://www.instagram.com/naitsaofficial/" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <i class="bi bi-instagram" style="font-size:1.5rem;color:#C13584;"></i>
+        </a>
+        <a href="https://www.facebook.com/sipnslurp.milkteacorner" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <i class="bi bi-facebook" style="font-size:1.5rem;color:#1877F2;"></i>
+        </a>
+        <a href="tel:09672556259" class="btn btn-light rounded-pill px-3 py-2" aria-label="Call 09672556259">
+          <i class="bi bi-telephone me-2" style="font-size:1.1rem;"></i>
+          <span class="fw-semibold">09672556259</span>
+        </a>
+      </div>
     </div>
   </section>
 

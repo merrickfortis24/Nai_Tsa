@@ -119,12 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="login-title">Welcome Back</div>
       <div class="login-desc">Log in to your Nai Tsa account to continue.</div>
       <form method="post" action="login.php">
-        <div class="mb-3">
-          <select name="account_type" class="form-select" required>
-            <option value="customer">Customer</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
+        <!-- Force customer login (admin has a separate login page) -->
+        <input type="hidden" name="account_type" value="customer">
         <div class="mb-3">
           <input type="email" name="email" class="form-control" placeholder="Email Address" required
             value="<?php if(isset($_COOKIE['remember_email'])) echo htmlspecialchars($_COOKIE['remember_email']); ?>">
@@ -144,6 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
       <a href="signup.php" class="signup-link">Don't have an account? Sign Up</a>
       <a href="users/forgot_password.php" class="forgot-link">Forgot Password?</a>
+      <div class="mt-2">
+        <a href="admin/login.php" class="text-decoration-none" style="color:#6c757d; font-size:0.95rem;">Admin Login</a>
+      </div>
     </div>
   </section>
 
