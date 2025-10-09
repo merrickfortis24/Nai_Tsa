@@ -119,7 +119,17 @@ function send_verification_email(string $to, string $token) {
 function send_contact_email(string $senderName, string $senderEmail, string $message, array $context = []) {
     $mail = mailer_instance();
     // Resolve primary recipient: MAIL_FORCE_TO → MAIL_TO → SMTP_USER → MAIL_FROM
-    $primaryTo = getenv('MAIL_FORCE_TO') ?: (getenv('MAIL_TO') ?: (getenv('SMTP_USER') ?: (getenv('MAIL_FROM') ?: '')));
+    $envForce = trim((string)(getenv('MAIL_FORCE_TO') ?: ''));
+    $envTo    = trim((string)(getenv('MAIL_TO') ?: ''));
+    $envUser  = trim((string)(getenv('SMTP_USER') ?: ''));
+    $envFrom  = trim((string)(getenv('MAIL_FROM') ?: ''));
+    // Also consider configured PHPMailer props as fallback if envs are empty
+    $cfgUser  = trim((string)($mail->Username ?? ''));
+    $cfgFrom  = trim((string)($mail->From ?? ''));
+    $primaryTo = $envForce ?: ($envTo ?: ($envUser ?: ($envFrom ?: ($cfgUser ?: $cfgFrom))));
+    if (filter_var((string)getenv('MAIL_CONTACT_DEBUG'), FILTER_VALIDATE_BOOLEAN)) {
+        error_log('[contact] primaryTo=' . ($primaryTo ?: 'EMPTY') . ' envForce=' . ($envForce ?: '-') . ' envTo=' . ($envTo ?: '-') . ' envUser=' . ($envUser ?: '-') . ' envFrom=' . ($envFrom ?: '-') . ' cfgUser=' . ($cfgUser ?: '-') . ' cfgFrom=' . ($cfgFrom ?: '-'));
+    }
     if (!$primaryTo || !filter_var($primaryTo, FILTER_VALIDATE_EMAIL)) {
         return 'mailcfg';
     }
