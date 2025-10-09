@@ -116,10 +116,21 @@ try {
         $recipientRejected = (strpos($low1,'invalid address')!==false) || (strpos($low1,'recipient rejected')!==false) || (strpos($low1,'data not accepted')!==false) || (strpos($low1,'mailbox unavailable')!==false) || (strpos($low1,'user unknown')!==false) || (strpos($low1,'no such user')!==false) || (strpos($low1,'relay denied')!==false);
         if ($recipientRejected) {
             $fallbackCandidates = [];
+            // Try configured alternates first
+            if ($explicitTo && strcasecmp($explicitTo, $primaryTo)!==0) { $fallbackCandidates[] = $explicitTo; }
+            if ($forceTo && strcasecmp($forceTo, $primaryTo)!==0) { $fallbackCandidates[] = $forceTo; }
             if ($user && strcasecmp($user, $primaryTo)!==0) { $fallbackCandidates[] = $user; }
+            if ($from && strcasecmp($from, $primaryTo)!==0) { $fallbackCandidates[] = $from; }
+            // Then first CC/BCC, if any
             if (!empty($__cc)) { $fallbackCandidates[] = $__cc[0]; }
             if (!empty($__bcc)) { $fallbackCandidates[] = $__bcc[0]; }
-            if ($from && strcasecmp($from, $primaryTo)!==0) { $fallbackCandidates[] = $from; }
+            // As a last resort, try postmaster@<smtp_user_domain>
+            $postmaster = '';
+            if (strpos($user, '@') !== false) {
+                $domain = substr(strrchr($user, '@'), 1);
+                if ($domain) { $postmaster = 'postmaster@' . $domain; }
+            }
+            if ($postmaster && strcasecmp($postmaster, $primaryTo)!==0) { $fallbackCandidates[] = $postmaster; }
             $fallbackCandidates = array_values(array_unique($fallbackCandidates, SORT_STRING));
 
             foreach ($fallbackCandidates as $fb) {

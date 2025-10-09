@@ -225,7 +225,7 @@ try {
         <?php elseif ($c === 'cert'): ?>
           <div class="alert alert-danger">Certificate validation failed when contacting the email server. Please try again later.</div>
         <?php elseif ($c === 'addr'): ?>
-          <div class="alert alert-danger">The email address was not accepted by the server. Please double-check your email address and try again.</div>
+          <div class="alert alert-danger">We couldn’t deliver your message to our inbox right now. Please try again later. If this keeps happening, the site mailbox may be unavailable—please contact the site owner.</div>
         <?php endif; ?>
       <?php endif; ?>
       <form method="POST" action="../send_contact.php" novalidate>
