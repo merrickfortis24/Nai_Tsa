@@ -83,6 +83,7 @@ $pass      = getenv('SMTP_PASS') ?: '';
 $from      = getenv('MAIL_FROM') ?: $user;
 $fromName  = getenv('MAIL_FROM_NAME') ?: 'Website';
 $forceTo   = getenv('MAIL_FORCE_TO') ?: '';
+$explicitTo= getenv('MAIL_TO') ?: '';
 $ccList    = getenv('MAIL_CC') ?: '';
 $bccList   = getenv('MAIL_BCC') ?: '';
 $debugFlag = getenv('MAIL_DEBUG');
@@ -96,46 +97,24 @@ $limitWhitelist = array_filter(array_map('trim', preg_split('/[\s,;]+/', $whitel
 if (!$limitDisable && !in_array($ip, $limitWhitelist, true)) {
     if (rate_limited($ip, $limitCount, $limitWindow)) { header('Location: ' . $returnTo . '?contact=limited#contact'); exit; }
 }
-// Fallback: if env config is missing, try the shared utils\mailer.php
-$usingUtilsMailer = false;
-if (!$user || !$pass || !$from) {
-    try {
-        require_once __DIR__ . '/utils/mailer.php';
-        $usingUtilsMailer = true; // we'll construct PHPMailer via mailer_instance() below
-    } catch (Throwable $te) {
-        error_log('Mail config missing and utils/mailer.php not available: ' . $te->getMessage());
+// Always use the shared mailer like send verification
+try {
+    require_once __DIR__ . '/utils/mailer.php';
+} catch (Throwable $te) {
+    error_log('utils/mailer.php missing: ' . $te->getMessage());
     header('Location: ' . $returnTo . '?contact=mailcfg#contact');
-        exit;
-    }
+    exit;
 }
 
 // 8. Send mail
 $mail = null;
 try {
-    if ($usingUtilsMailer) {
-        // Use centralized mailer config
-        $mail = mailer_instance();
-    } else {
-        $mail = new PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host     = $host;
-        $mail->SMTPAuth = true;
-        $mail->Username = $user;
-        $mail->Password = $pass;
-        if ($secure === 'ssl' || $secure === 'smtps') { $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; if ($port === 587) { $port = 465; } }
-        else { $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; }
-        $mail->Port    = $port;
-        $mail->SMTPAutoTLS = true;
-        $mail->Timeout = 20;
-        $mail->CharSet = 'UTF-8';
-        $mail->setFrom($from, $fromName);
-        $mail->Sender = $from; // envelope-from
-    }
+    $mail = mailer_instance();
     if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; $mail->Debugoutput = 'error_log'; }
 
     // Primary recipient
-    $primaryTo = $forceTo ?: $from;
-    $mail->addAddress($primaryTo, ($forceTo ? 'Forced Recipient' : $fromName));
+    $primaryTo = $forceTo ?: ($explicitTo ?: ($user ?: $from));
+    $mail->addAddress($primaryTo, 'Contact Inbox');
     // Optional CC/BCC additional recipients (comma/semicolon separated)
     $__cc = array_filter(array_map('trim', preg_split('/[;,]+/', (string)$ccList, -1, PREG_SPLIT_NO_EMPTY)));
     foreach ($__cc as $cc) { $mail->addCC($cc); }
@@ -149,73 +128,12 @@ try {
     $mail->Body = "<h3>New Contact Submission</h3><p><strong>Name:</strong> " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "<br><strong>Email:</strong> " . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . "</p><p><strong>Message:</strong><br>{$safeMsg}</p><hr><p style='font-size:12px;color:#888'>IP: " . htmlspecialchars($ip, ENT_QUOTES, 'UTF-8') . "</p>";
     $mail->AltBody = "Name: {$name}\nEmail: {$email}\nMessage:\n{$message}\nIP: {$ip}";
 
-    $sent = false; $sendErr = null;
-    try {
-        if (!$mail->send()) { throw new Exception($mail->ErrorInfo); }
-        $sent = true;
-    } catch (Exception $e1) {
-        $sendErr = $e1;
-        $low1 = strtolower($e1->getMessage() ?: '');
-        $recipientRejected = (strpos($low1,'invalid address')!==false) || (strpos($low1,'recipient rejected')!==false) || (strpos($low1,'data not accepted')!==false) || (strpos($low1,'mailbox unavailable')!==false) || (strpos($low1,'user unknown')!==false) || (strpos($low1,'no such user')!==false) || (strpos($low1,'relay denied')!==false);
-        if ($recipientRejected) {
-            // Attempt a fallback: SMTP_USER, first CC, first BCC (as TO), or MAIL_FROM
-            $fallbackCandidates = [];
-            if ($user && strcasecmp($user, $primaryTo)!==0) { $fallbackCandidates[] = $user; }
-            if (!empty($__cc)) { $fallbackCandidates[] = $__cc[0]; }
-            if (!empty($__bcc)) { $fallbackCandidates[] = $__bcc[0]; }
-            if ($from && strcasecmp($from, $primaryTo)!==0) { $fallbackCandidates[] = $from; }
-
-            foreach ($fallbackCandidates as $fb) {
-                try {
-                    $fbMailer = $usingUtilsMailer ? mailer_instance() : new PHPMailer(true);
-                    if (!$usingUtilsMailer) {
-                        if (isset($_GET['debug_mail']) || $debugFlag) { $fbMailer->SMTPDebug = 2; $fbMailer->Debugoutput = 'error_log'; }
-                        $fbMailer->isSMTP();
-                        $fbMailer->Host       = $host;
-                        $fbMailer->SMTPAuth   = true;
-                        $fbMailer->Username   = $user;
-                        $fbMailer->Password   = $pass;
-                        if ($secure === 'ssl' || $secure === 'smtps') { $fbMailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $fbMailer->Port = $port; }
-                        else { $fbMailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $fbMailer->Port = $port; }
-                        $fbMailer->SMTPAutoTLS = true;
-                        $fbMailer->Timeout = 20;
-                        $fbMailer->CharSet = 'UTF-8';
-                        $fbMailer->setFrom($from, $fromName);
-                        $fbMailer->Sender = $from;
-                    }
-                    $fbMailer->addAddress($fb);
-                    $fbMailer->addReplyTo($email, $name);
-                    $fbMailer->isHTML(true);
-                    $fbMailer->Subject = '[Fallback] New Contact Message from ' . $name;
-                    $fbMailer->Body = $mail->Body;
-                    $fbMailer->AltBody = $mail->AltBody;
-                    if ($fbMailer->send()) { $sent = true; break; }
-                } catch (Exception $eFb) {
-                    $sendErr = $eFb; // keep last error
-                }
-            }
-        }
-        if (!$sent) { throw $sendErr ?: $e1; }
-    }
+    if (!$mail->send()) { throw new Exception($mail->ErrorInfo ?: 'send failed'); }
 
     // Send acknowledgment to the user (separate mail instance for clean headers)
     try {
-        $ack = $usingUtilsMailer ? mailer_instance() : new PHPMailer(true);
-        if (!$usingUtilsMailer) {
-            if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; }
-            $ack->isSMTP();
-            $ack->Host       = $host;
-            $ack->SMTPAuth   = true;
-            $ack->Username   = $user;
-            $ack->Password   = $pass;
-            if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
-            else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
-            $ack->SMTPAutoTLS = true;
-            $ack->Timeout = 20;
-            $ack->CharSet = 'UTF-8';
-            $ack->setFrom($from, $fromName);
-            $ack->Sender = $from;
-        }
+        $ack = mailer_instance();
+        if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; }
         $ack->addAddress($email, $name);
         $ack->Subject = 'Thank you for contacting ' . $fromName;
         $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
