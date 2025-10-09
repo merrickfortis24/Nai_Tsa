@@ -1821,6 +1821,8 @@ function renderOrders(){
         </div>
         <div id="track-map-${o.Order_ID}" class="mt-2" style="height:160px;border-radius:10px;overflow:hidden;display:none;"></div>
       </div>` : '';*/
+    // Delivery tracking temporarily disabled
+    const trackingHtml = '';
 
     return `
       <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
