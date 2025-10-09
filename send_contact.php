@@ -39,8 +39,8 @@ if (!empty($_POST['website'])) { header('Location: index.php?contact=success#con
 $name    = trim($_POST['name'] ?? '');
 $email   = trim($_POST['email'] ?? '');
 $message = trim($_POST['message'] ?? '');
-if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: index.php?contact=error#contact'); exit; }
-if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: index.php?contact=error#contact'); exit; }
+if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: index.php?contact=invalid#contact'); exit; }
+if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: index.php?contact=invalid#contact'); exit; }
 
 // 5. Simple rate limit (per IP)
 function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
@@ -58,7 +58,7 @@ function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
     return false;
 }
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-if (rate_limited($ip)) { header('Location: index.php?contact=error#contact'); exit; }
+if (rate_limited($ip)) { header('Location: index.php?contact=limited#contact'); exit; }
 
 // 6. Load .mail.env.php if present (sets putenv values)
 if (file_exists(__DIR__ . '/.mail.env.php')) { include __DIR__ . '/.mail.env.php'; }
@@ -81,7 +81,7 @@ if (!$user || !$pass || !$from) {
         $usingUtilsMailer = true; // we'll construct PHPMailer via mailer_instance() below
     } catch (Throwable $te) {
         error_log('Mail config missing and utils/mailer.php not available: ' . $te->getMessage());
-        header('Location: index.php?contact=error#contact');
+        header('Location: index.php?contact=mailcfg#contact');
         exit;
     }
 }
@@ -152,6 +152,6 @@ try {
     header('Location: index.php?contact=success#contact');
 } catch (Exception $e) {
     error_log('Contact form mail error: ' . $e->getMessage());
-    header('Location: index.php?contact=error#contact');
+    header('Location: index.php?contact=sendfail#contact');
 }
 exit;

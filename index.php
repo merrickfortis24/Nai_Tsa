@@ -238,11 +238,19 @@ Open daily from 10AM to midnight..</p>
     <div class="section-content">
       <h2 class="section-title" style="font-size:3.2rem;">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
-      <?php if (isset($_GET['contact']) && $_GET['contact'] === 'success'): ?>
-  <div class="alert alert-success">Thank you! Your message has been sent.</div>
-<?php elseif (isset($_GET['contact']) && $_GET['contact'] === 'error'): ?>
-  <div class="alert alert-danger">Sorry, there was a problem sending your message.</div>
-<?php endif; ?>
+      <?php if (isset($_GET['contact'])): $c = $_GET['contact']; ?>
+        <?php if ($c === 'success'): ?>
+          <div class="alert alert-success">Thank you! Your message has been sent.</div>
+        <?php elseif ($c === 'invalid'): ?>
+          <div class="alert alert-danger">Please check your inputs: make sure name, a valid email, and message are provided.</div>
+        <?php elseif ($c === 'limited'): ?>
+          <div class="alert alert-warning">You’ve reached the limit for submissions. Please try again later.</div>
+        <?php elseif ($c === 'mailcfg'): ?>
+          <div class="alert alert-danger">Mail server is not configured on this site. Please contact the site administrator.</div>
+        <?php elseif ($c === 'sendfail'): ?>
+          <div class="alert alert-danger">We couldn’t send your message due to a temporary email issue. Please try again in a few minutes.</div>
+        <?php endif; ?>
+      <?php endif; ?>
       <form method="POST" action="send_contact.php" novalidate>
   <div class="row">
     <div class="col-md-6 mb-3">
