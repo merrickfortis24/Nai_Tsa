@@ -55,21 +55,7 @@ $message = trim($_POST['message'] ?? '');
 if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: ' . $returnTo . '?contact=invalid#contact'); exit; }
 if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: ' . $returnTo . '?contact=invalid#contact'); exit; }
 
-// 5. Simple rate limit (per IP)
-function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
-    $file = sys_get_temp_dir() . '/contact_rate_' . preg_replace('/[^A-Fa-f0-9:]/','_', $ip);
-    $now = time();
-    $data = ['start'=>$now,'count'=>0];
-    if (is_file($file)) {
-        $raw = file_get_contents($file);
-        if ($raw) { $d = json_decode($raw, true); if (isset($d['start'],$d['count'])) $data = $d; }
-    }
-    if (($now - $data['start']) > $windowSeconds) { $data = ['start'=>$now,'count'=>0]; }
-    if ($data['count'] >= $limit) return true;
-    $data['count']++;
-    file_put_contents($file, json_encode($data));
-    return false;
-}
+// 5. Rate limiting removed (allow unlimited submissions)
 
 // 6. Load .mail.env.php if present (sets putenv values)
 if (file_exists(__DIR__ . '/.mail.env.php')) { include __DIR__ . '/.mail.env.php'; }
@@ -87,16 +73,8 @@ $explicitTo= getenv('MAIL_TO') ?: '';
 $ccList    = getenv('MAIL_CC') ?: '';
 $bccList   = getenv('MAIL_BCC') ?: '';
 $debugFlag = getenv('MAIL_DEBUG');
-// Rate-limit tuning via env (optional)
+// IP captured for inclusion in the email body (no rate limiting)
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-$limitCount   = (int)(getenv('CONTACT_LIMIT_PER_HOUR') ?: 5);
-$limitWindow  = (int)(getenv('CONTACT_LIMIT_WINDOW') ?: 3600);
-$limitDisable = (bool)getenv('CONTACT_LIMIT_DISABLE');
-$whitelistRaw = getenv('CONTACT_LIMIT_WHITELIST') ?: '';
-$limitWhitelist = array_filter(array_map('trim', preg_split('/[\s,;]+/', $whitelistRaw, -1, PREG_SPLIT_NO_EMPTY)));
-if (!$limitDisable && !in_array($ip, $limitWhitelist, true)) {
-    if (rate_limited($ip, $limitCount, $limitWindow)) { header('Location: ' . $returnTo . '?contact=limited#contact'); exit; }
-}
 // Always use the shared mailer like send verification
 try {
     require_once __DIR__ . '/utils/mailer.php';
@@ -128,7 +106,40 @@ try {
     $mail->Body = "<h3>New Contact Submission</h3><p><strong>Name:</strong> " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "<br><strong>Email:</strong> " . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . "</p><p><strong>Message:</strong><br>{$safeMsg}</p><hr><p style='font-size:12px;color:#888'>IP: " . htmlspecialchars($ip, ENT_QUOTES, 'UTF-8') . "</p>";
     $mail->AltBody = "Name: {$name}\nEmail: {$email}\nMessage:\n{$message}\nIP: {$ip}";
 
-    if (!$mail->send()) { throw new Exception($mail->ErrorInfo ?: 'send failed'); }
+    $sent = false; $sendErr = null;
+    try {
+        if (!$mail->send()) { throw new Exception($mail->ErrorInfo ?: 'send failed'); }
+        $sent = true;
+    } catch (Exception $e1) {
+        $sendErr = $e1;
+        $low1 = strtolower($e1->getMessage() ?: '');
+        $recipientRejected = (strpos($low1,'invalid address')!==false) || (strpos($low1,'recipient rejected')!==false) || (strpos($low1,'data not accepted')!==false) || (strpos($low1,'mailbox unavailable')!==false) || (strpos($low1,'user unknown')!==false) || (strpos($low1,'no such user')!==false) || (strpos($low1,'relay denied')!==false);
+        if ($recipientRejected) {
+            $fallbackCandidates = [];
+            if ($user && strcasecmp($user, $primaryTo)!==0) { $fallbackCandidates[] = $user; }
+            if (!empty($__cc)) { $fallbackCandidates[] = $__cc[0]; }
+            if (!empty($__bcc)) { $fallbackCandidates[] = $__bcc[0]; }
+            if ($from && strcasecmp($from, $primaryTo)!==0) { $fallbackCandidates[] = $from; }
+            $fallbackCandidates = array_values(array_unique($fallbackCandidates, SORT_STRING));
+
+            foreach ($fallbackCandidates as $fb) {
+                try {
+                    $fbMailer = mailer_instance();
+                    if (isset($_GET['debug_mail']) || $debugFlag) { $fbMailer->SMTPDebug = 2; $fbMailer->Debugoutput = 'error_log'; }
+                    $fbMailer->addAddress($fb);
+                    $fbMailer->addReplyTo($email, $name);
+                    $fbMailer->isHTML(true);
+                    $fbMailer->Subject = '[Fallback] New Contact Message from ' . $name;
+                    $fbMailer->Body = $mail->Body;
+                    $fbMailer->AltBody = $mail->AltBody;
+                    if ($fbMailer->send()) { $sent = true; break; }
+                } catch (Exception $eFb) {
+                    $sendErr = $eFb; // keep last error
+                }
+            }
+        }
+        if (!$sent) { throw $sendErr ?: $e1; }
+    }
 
     // Send acknowledgment to the user (separate mail instance for clean headers)
     try {
