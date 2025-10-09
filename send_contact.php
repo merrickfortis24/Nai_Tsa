@@ -125,17 +125,14 @@ try {
     }
     if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; $mail->Debugoutput = 'error_log'; }
 
-    if ($forceTo) { $mail->addAddress($forceTo, 'Forced Recipient'); }
-    else { $mail->addAddress($from, $fromName); }
+    // Primary recipient
+    $primaryTo = $forceTo ?: $from;
+    $mail->addAddress($primaryTo, ($forceTo ? 'Forced Recipient' : $fromName));
     // Optional CC/BCC additional recipients (comma/semicolon separated)
-    foreach (preg_split('/[;,]+/', $ccList, -1, PREG_SPLIT_NO_EMPTY) as $cc) {
-        $cc = trim($cc);
-        if ($cc) { $mail->addCC($cc); }
-    }
-    foreach (preg_split('/[;,]+/', $bccList, -1, PREG_SPLIT_NO_EMPTY) as $bcc) {
-        $bcc = trim($bcc);
-        if ($bcc) { $mail->addBCC($bcc); }
-    }
+    $__cc = array_filter(array_map('trim', preg_split('/[;,]+/', (string)$ccList, -1, PREG_SPLIT_NO_EMPTY)));
+    foreach ($__cc as $cc) { $mail->addCC($cc); }
+    $__bcc = array_filter(array_map('trim', preg_split('/[;,]+/', (string)$bccList, -1, PREG_SPLIT_NO_EMPTY)));
+    foreach ($__bcc as $bcc) { $mail->addBCC($bcc); }
     $mail->addReplyTo($email, $name);
 
     $mail->isHTML(true);
@@ -144,7 +141,54 @@ try {
     $mail->Body = "<h3>New Contact Submission</h3><p><strong>Name:</strong> " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "<br><strong>Email:</strong> " . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . "</p><p><strong>Message:</strong><br>{$safeMsg}</p><hr><p style='font-size:12px;color:#888'>IP: " . htmlspecialchars($ip, ENT_QUOTES, 'UTF-8') . "</p>";
     $mail->AltBody = "Name: {$name}\nEmail: {$email}\nMessage:\n{$message}\nIP: {$ip}";
 
-    if (!$mail->send()) { throw new Exception($mail->ErrorInfo); }
+    $sent = false; $sendErr = null;
+    try {
+        if (!$mail->send()) { throw new Exception($mail->ErrorInfo); }
+        $sent = true;
+    } catch (Exception $e1) {
+        $sendErr = $e1;
+        $low1 = strtolower($e1->getMessage() ?: '');
+        $recipientRejected = (strpos($low1,'invalid address')!==false) || (strpos($low1,'recipient rejected')!==false) || (strpos($low1,'data not accepted')!==false) || (strpos($low1,'mailbox unavailable')!==false) || (strpos($low1,'user unknown')!==false) || (strpos($low1,'no such user')!==false) || (strpos($low1,'relay denied')!==false);
+        if ($recipientRejected) {
+            // Attempt a fallback: SMTP_USER, first CC, first BCC (as TO), or MAIL_FROM
+            $fallbackCandidates = [];
+            if ($user && strcasecmp($user, $primaryTo)!==0) { $fallbackCandidates[] = $user; }
+            if (!empty($__cc)) { $fallbackCandidates[] = $__cc[0]; }
+            if (!empty($__bcc)) { $fallbackCandidates[] = $__bcc[0]; }
+            if ($from && strcasecmp($from, $primaryTo)!==0) { $fallbackCandidates[] = $from; }
+
+            foreach ($fallbackCandidates as $fb) {
+                try {
+                    $fbMailer = $usingUtilsMailer ? mailer_instance() : new PHPMailer(true);
+                    if (!$usingUtilsMailer) {
+                        if (isset($_GET['debug_mail']) || $debugFlag) { $fbMailer->SMTPDebug = 2; $fbMailer->Debugoutput = 'error_log'; }
+                        $fbMailer->isSMTP();
+                        $fbMailer->Host       = $host;
+                        $fbMailer->SMTPAuth   = true;
+                        $fbMailer->Username   = $user;
+                        $fbMailer->Password   = $pass;
+                        if ($secure === 'ssl' || $secure === 'smtps') { $fbMailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $fbMailer->Port = $port; }
+                        else { $fbMailer->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $fbMailer->Port = $port; }
+                        $fbMailer->SMTPAutoTLS = true;
+                        $fbMailer->Timeout = 20;
+                        $fbMailer->CharSet = 'UTF-8';
+                        $fbMailer->setFrom($from, $fromName);
+                        $fbMailer->Sender = $from;
+                    }
+                    $fbMailer->addAddress($fb);
+                    $fbMailer->addReplyTo($email, $name);
+                    $fbMailer->isHTML(true);
+                    $fbMailer->Subject = '[Fallback] New Contact Message from ' . $name;
+                    $fbMailer->Body = $mail->Body;
+                    $fbMailer->AltBody = $mail->AltBody;
+                    if ($fbMailer->send()) { $sent = true; break; }
+                } catch (Exception $eFb) {
+                    $sendErr = $eFb; // keep last error
+                }
+            }
+        }
+        if (!$sent) { throw $sendErr ?: $e1; }
+    }
 
     // Send acknowledgment to the user (separate mail instance for clean headers)
     try {
