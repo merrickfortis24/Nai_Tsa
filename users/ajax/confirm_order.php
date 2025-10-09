@@ -22,7 +22,7 @@ $db = new database();
 
 try {
     $con = $db->opencon();
-    $stmt = $con->prepare("SELECT Order_ID, Customer_ID, order_status, order_type, Payment_Status FROM orders WHERE Order_ID=? LIMIT 1");
+    $stmt = $con->prepare("SELECT Order_ID, Customer_ID, order_status, order_type FROM orders WHERE Order_ID=? LIMIT 1");
     $stmt->execute([$orderId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if(!$row || (int)$row['Customer_ID'] !== (int)$_SESSION['customer_id']){
