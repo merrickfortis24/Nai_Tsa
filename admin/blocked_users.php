@@ -32,17 +32,7 @@ try {
   }
 } catch(Throwable $e) {}
 
-// Fetch recent block events (from log) – last 20
-$recentBlocks = [];
-try {
-  $stmt = $con->query("SELECT l.customer_id, l.reason, l.admin_id, l.created_at, c.Customer_Name, c.Customer_Email
-                       FROM blocked_users_log l
-                       LEFT JOIN customer c ON c.Customer_ID=l.customer_id
-                       WHERE l.action='BLOCK'
-                       ORDER BY l.created_at DESC
-                       LIMIT 20");
-  $recentBlocks = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch(Throwable $e) {}
+// Recent blocks will be loaded via AJAX with filters & pagination
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -81,42 +71,60 @@ try {
           </div>
           <div class="mb-3">
             <h6 class="mb-2"><i class="bi bi-clock-history me-1"></i>Recent Block Events</h6>
+            <div class="row g-2 align-items-end mb-2">
+              <div class="col-12 col-md-3">
+                <label class="form-label small mb-1">Search</label>
+                <input type="text" id="rbSearch" class="form-control form-control-sm" placeholder="ID / name / email / reason">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">From</label>
+                <input type="date" id="rbStart" class="form-control form-control-sm">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">To</label>
+                <input type="date" id="rbEnd" class="form-control form-control-sm">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Source</label>
+                <select id="rbSource" class="form-select form-select-sm">
+                  <option value="">All</option>
+                  <option value="auto">Auto</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div class="col-6 col-md-1">
+                <label class="form-label small mb-1">Page</label>
+                <input type="number" id="rbPage" class="form-control form-control-sm" min="1" value="1">
+              </div>
+              <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Per Page</label>
+                <select id="rbPageSize" class="form-select form-select-sm">
+                  <option>10</option>
+                  <option selected>20</option>
+                  <option>50</option>
+                  <option>100</option>
+                </select>
+              </div>
+            </div>
             <div class="table-responsive">
-              <table class="table table-sm table-striped align-middle mb-0">
+              <table class="table table-sm table-striped align-middle mb-0" id="rbTable">
                 <thead class="table-light">
                   <tr>
-                    <th style="width:120px">Time</th>
+                    <th style="width:140px">Time</th>
                     <th style="width:80px">Customer</th>
                     <th>Email</th>
                     <th>Reason</th>
                     <th style="width:80px">Source</th>
                   </tr>
                 </thead>
-                <tbody>
-                <?php if (!$recentBlocks): ?>
-                  <tr><td colspan="5" class="text-muted text-center">No recent blocks.</td></tr>
-                <?php else: foreach($recentBlocks as $rb): ?>
-                  <tr>
-                    <td class="small text-nowrap"><?= htmlspecialchars($rb['created_at']) ?></td>
-                    <td>
-                      <span class="d-block fw-semibold small">#<?= (int)$rb['customer_id'] ?></span>
-                      <span class="d-block small text-muted"><?= htmlspecialchars($rb['Customer_Name'] ?? 'Unknown') ?></span>
-                    </td>
-                    <td class="small text-muted text-truncate" style="max-width:220px;">
-                      <?= htmlspecialchars($rb['Customer_Email'] ?? '') ?>
-                    </td>
-                    <td class="small"><?= htmlspecialchars($rb['reason']) ?></td>
-                    <td>
-                      <?php if (!empty($rb['admin_id'])): ?>
-                        <span class="badge bg-secondary">Admin</span>
-                      <?php else: ?>
-                        <span class="badge bg-primary">Auto</span>
-                      <?php endif; ?>
-                    </td>
-                  </tr>
-                <?php endforeach; endif; ?>
-                </tbody>
+                <tbody></tbody>
               </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <div class="small text-muted" id="rbSummary"></div>
+              <nav>
+                <ul class="pagination pagination-sm mb-0" id="rbPager"></ul>
+              </nav>
             </div>
           </div>
           <div class="row g-3 mb-3">
@@ -385,6 +393,83 @@ document.querySelectorAll('.unblock-btn').forEach(btn=>{
     applyFilters();
   });
 });
+
+// Recent Block Events dynamic loader
+const rbSearch = document.getElementById('rbSearch');
+const rbStart = document.getElementById('rbStart');
+const rbEnd = document.getElementById('rbEnd');
+const rbSource = document.getElementById('rbSource');
+const rbPage = document.getElementById('rbPage');
+const rbPageSize = document.getElementById('rbPageSize');
+const rbTableBody = document.querySelector('#rbTable tbody');
+const rbPager = document.getElementById('rbPager');
+const rbSummary = document.getElementById('rbSummary');
+
+async function loadRecentBlocks(pageOverride){
+  const page = pageOverride || parseInt(rbPage.value || '1');
+  const pageSize = parseInt(rbPageSize.value || '20');
+  const params = new URLSearchParams();
+  params.set('page', page.toString());
+  params.set('pageSize', pageSize.toString());
+  const q = (rbSearch.value||'').trim(); if(q) params.set('q', q);
+  const s = (rbStart.value||'').trim(); if(s) params.set('start', s);
+  const e = (rbEnd.value||'').trim(); if(e) params.set('end', e);
+  const src = rbSource.value; if(src) params.set('source', src);
+  rbTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr>';
+  try{
+    const res = await fetch('ajax/fraud_recent_blocks.php?'+params.toString());
+    const data = await res.json();
+    if(!data.success){ throw new Error(data.message||'Failed'); }
+    const items = Array.isArray(data.items)?data.items:[];
+    rbTableBody.innerHTML = items.length ? items.map(it=>{
+      const sourceBadge = it.admin_id ? '<span class="badge bg-secondary">Admin</span>' : '<span class="badge bg-primary">Auto</span>';
+      const email = (it.Customer_Email||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const name = (it.Customer_Name||'Unknown').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const reason = (it.reason||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      return `<tr>
+        <td class="small text-nowrap">${it.created_at}</td>
+        <td><span class="d-block fw-semibold small">#${it.customer_id}</span><span class="d-block small text-muted">${name}</span></td>
+        <td class="small text-muted text-truncate" style="max-width:220px;">${email}</td>
+        <td class="small">${reason}</td>
+        <td>${sourceBadge}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">No records.</td></tr>';
+
+    // Summary
+    rbSummary.textContent = `${data.total} records (page ${data.page}/${data.totalPages})`;
+
+    // Pager
+    rbPager.innerHTML = '';
+    const totalPages = Math.max(1, parseInt(data.totalPages||'1'));
+    const cur = parseInt(data.page||'1');
+    function addPage(p, label, active=false){
+      const li=document.createElement('li'); li.className='page-item'+(active?' active':'');
+      const a=document.createElement('a'); a.className='page-link'; a.href='#'; a.textContent=label||p;
+      a.addEventListener('click', e=>{e.preventDefault(); rbPage.value=p; loadRecentBlocks(p);});
+      li.appendChild(a); rbPager.appendChild(li);
+    }
+    if(totalPages>1){
+      addPage(Math.max(1,cur-1), '«');
+      for(let p=1;p<=totalPages;p++){
+        if(p===1 || p===totalPages || Math.abs(p-cur)<=2){ addPage(p, String(p), p===cur); }
+        else if(Math.abs(p-cur)===3){ const li=document.createElement('li'); li.className='page-item disabled'; li.innerHTML='<span class="page-link">…</span>'; rbPager.appendChild(li); }
+      }
+      addPage(Math.min(totalPages,cur+1), '»');
+    }
+  }catch(err){
+    rbTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error loading records</td></tr>';
+  }
+}
+
+// Bind filters
+['input','change'].forEach(ev=>rbSearch.addEventListener(ev, ()=>{ rbPage.value=1; loadRecentBlocks(1); }));
+rbStart.addEventListener('change', ()=>{ rbPage.value=1; loadRecentBlocks(1); });
+rbEnd.addEventListener('change', ()=>{ rbPage.value=1; loadRecentBlocks(1); });
+rbSource.addEventListener('change', ()=>{ rbPage.value=1; loadRecentBlocks(1); });
+rbPageSize.addEventListener('change', ()=>{ rbPage.value=1; loadRecentBlocks(1); });
+
+// Initial load
+loadRecentBlocks(1);
 </script>
 </body>
 </html>
