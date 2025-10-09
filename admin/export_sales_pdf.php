@@ -2,7 +2,7 @@
 require_once('classes/database.php');
 require_once('fpdf.php');
 
-function ellipsize($str, $max, $ellipsis = '…') {
+function ellipsize($str, $max, $ellipsis = '...') {
     if ($max <= 0) return '';
     $useMb = function_exists('mb_strlen') && function_exists('mb_substr');
     $len = $useMb ? mb_strlen($str, 'UTF-8') : strlen($str);
@@ -87,7 +87,7 @@ foreach ($sales as $sale) {
     $pdf->Cell(20, 10, $sale['Sale_ID'], 1);
     $pdf->Cell(50, 10, ellipsize($sale['Product_Name'], 22), 1);
     $pdf->Cell(20, 10, $sale['Quantity'], 1);
-    $pdf->Cell(30, 10, '₱' . number_format($sale['Total_Amount'], 2), 1);
+    $pdf->Cell(30, 10, 'PHP ' . number_format($sale['Total_Amount'], 2), 1);
     $pdf->Cell(35, 10, date('Y-m-d', strtotime($sale['Sale_Date'])), 1);
     $pdf->Cell(35, 10, ellipsize($sale['Admin_Name'], 14), 1);
     $pdf->Ln();
@@ -97,7 +97,7 @@ foreach ($sales as $sale) {
 $pdf->SetFont('Arial', 'B', 12);
 $pdf->Cell(70, 10, 'Totals', 1);
 $pdf->Cell(20, 10, (string)$totalQty, 1);
-$pdf->Cell(30, 10, '₱' . number_format($totalAmount, 2), 1);
+$pdf->Cell(30, 10, 'PHP ' . number_format($totalAmount, 2), 1);
 $pdf->Cell(70, 10, '', 1);
 
 $fname = 'sales_report_' . ($from ?: 'ALL') . '_' . ($to ?: 'ALL') . '.pdf';
