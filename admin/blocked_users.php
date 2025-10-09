@@ -31,6 +31,18 @@ try {
     unset($row);
   }
 } catch(Throwable $e) {}
+
+// Fetch recent block events (from log) – last 20
+$recentBlocks = [];
+try {
+  $stmt = $con->query("SELECT l.customer_id, l.reason, l.admin_id, l.created_at, c.Customer_Name, c.Customer_Email
+                       FROM blocked_users_log l
+                       LEFT JOIN customer c ON c.Customer_ID=l.customer_id
+                       WHERE l.action='BLOCK'
+                       ORDER BY l.created_at DESC
+                       LIMIT 20");
+  $recentBlocks = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch(Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +78,46 @@ try {
         <div class="card-body">
           <div class="alert alert-warning py-2 small">
             Manual unblocks are respected for 48 hours. The auto-scan will skip re-blocking those users during this grace period.
+          </div>
+          <div class="mb-3">
+            <h6 class="mb-2"><i class="bi bi-clock-history me-1"></i>Recent Block Events</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:120px">Time</th>
+                    <th style="width:80px">Customer</th>
+                    <th>Email</th>
+                    <th>Reason</th>
+                    <th style="width:80px">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <?php if (!$recentBlocks): ?>
+                  <tr><td colspan="5" class="text-muted text-center">No recent blocks.</td></tr>
+                <?php else: foreach($recentBlocks as $rb): ?>
+                  <tr>
+                    <td class="small text-nowrap"><?= htmlspecialchars($rb['created_at']) ?></td>
+                    <td>
+                      <span class="d-block fw-semibold small">#<?= (int)$rb['customer_id'] ?></span>
+                      <span class="d-block small text-muted"><?= htmlspecialchars($rb['Customer_Name'] ?? 'Unknown') ?></span>
+                    </td>
+                    <td class="small text-muted text-truncate" style="max-width:220px;">
+                      <?= htmlspecialchars($rb['Customer_Email'] ?? '') ?>
+                    </td>
+                    <td class="small"><?= htmlspecialchars($rb['reason']) ?></td>
+                    <td>
+                      <?php if (!empty($rb['admin_id'])): ?>
+                        <span class="badge bg-secondary">Admin</span>
+                      <?php else: ?>
+                        <span class="badge bg-primary">Auto</span>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                <?php endforeach; endif; ?>
+                </tbody>
+              </table>
+            </div>
           </div>
           <div class="row g-3 mb-3">
             <div class="col-md-4 col-lg-3">
@@ -156,8 +208,79 @@ async function runScan(dry=false){
   try {
     const res = await fetch('ajax/fraud_scan.php?'+(dry?'dry=1&detail=1':'detail=1'));
     const data = await res.json();
-    out.innerHTML = '<pre class="small bg-light p-3 border rounded mb-0">'+JSON.stringify(data,null,2)+'</pre>';
-    if(!dry && data.blocked_now && data.blocked_now.length){
+    // Build pretty summary
+    const blockedNow = Array.isArray(data.blocked_now) ? data.blocked_now : [];
+    const skippedGrace = Array.isArray(data.skipped_due_to_grace) ? data.skipped_due_to_grace : [];
+    const already = Number(data.already_blocked || 0);
+    const evalCount = Number(data.evaluated_count || 0);
+    const evaluated = Array.isArray(data.evaluated) ? data.evaluated : [];
+
+    const pills = `
+      <div class="mb-2">
+        <span class="badge bg-success me-2">Blocked now: ${blockedNow.length}</span>
+        <span class="badge bg-warning text-dark me-2">Skipped (grace): ${skippedGrace.length}</span>
+        <span class="badge bg-secondary me-2">Already blocked: ${already}</span>
+        <span class="badge bg-info text-dark">Evaluated: ${evalCount}</span>
+      </div>`;
+
+    const blockedList = blockedNow.length ? `<div class="small">Newly blocked IDs: ${blockedNow.join(', ')}</div>` : '';
+    const skippedList = skippedGrace.length ? `<div class="small text-muted">Skipped due to grace: ${skippedGrace.join(', ')}</div>` : '';
+
+    // Compact evaluated table (top 15)
+    const rows = evaluated.slice(0, 15).map(m=>{
+      const cls = m.decision==='block' ? 'table-danger' : 'table-light';
+      return `<tr class="${cls}">
+        <td class="small">${m.customer_id}</td>
+        <td class="small text-center">${m.total_orders}</td>
+        <td class="small text-center">${(m.cancel_ratio||0).toFixed(2)}</td>
+        <td class="small text-center">${m.orders_last_24h}</td>
+        <td class="small text-center">${m.unpaid_recent}</td>
+        <td class="small">${m.decision==='block' ? '<span class="badge bg-danger">BLOCK</span>' : '<span class="badge bg-success">CLEAN</span>'}</td>
+        <td class="small">${m.reason||''}</td>
+      </tr>`;
+    }).join('');
+
+    const table = `
+      <div class="card">
+        <div class="card-header py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div><i class="bi bi-activity me-1"></i>${dry ? 'Dry Run' : 'Run Scan'} Results</div>
+            <button class="btn btn-sm btn-outline-secondary" id="toggleRawBtn">Raw JSON</button>
+          </div>
+        </div>
+        <div class="card-body">
+          ${pills}
+          ${blockedList}
+          ${skippedList}
+          <div class="table-responsive mt-2">
+            <table class="table table-sm table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:80px">Customer</th>
+                  <th class="text-center" style="width:80px">Total</th>
+                  <th class="text-center" style="width:90px">Cancel%</th>
+                  <th class="text-center" style="width:90px">24h</th>
+                  <th class="text-center" style="width:90px">Unpaid</th>
+                  <th style="width:90px">Decision</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>${rows || '<tr><td colspan="7" class="text-center text-muted">No candidates.</td></tr>'}</tbody>
+            </table>
+            <div class="small text-muted mt-1">Showing ${Math.min(15, evaluated.length)} of ${evaluated.length} evaluated.</div>
+          </div>
+          <pre id="rawJson" class="d-none small bg-light p-2 border rounded mt-3">${(JSON.stringify(data,null,2))}</pre>
+        </div>
+      </div>`;
+
+    out.innerHTML = table;
+    const toggle = document.getElementById('toggleRawBtn');
+    const raw = document.getElementById('rawJson');
+    if (toggle && raw) toggle.addEventListener('click', ()=>{
+      raw.classList.toggle('d-none');
+    });
+
+    if(!dry && blockedNow.length){
       // reload page to reflect new blocks
       setTimeout(()=>location.reload(), 800);
     }
