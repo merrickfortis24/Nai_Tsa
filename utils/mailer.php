@@ -1,99 +1,112 @@
 <?php
 // Simple mailer wrapper around PHPMailer.
-// Hostinger SMTP configuration with env loader + safe recipient helpers.
-
+// Hostinger-only SMTP configuration (no Mailtrap modes).
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Try to locate PHPMailer (vendor or bundled)
+// Locate PHPMailer sources in common locations (project layouts may vary)
 $candidates = [
-    __DIR__ . '/../vendor/autoload.php',
-    __DIR__ . '/../PHPMailer/vendor/autoload.php',
-    __DIR__ . '/../PHPMailer/src/PHPMailer.php',
+    __DIR__ . '/../../PHPMailer-master/src',           // repo root sibling to Nai_Tsa
+    __DIR__ . '/../PHPMailer-master/src',              // PHPMailer inside Nai_Tsa
+    __DIR__ . '/../vendor/phpmailer/phpmailer/src',    // Composer vendor
+    __DIR__ . '/PHPMailer-master/src',                 // same folder (unlikely)
 ];
 
 $found = null;
-foreach ($candidates as $c) {
-    if (file_exists($c)) { $found = $c; break; }
-}
-if ($found && substr($found, -13) === 'autoload.php') {
-    require_once $found;
-} else {
-    $base = dirname($found ?: __DIR__ . '/../PHPMailer/src/PHPMailer.php');
-    @require_once $base . '/PHPMailer.php';
-    @require_once $base . '/SMTP.php';
-    @require_once $base . '/Exception.php';
+foreach ($candidates as $dir) {
+    if (is_dir($dir)) { $found = $dir; break; }
 }
 
-// Load .mail.env.php if present (once per request)
-function mail_env_load(): void {
-    static $loaded = false;
-    if ($loaded) return;
-    $paths = [
-        __DIR__ . '/../.mail.env.php',   // project root
-        __DIR__ . '/.mail.env.php',      // utils folder (fallback)
-    ];
-    foreach ($paths as $p) {
-        if (file_exists($p)) { require_once $p; break; }
-    }
-    $loaded = true;
+if ($found === null) {
+    // Provide a clear error for setup fixes
+    throw new \RuntimeException('PHPMailer sources not found. Place PHPMailer-master/ at project root or install via Composer. Tried: ' . implode(', ', $candidates));
 }
 
-// Parse comma/semicolon/space-separated list
-function mail_parse_list(string $raw): array {
-    $raw = trim($raw);
-    if ($raw === '') return [];
-    $parts = preg_split('/[,\s;]+/', $raw);
-    return array_values(array_filter(array_unique($parts), fn($s) => filter_var($s, FILTER_VALIDATE_EMAIL)));
-}
+require_once $found . '/Exception.php';
+require_once $found . '/PHPMailer.php';
+require_once $found . '/SMTP.php';
 
-// Resolve primary recipient in a safe order
-function mail_primary_to(): ?string {
-    $candidates = [
-        getenv('MAIL_FORCE_TO') ?: '',
-        getenv('MAIL_TO') ?: '',
-        getenv('SMTP_USER') ?: '',
-        getenv('MAIL_FROM') ?: '',
-    ];
-    foreach ($candidates as $addr) {
-        if ($addr && filter_var($addr, FILTER_VALIDATE_EMAIL)) return $addr;
-    }
-    return null;
-}
-
-// Build and return a configured PHPMailer instance
 function mailer_instance(): PHPMailer {
-    mail_env_load();
-
-    $debug = strtolower((string)(getenv('MAIL_DEBUG') ?: '0'));
-    $debugOn = in_array($debug, ['1','true','yes','on'], true);
+    // Optional local config bootstrap: if a file sets env vars, include it.
+    // Some hosts skip dotfiles on upload; support alternate names.
+    $envCandidates = [
+        __DIR__ . '/../.mail.env.php',
+        __DIR__ . '/../mail.env.php',
+        __DIR__ . '/../config/.mail.env.php',
+        __DIR__ . '/../config/mail.env.php',
+    ];
+    foreach ($envCandidates as $envFile) {
+        if (is_file($envFile)) {
+            /** @noinspection PhpIncludeInspection */
+            include $envFile; // may call putenv("KEY=value")
+            break;
+        }
+    }
 
     $mail = new PHPMailer(true);
-    $mail->isSMTP();
-    $mail->SMTPAuth = true;
-    $mail->Host = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
-    $mail->Username = getenv('SMTP_USER') ?: '';
-    $mail->Password = getenv('SMTP_PASS') ?: '';
-    $mail->Port = (int)(getenv('SMTP_PORT') ?: 465);
-    $mail->SMTPSecure = getenv('SMTP_SECURE') ?: ($mail->Port === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS);
     $mail->CharSet = 'UTF-8';
-    $mail->Timeout = 15;
-    $mail->SMTPKeepAlive = false;
+    $mail->isSMTP();
+    // Reasonable defaults for network behavior
+    $mail->Timeout = (int)(getenv('MAIL_TIMEOUT') ?: 20);
+    $mail->SMTPAutoTLS = true;
 
-    if ($debugOn) {
-        $mail->SMTPDebug = 2;
-        $mail->Debugoutput = function($str) { error_log('[SMTP] ' . trim($str)); };
+    // Hostinger SMTP (generic SMTP). Set in .mail.env.php
+    $mail->Host     = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
+    $mail->Port     = (int)(getenv('SMTP_PORT') ?: 587);
+    $mail->Username = getenv('SMTP_USER') ?: 'hello@naitsa.online';
+    $mail->Password = getenv('SMTP_PASS') ?: 'Naitsa@123';
+    if ($mail->Username === '' || $mail->Password === '') {
+        throw new \RuntimeException('SMTP_USER/SMTP_PASS not set. Upload Nai_Tsa/.mail.env.php (or rename to mail.env.php) with your mailbox credentials.');
+    }
+    $mail->SMTPAuth = true;
+
+    // Pick encryption based on port, with override via SMTP_SECURE env
+    $secure = strtolower((string)getenv('SMTP_SECURE'));
+    if ($secure === 'ssl') {
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+    } elseif ($secure === 'tls' || $secure === '') {
+        $mail->SMTPSecure = ($mail->Port === 465) ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+    } else {
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     }
 
-    $from = getenv('MAIL_FROM') ?: ($mail->Username ?: 'no-reply@naitsa.online');
+    // From header defaults to mailbox if not provided
+    $fromAddress = getenv('MAIL_FROM') ?: ($mail->Username ?: 'no-reply@example.com');
+
     $fromName = getenv('MAIL_FROM_NAME') ?: 'Nai Tsa';
-    if (!filter_var($from, FILTER_VALIDATE_EMAIL)) {
-        $from = $mail->Username ?: 'no-reply@naitsa.online';
-    }
-    $mail->setFrom($from, $fromName, false);
+    $mail->setFrom($fromAddress, $fromName);
+    // Envelope-from (Return-Path)
+    $mail->Sender = $fromAddress;
 
-    foreach (mail_parse_list((string)(getenv('MAIL_CC') ?: '')) as $cc)   { $mail->addCC($cc); }
-    foreach (mail_parse_list((string)(getenv('MAIL_BCC') ?: '')) as $bcc) { $mail->addBCC($bcc); }
+    if (getenv('MAIL_DEBUG')) {
+        // 2 = client and server messages. Logged to error_log by default.
+        $mail->SMTPDebug  = 2;
+        $mail->Debugoutput = 'error_log';
+    }
 
     return $mail;
+}
+
+function send_verification_email(string $to, string $token) {
+    $mail = mailer_instance();
+    try {
+        // Optional override to force all outbound test emails to a single mailbox.
+        $forcedTo = getenv('MAIL_FORCE_TO');
+        $target = $forcedTo ?: $to;
+        $mail->addAddress($target);
+        $mail->isHTML(true);
+        $mail->Subject = 'Verify your Nai Tsa account';
+        $baseUrl = getenv('MAIL_BASE_URL');
+        if ($baseUrl) {
+            $verifyUrl = rtrim($baseUrl, '/') . '/verify.php?token=' . urlencode($token);
+        } else {
+            $verifyUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\') . '/verify.php?token=' . urlencode($token);
+        }
+    $mail->Body = '<p>Welcome to Nai Tsa!</p><p>Please verify your email by clicking the link below:</p><p><a href="' . htmlspecialchars($verifyUrl) . '">Verify my email</a></p><p>If you did not sign up, you can ignore this email.</p>';
+        $mail->AltBody = "Visit this link to verify your email: $verifyUrl";
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        return $e->getMessage();
+    }
 }
