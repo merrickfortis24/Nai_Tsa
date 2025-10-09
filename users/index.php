@@ -2869,5 +2869,19 @@ async function openProductDetailsWithAddons(product){
   });
   </script>
 
+  <script>
+  // Clean up contact param in URL after showing the alert once (parity with landing page)
+  (function(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('contact')) {
+        params.delete('contact');
+        const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + window.location.hash;
+        history.replaceState({}, '', newUrl);
+      }
+    } catch (_) { /* noop */ }
+  })();
+  </script>
+
 </body>
 </html>
