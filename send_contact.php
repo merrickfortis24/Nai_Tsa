@@ -70,8 +70,6 @@ function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
     file_put_contents($file, json_encode($data));
     return false;
 }
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-if (rate_limited($ip)) { header('Location: ' . $returnTo . '?contact=limited#contact'); exit; }
 
 // 6. Load .mail.env.php if present (sets putenv values)
 if (file_exists(__DIR__ . '/.mail.env.php')) { include __DIR__ . '/.mail.env.php'; }
@@ -88,6 +86,16 @@ $forceTo   = getenv('MAIL_FORCE_TO') ?: '';
 $ccList    = getenv('MAIL_CC') ?: '';
 $bccList   = getenv('MAIL_BCC') ?: '';
 $debugFlag = getenv('MAIL_DEBUG');
+// Rate-limit tuning via env (optional)
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$limitCount   = (int)(getenv('CONTACT_LIMIT_PER_HOUR') ?: 5);
+$limitWindow  = (int)(getenv('CONTACT_LIMIT_WINDOW') ?: 3600);
+$limitDisable = (bool)getenv('CONTACT_LIMIT_DISABLE');
+$whitelistRaw = getenv('CONTACT_LIMIT_WHITELIST') ?: '';
+$limitWhitelist = array_filter(array_map('trim', preg_split('/[\s,;]+/', $whitelistRaw, -1, PREG_SPLIT_NO_EMPTY)));
+if (!$limitDisable && !in_array($ip, $limitWhitelist, true)) {
+    if (rate_limited($ip, $limitCount, $limitWindow)) { header('Location: ' . $returnTo . '?contact=limited#contact'); exit; }
+}
 // Fallback: if env config is missing, try the shared utils\mailer.php
 $usingUtilsMailer = false;
 if (!$user || !$pass || !$from) {
