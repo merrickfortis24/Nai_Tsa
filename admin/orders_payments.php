@@ -553,23 +553,6 @@ function toast(message, type){
   setTimeout(()=>{ box.remove(); }, 2500);
 }
 
-// Small audible cue without external assets (may be blocked until user interacts)
-async function beep(duration=160, frequency=880, volume=0.1){
-  try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = frequency;
-    g.gain.value = volume;
-    o.connect(g); g.connect(ctx.destination);
-    o.start();
-    await new Promise(r=>setTimeout(r, duration));
-    o.stop();
-    ctx.close();
-  }catch(e){ /* ignore if autoplay blocked */ }
-}
-
 // ---- Realtime new orders polling ----
 (function(){
   const tbody = document.querySelector('table tbody');
@@ -595,6 +578,7 @@ async function beep(duration=160, frequency=880, volume=0.1){
       }
       const data = await res.json();
       if(data.success && Array.isArray(data.rows) && data.rows.length){
+        let __newCount = 0;
         data.rows.forEach(r=>{
           const tr = document.createElement('tr');
           // Decide status options similar to PHP side for consistency; prefer explicit order_type when present
@@ -623,6 +607,7 @@ async function beep(duration=160, frequency=880, volume=0.1){
             <td><button class=\"btn btn-sm btn-outline-info\" data-bs-toggle=\"modal\" data-bs-target=\"#itemsModal${r.Order_ID}\" aria-label=\"View items\"><i class=\"bi bi-eye\"></i></button></td>`;
           tbody.prepend(tr);
           if(r.Order_ID > lastId) lastId = r.Order_ID;
+          __newCount++;
           // Ensure modal is available for this new row: fetch on-demand when Items button clicked
           // The button in the rendered row uses data-bs-toggle/data-bs-target but we fetch modal lazily instead
           const itemsBtn = tr.querySelector('button[data-bs-toggle="modal"]');
@@ -637,6 +622,12 @@ async function beep(duration=160, frequency=880, volume=0.1){
             });
           }
         });
+        // Notify at top-right that new orders have arrived
+        try {
+          if (__newCount > 0) {
+            toast(__newCount === 1 ? 'New order received.' : (__newCount + ' new orders received.'), 'success');
+          }
+        } catch(e) { /* ignore */ }
       }
       if(data.stats){
         const fmt = n => new Intl.NumberFormat().format(n||0);
@@ -667,16 +658,18 @@ async function beep(duration=160, frequency=880, volume=0.1){
   let baseId = getMaxId();
   async function tick(){
     try{
+      // Recompute baseline from current table in case rows were dynamically inserted
+      baseId = getMaxId();
       const url = 'ajax/refresh%20_new_orders.php?last_id=' + encodeURIComponent(baseId) + '&t=' + Date.now();
       const res = await fetch(url, { credentials:'same-origin', cache:'no-store' });
       if(res.ok){
         const j = await res.json();
         if(j && j.success){
           if(j.has_new){
-            // Notify then hard refresh to re-run PHP filters/pagination and counters
-            toast('New order received — reloading…', 'success');
-            beep(180, 1100, 0.12);
-            setTimeout(()=>{ location.reload(); }, 1500);
+            // Flag so we can show a toast immediately after reload
+            try { sessionStorage.setItem('NEW_ORDER_FLAG', '1'); } catch(e) {}
+            // Hard refresh to re-run PHP filters/pagination and counters
+            location.reload();
             return;
           }
           if(typeof j.last_id === 'number' && j.last_id > baseId){
@@ -688,6 +681,16 @@ async function beep(duration=160, frequency=880, volume=0.1){
     setTimeout(tick, 12000); // 12s interval
   }
   setTimeout(tick, 12000);
+})();
+
+// Show post-reload notification if we just refreshed due to new order
+(function(){
+  try {
+    if (sessionStorage.getItem('NEW_ORDER_FLAG') === '1') {
+      sessionStorage.removeItem('NEW_ORDER_FLAG');
+      toast('New order received.', 'success');
+    }
+  } catch(e) { /* ignore */ }
 })();
 
 // --- AJAX order status updates ---
