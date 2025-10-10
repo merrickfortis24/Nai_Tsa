@@ -446,6 +446,17 @@ ksort($methods);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Detect if any filters are currently active (non-empty)
+function filtersActive(){
+  const form = document.getElementById('filtersForm');
+  if(!form) return false;
+  const get = (n)=>{
+    const el = form.querySelector(`[name="${n}"]`);
+    return (el && (el.value||'').trim()) || '';
+  };
+  return ['search','status','payment','method','from','to'].some(k => get(k) !== '');
+}
+
 // Filters UX: auto-submit on change, reset to page 1, swap invalid date ranges, and provide Clear button
 (function(){
   const form = document.getElementById('filtersForm');
@@ -604,6 +615,8 @@ function toast(message, type, ms){
 
 // ---- Realtime new orders polling ----
 (function(){
+  // When filters are active, do not inject new rows dynamically to keep the filtered view consistent.
+  if (filtersActive()) return;
   const tbody = document.querySelector('table tbody');
   if(!tbody) return;
   let lastId = 0;
