@@ -1291,6 +1291,20 @@ if (paymentModalEl){
   paymentModalEl.addEventListener('shown.bs.modal', () => {
     try{ updateOrderSummary(); }catch(e){}
     try{
+
+    // Accessibility: prevent aria-hidden on an ancestor while a focused element remains inside productDetailsModal
+    (function(){
+      const pdEl = document.getElementById('productDetailsModal');
+      if(!pdEl) return;
+      pdEl.addEventListener('hide.bs.modal', ()=>{
+        try {
+          const active = document.activeElement;
+          if (active && pdEl.contains(active) && typeof active.blur === 'function') {
+            active.blur();
+          }
+        } catch(e){}
+      });
+    })();
       const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
       if (orderType === 'Delivery') ensureMapPicker();
     }catch(e){}
@@ -2679,7 +2693,10 @@ async function openProductDetailsWithAddons(product){
     updateCartBadge();
     renderCartItems();
     Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-    modal.hide();
+    // Important: blur focused element before hiding to avoid aria-hidden warning
+    try { const ae = document.activeElement; if (ae && typeof ae.blur === 'function') ae.blur(); } catch(e){}
+    // Defer hide so blur applies first
+    setTimeout(()=>{ modal.hide(); }, 0);
   };
 
   // Fetch add-ons asynchronously and render; on failure keep empty list
