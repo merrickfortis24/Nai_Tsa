@@ -718,7 +718,9 @@ function renderCartItems() {
       <div class=\"d-flex flex-column align-items-end gap-1\">
         <span class=\"badge bg-secondary\">x${item.qty}</span>
         <div class=\"fw-semibold\">₱${money(line)}</div>
-        <button class=\"remove-cart-item btn btn-sm btn-outline-danger mt-1\" data-idx=\"${idx}\" title=\"Remove\">&times;</button>
+        <button class=\"remove-cart-item btn btn-sm btn-outline-danger mt-1\" data-idx=\"${idx}\" title=\"Remove item\" aria-label=\"Remove item\">
+          <i class=\"bi bi-trash\"></i>
+        </button>
       </div>
     </div>`;
   }).join('');
