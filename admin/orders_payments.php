@@ -110,7 +110,8 @@ ksort($methods);
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
           <!-- debug output removed -->
-          <form method="get" class="row g-2 mb-3 align-items-end filter-row">
+          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row">
+            <input type="hidden" name="page" value="<?= (int)$page ?>" />
             <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
             </div>
@@ -144,8 +145,9 @@ ksort($methods);
             <div class="col-auto">
               <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control form-control-sm short-select" placeholder="To" aria-label="To date" />
             </div>
-            <div class="col-auto d-grid">
+            <div class="col-auto d-grid gap-2">
               <button class="btn btn-primary btn-sm" title="Apply filters"><i class="bi bi-search"></i></button>
+              <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm" title="Clear filters">Clear</button>
             </div>
           </form>
 
@@ -187,7 +189,7 @@ ksort($methods);
               </thead>
               <tbody>
                 <?php if(!$rows): ?>
-                  <tr><td colspan="8" class="text-center text-muted py-4">No records found.</td></tr>
+                  <tr><td colspan="8" class="text-center text-muted py-4">No records found. Try adjusting or clearing the filters.</td></tr>
                 <?php endif; ?>
                   <?php foreach ($rows as $r): ?>
                   <tr>
@@ -444,6 +446,52 @@ ksort($methods);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Filters UX: auto-submit on change, reset to page 1, swap invalid date ranges, and provide Clear button
+(function(){
+  const form = document.getElementById('filtersForm');
+  if(!form) return;
+  const pageInput = form.querySelector('input[name="page"]');
+  const statusSel = form.querySelector('select[name="status"]');
+  const paymentSel = form.querySelector('select[name="payment"]');
+  const methodSel = form.querySelector('select[name="method"]');
+  const fromInput = form.querySelector('input[name="from"]');
+  const toInput = form.querySelector('input[name="to"]');
+  const searchInput = form.querySelector('input[name="search"]');
+  const clearBtn = document.getElementById('clearFiltersBtn');
+
+  function submitWithPageReset(){
+    if(pageInput) pageInput.value = '1';
+    if(fromInput && toInput && fromInput.value && toInput.value && fromInput.value > toInput.value){
+      const tmp = fromInput.value; fromInput.value = toInput.value; toInput.value = tmp;
+    }
+    form.submit();
+  }
+  form.addEventListener('submit', (e)=>{
+    if(pageInput) pageInput.value = '1';
+    if(fromInput && toInput && fromInput.value && toInput.value && fromInput.value > toInput.value){
+      const tmp = fromInput.value; fromInput.value = toInput.value; toInput.value = tmp;
+    }
+  });
+  [statusSel, paymentSel, methodSel, fromInput, toInput].forEach(el=>{
+    if(!el) return;
+    el.addEventListener('change', submitWithPageReset);
+  });
+  if(searchInput){
+    searchInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); submitWithPageReset(); } });
+  }
+  if(clearBtn){
+    clearBtn.addEventListener('click', ()=>{
+      if(searchInput) searchInput.value = '';
+      if(statusSel) statusSel.value = '';
+      if(paymentSel) paymentSel.value = '';
+      if(methodSel) methodSel.value = '';
+      if(fromInput) fromInput.value = '';
+      if(toInput) toInput.value = '';
+      submitWithPageReset();
+    });
+  }
+})();
+
 // Helper: load modal HTML on-demand for order items
 async function loadAndShowOrderModal(orderId){
   try{
