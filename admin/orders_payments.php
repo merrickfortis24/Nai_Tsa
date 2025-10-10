@@ -544,13 +544,14 @@ function showShareMenu(anchorEl, data){
 }
 
 // Lightweight toast helper (Bootstrap 5 independent minimal)
-function toast(message, type){
+function toast(message, type, ms){
+  const timeout = typeof ms === 'number' ? ms : 2500;
   let box = document.createElement('div');
   box.className = 'position-fixed top-0 end-0 p-3';
   box.style.zIndex = 1080;
-  box.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0">${message}</div>`;
+  box.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0" role="alert" aria-live="assertive">${message}</div>`;
   document.body.appendChild(box);
-  setTimeout(()=>{ box.remove(); }, 2500);
+  setTimeout(()=>{ box.remove(); }, timeout);
 }
 
 // ---- Realtime new orders polling ----
@@ -625,7 +626,10 @@ function toast(message, type){
         // Notify at top-right that new orders have arrived
         try {
           if (__newCount > 0) {
-            toast(__newCount === 1 ? 'New order received.' : (__newCount + ' new orders received.'), 'success');
+            const msg = (__newCount === 1)
+              ? 'A new order just arrived. The list has been updated. Click the eye button to view items or update its status.'
+              : `${__newCount} new orders just arrived. The list has been updated. Use filters or the eye buttons to review them.`;
+            toast(msg, 'success', 5000);
           }
         } catch(e) { /* ignore */ }
       }
@@ -688,7 +692,7 @@ function toast(message, type){
   try {
     if (sessionStorage.getItem('NEW_ORDER_FLAG') === '1') {
       sessionStorage.removeItem('NEW_ORDER_FLAG');
-      toast('New order received.', 'success');
+  toast('A new order was received and the page was refreshed to include it. Review the latest entry at the top of the list.', 'success', 5000);
     }
   } catch(e) { /* ignore */ }
 })();
