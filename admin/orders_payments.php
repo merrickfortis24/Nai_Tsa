@@ -89,9 +89,9 @@ ksort($methods);
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 .badge-status { font-size:.75rem; }
-.filter-row .short-select { min-width: 120px; }
+.filter-row .short-select { width: 160px; }
 @media (max-width: 768px){
-  .filter-row .short-select { min-width: 100%; }
+  .filter-row .short-select { width: 100%; }
 }
 </style>
 </head>
@@ -112,7 +112,7 @@ ksort($methods);
           <!-- debug output removed -->
           <form method="get" class="row g-2 mb-3 align-items-end filter-row">
             <div class="col-12 col-md flex-grow-1">
-              <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
+              <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
             </div>
             <div class="col-auto">
               <select name="status" class="form-select form-select-sm short-select" title="Order Status">
@@ -631,6 +631,44 @@ function toast(message, type){
     finally { setTimeout(poll, 15000); }
   }
   poll();
+})();
+
+// --- Auto-refresh the whole page when new orders arrive (uses ajax/refresh _new_orders.php) ---
+(function(){
+  const tbody = document.querySelector('table tbody');
+  if(!tbody) return;
+  function getMaxId(){
+    let m = 0;
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      const td = tr.querySelector('td');
+      if(!td) return;
+      const v = parseInt((td.textContent||'').trim(),10);
+      if(!isNaN(v) && v>m) m=v;
+    });
+    return m;
+  }
+  let baseId = getMaxId();
+  async function tick(){
+    try{
+      const url = 'ajax/refresh%20_new_orders.php?last_id=' + encodeURIComponent(baseId) + '&t=' + Date.now();
+      const res = await fetch(url, { credentials:'same-origin', cache:'no-store' });
+      if(res.ok){
+        const j = await res.json();
+        if(j && j.success){
+          if(j.has_new){
+            // Hard refresh to re-run PHP filters/pagination and counters
+            location.reload();
+            return;
+          }
+          if(typeof j.last_id === 'number' && j.last_id > baseId){
+            baseId = j.last_id; // keep baseline in sync if needed
+          }
+        }
+      }
+    }catch(e){ /* ignore transient errors */ }
+    setTimeout(tick, 12000); // 12s interval
+  }
+  setTimeout(tick, 12000);
 })();
 
 // --- AJAX order status updates ---

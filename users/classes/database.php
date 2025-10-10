@@ -118,6 +118,32 @@ class database {
             return $rows;
     }
 
+    /**
+     * Get saved delivery address for a customer (customer_address),
+     * falling back to the profile Contact_Number if address contact is empty.
+     */
+    public function getSavedDeliveryAddress(int $customerId): array {
+        $con = $this->opencon();
+        $out = [];
+        try {
+            $stmt = $con->prepare("SELECT Street, Barangay, City, Contact_Number FROM customer_address WHERE Customer_ID = ? LIMIT 1");
+            $stmt->execute([$customerId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && is_array($row)) { $out = $row; }
+        } catch (Throwable $e) { /* ignore */ }
+
+        // Fallback: if no contact number in address, fetch from customer profile
+        if (!isset($out['Contact_Number']) || $out['Contact_Number'] === null || $out['Contact_Number'] === '') {
+            try {
+                $stmtC = $con->prepare("SELECT Contact_Number FROM customer WHERE Customer_ID=? LIMIT 1");
+                $stmtC->execute([$customerId]);
+                $cn = $stmtC->fetchColumn();
+                if ($cn !== false && $cn !== null && $cn !== '') { $out['Contact_Number'] = $cn; }
+            } catch (Throwable $e) { /* ignore */ }
+        }
+        return $out;
+    }
+
     // Ensure order_item_addons table exists (idempotent)
     private function ensureOrderItemAddons(PDO $con) {
         $con->exec("CREATE TABLE IF NOT EXISTS order_item_addons (

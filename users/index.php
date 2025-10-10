@@ -10,16 +10,22 @@ if (!isset($_SESSION['customer_id'])) {
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
 $first_name = explode(' ', trim($customer_name))[0];
 require_once "classes/database.php";
+require_once "classes/shop_repositories.php"; // Repositories for cleaner OOP access
 require_once "classes/order.php"; // Include the Order class
 
 $db = new database();
+$productRepo  = new ProductRepository($db);
+$categoryRepo = new CategoryRepository($db);
+$orderRepo    = new OrderRepository($db);
+$addressRepo  = new AddressRepository($db);
+$reviewRepo   = new ReviewRepository($db);
 $orderObj = new Order(); // Create an instance of the Order class
-$products = $db->fetchAllProducts();
+$products = $productRepo->all();
 $order_id = 123; // The order you want to view
 $items = $orderObj->getOrderItems($order_id); // Get the order items
 
 // Fetch categories for menu dropdown
-$categories = method_exists($db, 'fetchAllCategories') ? $db->fetchAllCategories() : [];
+$categories = $categoryRepo->all();
 
 // Fetch user's orders grouped by status
 $user_id = $_SESSION['customer_id'] ?? null;
@@ -29,35 +35,23 @@ $orders_by_status = [
     'Delivered' => []
 ];
 if ($user_id) {
-    $orders_by_status = $db->getOrdersByStatus($user_id);
+  $orders_by_status = $orderRepo->getOrdersByStatus($user_id);
 }
 
 // Fetch average ratings for all products
-$avg_ratings = $db->getAverageRatings();
+$avg_ratings = $reviewRepo->getAverageRatings();
 
 // Fetch recommended products for the user
-$recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
+$recommended = $productRepo->recommendedForCustomer($_SESSION['customer_id']);
 
 // Fetch bestsellers (e.g., top 4 by order count)
-$bestsellers = $db->getBestsellerProducts(4); // You need to implement this method
-$all_products = $db->fetchAllProducts();
+$bestsellers = $productRepo->bestsellers(4); // Uses repository wrapper
+$all_products = $productRepo->all();
 
-// Fetch saved delivery address (customer_address table) if exists
 $savedAddress = [];
 try {
   if (!empty($user_id)) {
-    $conTmp = $db->opencon();
-    $stmtAddr = $conTmp->prepare("SELECT Street, Barangay, City, Contact_Number FROM customer_address WHERE Customer_ID = ? LIMIT 1");
-    $stmtAddr->execute([$user_id]);
-    $rowAddr = $stmtAddr->fetch(PDO::FETCH_ASSOC);
-    if ($rowAddr) { $savedAddress = $rowAddr; }
-    // Fallback: if contact missing in address table, use customer table contact
-    if ((!isset($savedAddress['Contact_Number']) || $savedAddress['Contact_Number']==='')) {
-        $stmtC = $conTmp->prepare("SELECT Contact_Number FROM customer WHERE Customer_ID=? LIMIT 1");
-        $stmtC->execute([$user_id]);
-        $cnum = $stmtC->fetchColumn();
-        if ($cnum) { $savedAddress['Contact_Number'] = $cnum; }
-    }
+    $savedAddress = $addressRepo->getSavedDeliveryAddress((int)$user_id) ?: [];
   }
 } catch (Throwable $e) { /* ignore */ }
 ?>
