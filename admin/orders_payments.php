@@ -145,8 +145,7 @@ ksort($methods);
             <div class="col-auto">
               <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control form-control-sm short-select" placeholder="To" aria-label="To date" />
             </div>
-            <div class="col-auto d-grid gap-2">
-              <button class="btn btn-primary btn-sm" title="Apply filters"><i class="bi bi-search"></i></button>
+            <div class="col-auto d-grid">
               <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm" title="Clear filters">Clear</button>
             </div>
           </form>
