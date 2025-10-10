@@ -553,6 +553,23 @@ function toast(message, type){
   setTimeout(()=>{ box.remove(); }, 2500);
 }
 
+// Small audible cue without external assets (may be blocked until user interacts)
+async function beep(duration=160, frequency=880, volume=0.1){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = frequency;
+    g.gain.value = volume;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    await new Promise(r=>setTimeout(r, duration));
+    o.stop();
+    ctx.close();
+  }catch(e){ /* ignore if autoplay blocked */ }
+}
+
 // ---- Realtime new orders polling ----
 (function(){
   const tbody = document.querySelector('table tbody');
@@ -656,8 +673,10 @@ function toast(message, type){
         const j = await res.json();
         if(j && j.success){
           if(j.has_new){
-            // Hard refresh to re-run PHP filters/pagination and counters
-            location.reload();
+            // Notify then hard refresh to re-run PHP filters/pagination and counters
+            toast('New order received — reloading…', 'success');
+            beep(180, 1100, 0.12);
+            setTimeout(()=>{ location.reload(); }, 1500);
             return;
           }
           if(typeof j.last_id === 'number' && j.last_id > baseId){
