@@ -655,34 +655,38 @@ document.addEventListener('DOMContentLoaded', function() {
         const sel = variantProductSelect.options[variantProductSelect.selectedIndex];
         if(sel && sel.hidden){ variantProductSelect.value = ''; }
       }
-      // Auto-select the first visible product if none selected, then load flavors
-      if(!variantProductSelect.value){
-        const firstVisible = Array.from(variantProductSelect.options).find(o => o.value && !o.hidden);
-        if(firstVisible){
-          variantProductSelect.value = firstVisible.value;
-        }
-      }
-      if(variantProductSelect.value){
-        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
-        loadVariants(variantProductSelect.value);
-      } else {
-        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No products available for the current filter.</td></tr>';
-      }
+      // Like Manage Sizes: load all flavors without requiring a product selection
+      variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+      loadVariants(null);
     });
 
     variantProductSelect.addEventListener('change', function(){
       const pid = this.value;
-      if(!pid){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Select a product to view flavors.</td></tr>'; return; }
+      if(!pid){
+        // No specific product selected: show all flavors again
+        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+        loadVariants(null);
+        return;
+      }
       loadVariants(pid);
     });
 
     function loadVariants(productId){
       variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
-      fetch('ajax/list_variants.php?type=flavor&product_id='+encodeURIComponent(productId))
+      const params = new URLSearchParams();
+      params.append('type','flavor');
+      if(productId){ params.append('product_id', productId); }
+      if(currentCategoryFilter){ params.append('category_id', currentCategoryFilter); }
+      fetch('ajax/list_variants.php?' + params.toString())
         .then(r=>r.json())
         .then(data=>{
           if(!data.success){ variantsTableBody.innerHTML = `<tr><td colspan="9" class="text-danger small text-center">${data.error||'Failed to load'}</td></tr>`; return; }
-          const rows = data.data||[];
+          let rows = data.data||[];
+          // If no specific product and a category is active, try client-side filter using visible product IDs
+          if(!productId && currentCategoryFilter){
+            const allowedIds = new Set(Array.from(variantProductSelect.options).filter(o=>o.value && !o.hidden).map(o=>String(o.value)));
+            rows = rows.filter(r => r.Product_ID !== undefined ? allowedIds.has(String(r.Product_ID)) : true);
+          }
           if(!rows.length){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No flavors yet.</td></tr>'; return; }
           variantsTableBody.innerHTML = '';
           rows.forEach((row,i)=>{
