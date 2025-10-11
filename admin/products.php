@@ -95,6 +95,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageVariantsModal">
+                      <i class="bi bi-ui-checks-grid me-1"></i> Manage Flavors
+                    </button>
                 <!-- Global Add Price modal/button removed per new pricing flow -->
               </div>
           </div>
@@ -267,6 +270,91 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <button type="submit" class="btn btn-primary">Add Product</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Manage Flavors (Variants) Modal -->
+    <div class="modal fade" id="manageVariantsModal" tabindex="-1" aria-labelledby="manageVariantsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="manageVariantsModalLabel">Product Flavor Variants</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info small mb-3">
+              Add and manage flavor variants per product. Flavor prices support Absolute (full price) or Delta (added to the product's base price).
+            </div>
+            <form id="addVariantForm" class="row g-3 align-items-end mb-3">
+              <div class="col-md-4">
+                <label class="form-label small">Product</label>
+                <select class="form-select form-select-sm" name="product_id" required id="variantProductSelect">
+                  <option value="">Select...</option>
+                  <?php foreach($products as $p): ?>
+                    <option value="<?= (int)$p['Product_ID'] ?>" data-category="<?= htmlspecialchars($p['Category_ID']) ?>">
+                      <?= htmlspecialchars($p['Product_Name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Code</label>
+                <input type="text" maxlength="32" placeholder="e.g. CHOCO" class="form-control form-control-sm" name="code" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Label</label>
+                <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="label" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Mode</label>
+                <select class="form-select form-select-sm" name="price_mode" required>
+                  <option value="ABSOLUTE">Absolute</option>
+                  <option value="DELTA" selected>Delta (+)</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small">Amount</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_value" required>
+              </div>
+              <div class="col-md-12 d-flex align-items-center gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="1" id="variantPrimaryCheck" name="is_primary">
+                  <label class="form-check-label small" for="variantPrimaryCheck">Set as Primary</label>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="form-label small mb-0" for="variantSort">Sort</label>
+                  <input id="variantSort" type="number" class="form-control form-control-sm" style="width:90px;" name="sort_order" min="0" value="0">
+                </div>
+                <div class="ms-auto">
+                  <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
+                </div>
+              </div>
+            </form>
+            <div class="table-responsive border rounded" style="max-height:360px; overflow:auto;">
+              <table class="table table-sm table-hover align-middle mb-0" id="variantsTable">
+                <thead class="table-light position-sticky top-0">
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Product</th>
+                    <th>Code</th>
+                    <th>Label</th>
+                    <th>Mode</th>
+                    <th>Amount</th>
+                    <th>Primary</th>
+                    <th>Sort</th>
+                    <th style="width:70px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="9" class="text-center text-muted small">Select a product to view flavors.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -473,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Pricing dropdowns and global Add Price modal removed
 
-    // Load sizes when modal opens (with category filtering)
+  // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
     manageSizesModal.addEventListener('shown.bs.modal', function(){
       // Filter product dropdown options by category if selected
@@ -549,6 +637,93 @@ document.addEventListener('DOMContentLoaded', function() {
           Swal.fire({icon:'error',title:'Size not added',text:data.message||'Failed'});
         }
       }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to add size.'}));
+    });
+
+    // Manage Flavor Variants
+    const manageVariantsModal = document.getElementById('manageVariantsModal');
+    const variantsTableBody = document.querySelector('#variantsTable tbody');
+    const variantProductSelect = document.getElementById('variantProductSelect');
+    manageVariantsModal.addEventListener('shown.bs.modal', function(){
+      // Filter product dropdown options by category if selected
+      Array.from(variantProductSelect.options).forEach(opt=>{
+        if(!opt.value) return;
+        const cat = opt.getAttribute('data-category');
+        if(currentCategoryFilter){ opt.hidden = (cat !== currentCategoryFilter); } else { opt.hidden = false; }
+      });
+      if(currentCategoryFilter){
+        const sel = variantProductSelect.options[variantProductSelect.selectedIndex];
+        if(sel && sel.hidden){ variantProductSelect.value = ''; }
+      }
+      // Load list if product preselected
+      if(variantProductSelect.value){ loadVariants(variantProductSelect.value); }
+    });
+
+    variantProductSelect.addEventListener('change', function(){
+      const pid = this.value;
+      if(!pid){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Select a product to view flavors.</td></tr>'; return; }
+      loadVariants(pid);
+    });
+
+    function loadVariants(productId){
+      variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+      fetch('ajax/list_variants.php?type=flavor&product_id='+encodeURIComponent(productId))
+        .then(r=>r.json())
+        .then(data=>{
+          if(!data.success){ variantsTableBody.innerHTML = `<tr><td colspan="9" class="text-danger small text-center">${data.error||'Failed to load'}</td></tr>`; return; }
+          const rows = data.data||[];
+          if(!rows.length){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No flavors yet.</td></tr>'; return; }
+          variantsTableBody.innerHTML = '';
+          rows.forEach((row,i)=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${i+1}</td>
+              <td>${escapeHtml(row.Product_Name||'')}</td>
+              <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
+              <td>${escapeHtml(row.label||'')}</td>
+              <td>${row.price_mode||''}</td>
+              <td>₱${Number(row.price_value||0).toFixed(2)}</td>
+              <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
+              <td>${row.sort_order||0}</td>
+              <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
+            `;
+            variantsTableBody.appendChild(tr);
+          });
+        })
+        .catch(()=> variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-danger small text-center">Error loading.</td></tr>');
+    }
+
+    document.getElementById('addVariantForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const form = this;
+      const pid = form.product_id.value;
+      const fd = new FormData(form);
+      fd.append('variant_type','flavor');
+      fetch('ajax/add_variant.php',{method:'POST',body:fd})
+        .then(r=>r.json()).then(data=>{
+          if(data.success){
+            form.reset();
+            if(pid){ loadVariants(pid); }
+          } else {
+            Swal.fire({icon:'error',title:'Flavor not added',text:data.error||'Failed'});
+          }
+        }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to add flavor'}));
+    });
+
+    document.querySelector('#variantsTable').addEventListener('click', function(e){
+      const btn = e.target.closest('button[data-variant-id]');
+      if(!btn) return;
+      const id = btn.getAttribute('data-variant-id');
+      Swal.fire({title:'Delete flavor?',icon:'warning',showCancelButton:true}).then(res=>{
+        if(!res.isConfirmed) return;
+        const fd = new FormData(); fd.append('variant_id', id);
+        fetch('ajax/delete_variant.php',{method:'POST', body:fd}).then(r=>r.json()).then(data=>{
+          if(data.success){
+            const pid = variantProductSelect.value; if(pid){ loadVariants(pid); }
+          } else {
+            Swal.fire({icon:'error',title:'Delete failed',text:data.error||'Error'});
+          }
+        }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to delete'}));
+      });
     });
 
     document.querySelector('#sizesTable').addEventListener('click', function(e){
