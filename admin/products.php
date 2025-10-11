@@ -592,29 +592,56 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML='';
   if(!data.success){ tbody.innerHTML = `<tr><td colspan="8" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
   if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
-        data.rows.forEach((row,i)=>{
-          const isLegacy = !!row.LEGACY;
-          const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
-          const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
-          const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
-          const sizeCode = row.Size_Code || row.size_code;
-          const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
-          const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${i+1}</td>
-            <td>${escapeHtml(row.Product_Name||'')}</td>
-            <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
-            <td>${modeLabel}</td>
-            <td>₱${Number(amountVal).toFixed(2)}</td>
-            <td>${sortOrder}</td>
-            <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
-            <td class="d-flex gap-1">
-              ${!isLegacy && mappingId ? `<button class=\"btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn\" data-map=\"${mappingId}\" data-code=\"${escapeHtml(sizeCode)}\" data-mode=\"${row.Price_Mode}\" data-amount=\"${amountVal}\" data-sort=\"${sortOrder}\" data-display=\"${escapeHtml(row.Display_Name||sizeCode)}\" data-price-id=\"${row.Price_Source_ID || ''}\" title=\"Edit\"><i class='bi bi-pencil'></i></button>` : ''}
-              <button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID}" title="Delete"><i class="bi bi-x"></i></button>
-            </td>`;
-          tbody.appendChild(tr);
+        // Group by Product_ID so Product is shown once using rowspan
+        const groups = new Map();
+        data.rows.forEach(r=>{
+          const pid = (r.Product_ID!==undefined && r.Product_ID!==null) ? String(r.Product_ID) : 'unknown';
+          if(!groups.has(pid)) groups.set(pid, { name: r.Product_Name || '', items: [] });
+          groups.get(pid).items.push(r);
         });
+        let rowCounter = 0;
+        for(const [pid, group] of groups.entries()){
+          const count = group.items.length;
+          group.items.forEach((row, idx)=>{
+            rowCounter++;
+            const isLegacy = !!row.LEGACY;
+            const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
+            const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
+            const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
+            const sizeCode = row.Size_Code || row.size_code;
+            const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
+            const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
+            const updatedAt = row.Updated_At?escapeHtml(row.Updated_At):'';
+            const actionsHtml = `
+              ${!isLegacy && mappingId ? `<button class=\"btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn\" data-map=\"${mappingId}\" data-code=\"${escapeHtml(sizeCode)}\" data-mode=\"${row.Price_Mode}\" data-amount=\"${amountVal}\" data-sort=\"${sortOrder}\" data-display=\"${escapeHtml(row.Display_Name||sizeCode)}\" data-price-id=\"${row.Price_Source_ID || ''}\" title=\"Edit\"><i class='bi bi-pencil'></i></button>` : ''}
+              <button class=\"btn btn-sm btn-outline-danger p-0 px-1\" data-id=\"${mappingId||row.ID}\" title=\"Delete\"><i class=\"bi bi-x\"></i></button>
+            `;
+            const tr = document.createElement('tr');
+            if(idx === 0){
+              tr.innerHTML = `
+                <td>${rowCounter}</td>
+                <td rowspan="${count}">${escapeHtml(group.name||'')}</td>
+                <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
+                <td>${modeLabel}</td>
+                <td>₱${Number(amountVal).toFixed(2)}</td>
+                <td>${sortOrder}</td>
+                <td>${updatedAt}</td>
+                <td class="d-flex gap-1">${actionsHtml}</td>
+              `;
+            } else {
+              tr.innerHTML = `
+                <td>${rowCounter}</td>
+                <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
+                <td>${modeLabel}</td>
+                <td>₱${Number(amountVal).toFixed(2)}</td>
+                <td>${sortOrder}</td>
+                <td>${updatedAt}</td>
+                <td class="d-flex gap-1">${actionsHtml}</td>
+              `;
+            }
+            tbody.appendChild(tr);
+          });
+        }
       }).catch(()=>{
         const tbody = document.querySelector('#sizesTable tbody');
         tbody.innerHTML = '<tr><td colspan="8" class="text-danger small text-center">Error loading.</td></tr>';
