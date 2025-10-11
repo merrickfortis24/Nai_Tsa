@@ -650,12 +650,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const cat = opt.getAttribute('data-category');
         if(currentCategoryFilter){ opt.hidden = (cat !== currentCategoryFilter); } else { opt.hidden = false; }
       });
+      // Clear selection if current selection is now hidden due to filter
       if(currentCategoryFilter){
         const sel = variantProductSelect.options[variantProductSelect.selectedIndex];
         if(sel && sel.hidden){ variantProductSelect.value = ''; }
       }
-      // Load list if product preselected
-      if(variantProductSelect.value){ loadVariants(variantProductSelect.value); }
+      // Auto-select the first visible product if none selected, then load flavors
+      if(!variantProductSelect.value){
+        const firstVisible = Array.from(variantProductSelect.options).find(o => o.value && !o.hidden);
+        if(firstVisible){
+          variantProductSelect.value = firstVisible.value;
+        }
+      }
+      if(variantProductSelect.value){
+        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+        loadVariants(variantProductSelect.value);
+      } else {
+        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No products available for the current filter.</td></tr>';
+      }
     });
 
     variantProductSelect.addEventListener('change', function(){
