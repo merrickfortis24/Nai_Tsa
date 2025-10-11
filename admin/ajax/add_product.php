@@ -39,13 +39,38 @@ try {
         }
     }
 
-    // Handle image upload if needed
+    // Handle image upload/preserve/remove for add/edit
     $image_name = '';
-    if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] == UPLOAD_ERR_OK) {
-        $image_name = uniqid() . '_' . basename($_FILES['product_image']['name']);
-        move_uploaded_file($_FILES['product_image']['tmp_name'], '../uploads/products/' . $image_name);
-    } else if (!empty($_POST['product_image_existing'])) {
-        $image_name = $_POST['product_image_existing'];
+    $existing_name = isset($_POST['product_image_existing']) ? trim($_POST['product_image_existing']) : '';
+    $uploadDir = realpath(__DIR__ . '/../uploads/products');
+    if ($uploadDir === false) { $uploadDir = __DIR__ . '/../uploads/products'; }
+    // If a new file is uploaded, save it and plan to replace existing
+    if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] === UPLOAD_ERR_OK) {
+        $orig = basename($_FILES['product_image']['name']);
+        // sanitize file name
+        $safe = preg_replace('/[^A-Za-z0-9._-]/','_', $orig);
+        $image_name = uniqid('p_', true) . '_' . $safe;
+        @mkdir($uploadDir, 0775, true);
+        move_uploaded_file($_FILES['product_image']['tmp_name'], $uploadDir . DIRECTORY_SEPARATOR . $image_name);
+        // If there was an existing image, remove it to avoid orphaned files
+        if ($existing_name) {
+            $oldPath = $uploadDir . DIRECTORY_SEPARATOR . basename($existing_name);
+            if (is_file($oldPath)) { @unlink($oldPath); }
+        }
+    } else if ($product_id) {
+        // Editing: no new file uploaded
+        if ($existing_name !== '') {
+            // Keep current image
+            $image_name = $existing_name;
+        } else {
+            // Explicitly cleared via UI -> remove current image on update
+            $image_name = '';
+            if (!empty($_POST['product_image_existing_raw'])) {
+                $old = basename($_POST['product_image_existing_raw']);
+                $oldPath = $uploadDir . DIRECTORY_SEPARATOR . $old;
+                if (is_file($oldPath)) { @unlink($oldPath); }
+            }
+        }
     }
 
     // Create/ensure a legacy Price_ID row so existing schema keeps working, then log per-product price

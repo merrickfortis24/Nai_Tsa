@@ -248,6 +248,15 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               <label for="product_image" class="form-label">Product Image</label>
               <input type="file" class="form-control" id="product_image" name="product_image" accept="image/*">
             </div>
+            <!-- Current image preview (shown only when editing) -->
+            <div class="mb-3" id="currentImageGroup" style="display:none;">
+              <label class="form-label">Current Image</label>
+              <div class="d-flex align-items-center gap-2">
+                <img id="currentImagePreview" src="" alt="Current image" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6;">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="removeCurrentImageBtn">Remove</button>
+              </div>
+            </div>
+            <input type="hidden" id="product_image_existing" name="product_image_existing" value="">
             <div class="mb-3">
               <label for="category_id" class="form-label">Category</label>
               <select class="form-select" id="category_id" name="category_id" required>
@@ -856,6 +865,22 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('effective_from').value = '<?= date('Y-m-d'); ?>';
             document.getElementById('effective_to').value = '';
             document.getElementById('product_id').value = this.dataset.productId;
+            // Set current image preview and hidden existing field
+            const imgName = this.dataset.image || '';
+            const imgGroup = document.getElementById('currentImageGroup');
+            const imgPrev = document.getElementById('currentImagePreview');
+            const existingInput = document.getElementById('product_image_existing');
+            existingInput.value = imgName;
+            if(imgName){
+              imgPrev.src = 'uploads/products/' + imgName;
+              imgGroup.style.display = '';
+            } else {
+              imgPrev.src = '';
+              imgGroup.style.display = 'none';
+            }
+            // Ensure file input cleared for fresh selection
+            const fileInput = document.getElementById('product_image');
+            if(fileInput){ fileInput.value = ''; }
             document.getElementById('addProductModalLabel').innerText = 'Edit Product';
             document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
             var modalEl = document.getElementById('addProductModal');
@@ -869,6 +894,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#addProductForm button[type="submit"]').innerText = 'Add Product';
         document.getElementById('addProductForm').reset();
         document.getElementById('product_id').value = '';
+        document.getElementById('product_image_existing').value = '';
+        const imgGroup = document.getElementById('currentImageGroup');
+        const imgPrev = document.getElementById('currentImagePreview');
+        if(imgPrev){ imgPrev.src = ''; }
+        if(imgGroup){ imgGroup.style.display = 'none'; }
+    });
+
+    // Allow removing current image when editing
+    document.getElementById('removeCurrentImageBtn').addEventListener('click', function(){
+      // Clear the preview and hidden existing value to signal removal on save
+      const imgPrev = document.getElementById('currentImagePreview');
+      const existingInput = document.getElementById('product_image_existing');
+      if(imgPrev){ imgPrev.src = ''; }
+      if(existingInput){ existingInput.value = ''; }
+      const fileInput = document.getElementById('product_image');
+      if(fileInput){ fileInput.value = ''; }
+      document.getElementById('currentImageGroup').style.display = 'none';
     });
 
     document.querySelectorAll('.delete-product-btn').forEach(function(btn) {
