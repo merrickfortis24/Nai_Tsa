@@ -76,43 +76,21 @@ class database {
                 $pid = $r['Product_ID'];
                 $sizes = $sizesByProduct[$pid] ?? [];
                 if ($sizes) {
-                    // Find anchor
+                    // Find anchor: prefer explicit Is_Anchor with ABS, else any ABS, else fallback
                     $anchor = null;
-                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor'])) { $anchor = $sz; break; } }
+                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor']) && $sz['Price_Mode']==='ABS') { $anchor = $sz; break; } }
                     if (!$anchor) {
                         foreach ($sizes as $sz) { if ($sz['Price_Mode'] === 'ABS') { $anchor = $sz; break; } }
                     }
-                    if (!$anchor) { $anchor = $sizes[0]; }
-                    // Choose primary size for display
-                    $chosen = null;
-                    if (!empty($r['Primary_Size_ID'])) {
-                        foreach ($sizes as $sz) { if ($sz['Size_ID'] == $r['Primary_Size_ID']) { $chosen = $sz; break; } }
+                    // Base display price = ABS anchor if available; otherwise fall back to product base price
+                    if ($anchor && $anchor['Price_Mode']==='ABS') {
+                        $r['Price_Amount'] = (float)$anchor['Price_Value'];
+                    } else {
+                        $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
                     }
-                    if (!$chosen) {
-                        $sorted = $sizes;
-                        usort($sorted, function($a,$b){
-                            if ($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
-                            if ($a['Is_Anchor'] != $b['Is_Anchor']) return $b['Is_Anchor'] <=> $a['Is_Anchor'];
-                            if ($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS') ? -1 : 1;
-                            return $b['Price_Value'] <=> $a['Price_Value'];
-                        });
-                        $chosen = $sorted[0];
-                    }
-                    // Compute display price under anchor model
-                    $anchorPrice = (float)$anchor['Price_Value'];
-                    if (!empty($chosen['Is_Anchor']) && $chosen['Price_Mode']==='ABS') {
-                        $display = $anchorPrice;
-                    } elseif ($chosen['Price_Mode'] === 'DELTA') {
-                        $display = $anchorPrice + (float)$chosen['Price_Value'];
-                    } else { // non-anchor ABS
-                        $display = (float)$chosen['Price_Value'];
-                    }
-                    $r['Price_Amount'] = $display; // maintain expected key for frontend
                 } else {
-                    // No sizes -> use base price amount
-                    if (!array_key_exists('Price_Amount', $r) || $r['Price_Amount'] === null) {
-                        $r['Price_Amount'] = $r['Base_Price_Amount'] ?? 0;
-                    }
+                    // No sizes -> use product base price
+                    $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
                 }
             }
             return $rows;
