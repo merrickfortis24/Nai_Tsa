@@ -434,8 +434,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <div class="alert alert-info small mb-3">
               <strong>How pricing works now:</strong> Base product price + (Delta) or overridden by (Absolute) size price. If a product has no size variants, only its base price is used. To add or change pricing, add a size variant here. The old standalone "Add Price" feature was removed for clarity.
             </div>
-            <form id="addSizeForm" class="row g-3 align-items-end mb-3">
-              <div class="col-md-4">
+            <form id="addSizeForm" class="row g-3 align-items-end mb-3 uniform-fields">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Product</label>
                 <select class="form-select form-select-sm" name="product_id" required id="sizeProductSelect">
                   <option value="">Select...</option>
@@ -446,26 +446,29 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                   <?php endforeach; ?>
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Size Code</label>
                 <input type="text" maxlength="32" placeholder="e.g. 16oz or small" class="form-control form-control-sm" name="size_code" required>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Display Name</label>
                 <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="display_name">
               </div>
-              <div class="col-md-2">
-                <label class="form-label small">Amount (₱)</label>
-                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="addSizePriceAmount" required>
+              <div class="col-md-2 col-sm-6">
+                <label class="form-label small">Amount</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" class="form-control form-control-sm text-end bg-white text-dark" name="price_amount" id="addSizePriceAmount" required>
+                </div>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Mode</label>
                 <select class="form-select form-select-sm" name="is_absolute" required>
                   <option value="1">Absolute</option>
                   <option value="0" selected>Delta (+)</option>
                 </select>
               </div>
-              <div class="col-md-1 d-grid">
+              <div class="col-12 col-md-1 d-grid">
                 <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
               </div>
             </form>
