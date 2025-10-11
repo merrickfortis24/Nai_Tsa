@@ -49,6 +49,12 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Custom Admin CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+      /* Compact multi-line truncation for long descriptions in the table */
+      .table .desc-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;word-break:break-word;}
+      .table .desc-expanded{display:block;-webkit-line-clamp:unset;max-height:none;}
+      .desc-toggle{cursor:pointer;}
+    </style>
 </head>
 <body class="dashboard-page">
   <div class="container-fluid">
@@ -134,7 +140,14 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                       <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($product['Product_Name']) ?></td>
-                    <td><?= htmlspecialchars($product['Product_desc']) ?></td>
+                    <td>
+                      <div class="desc-clamp" id="desc-<?= (int)$product['Product_ID'] ?>">
+                        <?= htmlspecialchars($product['Product_desc']) ?>
+                      </div>
+                      <?php if (!empty($product['Product_desc']) && strlen($product['Product_desc']) > 120): ?>
+                        <a href="#" class="desc-toggle small text-primary" data-target="desc-<?= (int)$product['Product_ID'] ?>" aria-expanded="false">Show more</a>
+                      <?php endif; ?>
+                    </td>
                     <!-- Allergens data removed -->
                     <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
                     <td><?= date('F d, Y h:i A', strtotime($product['Updated_at'])) ?></td>
@@ -940,6 +953,28 @@ document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({icon:'error',title:'Failed',text:data.message||'Unable to set primary size'});
           }
         }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
+    });
+
+    // Toggle long description show more/less
+    document.querySelectorAll('.desc-toggle').forEach(link => {
+      link.addEventListener('click', function(e){
+        e.preventDefault();
+        const targetId = this.getAttribute('data-target');
+        const target = document.getElementById(targetId);
+        if(!target) return;
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        if(expanded){
+          target.classList.remove('desc-expanded');
+          target.classList.add('desc-clamp');
+          this.setAttribute('aria-expanded','false');
+          this.textContent = 'Show more';
+        } else {
+          target.classList.remove('desc-clamp');
+          target.classList.add('desc-expanded');
+          this.setAttribute('aria-expanded','true');
+          this.textContent = 'Show less';
+        }
+      });
     });
 });
     </script>
