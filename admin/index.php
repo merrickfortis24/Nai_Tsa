@@ -170,7 +170,6 @@ try {
                 <div class="card mb-2">
                     <div class="card-body py-2">
                         <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
-                            <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
                             <div class="col-auto">
                                 <label for="fromDate" class="form-label mb-0 small">From</label>
                                 <input type="date" class="form-control form-control-sm" id="fromDate" name="from">
@@ -188,9 +187,15 @@ try {
                                     <option value="this_year">This Year</option>
                                 </select>
                             </div>
-                            <div class="col-auto">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
+                            <div class="col-auto d-flex gap-2 align-items-end">
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="Export PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </button>
+                                <button type="submit" class="btn btn-outline-success btn-sm" formaction="export_sales_csv.php?format=csv" title="Export CSV">
+                                    <i class="bi bi-filetype-csv"></i> CSV
+                                </button>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="export_sales_csv.php?format=xls" title="Export Excel (.xls)">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                                 </button>
                             </div>
                         </form>
