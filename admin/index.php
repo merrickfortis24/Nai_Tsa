@@ -170,6 +170,7 @@ try {
                 <div class="card mb-2">
                     <div class="card-body py-2">
                         <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
+                            <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
                             <div class="col-auto">
                                 <label for="fromDate" class="form-label mb-0 small">From</label>
                                 <input type="date" class="form-control form-control-sm" id="fromDate" name="from">
