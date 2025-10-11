@@ -394,6 +394,62 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
+    <!-- Edit Flavor Variant Modal -->
+    <div class="modal fade" id="editVariantModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="editVariantForm">
+          <div class="modal-header py-2">
+            <h6 class="modal-title">Edit Flavor Variant</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="variant_id" id="editVariantId">
+            <div class="mb-2"><small class="text-muted">Product</small><div id="editVariantProductName" class="fw-semibold"></div></div>
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label small mb-1">Code</label>
+                <input type="text" class="form-control form-control-sm" id="editVariantCode" disabled>
+              </div>
+              <div class="col-8">
+                <label class="form-label small mb-1">Label</label>
+                <input type="text" class="form-control form-control-sm" name="label" id="editVariantLabel" required maxlength="64">
+              </div>
+            </div>
+            <div class="row g-2 mt-1">
+              <div class="col-6">
+                <label class="form-label small mb-1">Mode</label>
+                <select class="form-select form-select-sm" name="price_mode" id="editVariantMode" required>
+                  <option value="ABSOLUTE">Absolute</option>
+                  <option value="DELTA">Delta (+)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small mb-1">Amount</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" name="price_value" id="editVariantAmount" required>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 mt-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="editVariantPrimary" name="is_primary">
+                <label class="form-check-label small" for="editVariantPrimary">Set as Primary</label>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <label class="form-label small mb-0" for="editVariantSort">Sort</label>
+                <input id="editVariantSort" type="number" class="form-control form-control-sm" style="width:90px;" name="sort_order" min="0" value="0">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Global Add Price modal removed -->
 
     <!-- Set Primary Size Modal -->
@@ -778,7 +834,20 @@ document.addEventListener('DOMContentLoaded', function() {
                   <td>₱${Number(row.price_value||0).toFixed(2)}</td>
                   <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
                   <td>${row.sort_order||0}</td>
-                  <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-variant-btn"
+                      data-variant-id="${row.Variant_ID}"
+                      data-product-id="${row.Product_ID||''}"
+                      data-product-name="${escapeHtml(group.name||'')}"
+                      data-code="${escapeHtml(row.code||'')}"
+                      data-label="${escapeHtml(row.label||'')}"
+                      data-mode="${row.price_mode||''}"
+                      data-amount="${row.price_value||0}"
+                      data-primary="${row.is_primary==1?1:0}"
+                      data-sort="${row.sort_order||0}"
+                      title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}" title="Delete"><i class="bi bi-x"></i></button>
+                  </td>
                 `;
               } else {
                 tr.innerHTML = `
@@ -789,7 +858,20 @@ document.addEventListener('DOMContentLoaded', function() {
                   <td>₱${Number(row.price_value||0).toFixed(2)}</td>
                   <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
                   <td>${row.sort_order||0}</td>
-                  <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-variant-btn"
+                      data-variant-id="${row.Variant_ID}"
+                      data-product-id="${row.Product_ID||''}"
+                      data-product-name="${escapeHtml(group.name||'')}"
+                      data-code="${escapeHtml(row.code||'')}"
+                      data-label="${escapeHtml(row.label||'')}"
+                      data-mode="${row.price_mode||''}"
+                      data-amount="${row.price_value||0}"
+                      data-primary="${row.is_primary==1?1:0}"
+                      data-sort="${row.sort_order||0}"
+                      title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}" title="Delete"><i class="bi bi-x"></i></button>
+                  </td>
                 `;
               }
               variantsTableBody.appendChild(tr);
@@ -817,20 +899,53 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelector('#variantsTable').addEventListener('click', function(e){
-      const btn = e.target.closest('button[data-variant-id]');
-      if(!btn) return;
-      const id = btn.getAttribute('data-variant-id');
+      // Edit handler
+      const editBtn = e.target.closest('button.edit-variant-btn');
+      if(editBtn){
+        const id = editBtn.getAttribute('data-variant-id');
+        document.getElementById('editVariantId').value = id;
+        document.getElementById('editVariantProductName').textContent = editBtn.getAttribute('data-product-name') || '';
+        document.getElementById('editVariantCode').value = editBtn.getAttribute('data-code') || '';
+        document.getElementById('editVariantLabel').value = editBtn.getAttribute('data-label') || '';
+        const mode = (editBtn.getAttribute('data-mode')||'').toUpperCase();
+        document.getElementById('editVariantMode').value = (mode==='ABSOLUTE' || mode==='DELTA') ? mode : 'DELTA';
+        const amt = parseFloat(editBtn.getAttribute('data-amount')||'0');
+        document.getElementById('editVariantAmount').value = amt.toFixed(2);
+        document.getElementById('editVariantPrimary').checked = editBtn.getAttribute('data-primary')==='1';
+        document.getElementById('editVariantSort').value = editBtn.getAttribute('data-sort')||'0';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('editVariantModal')).show();
+        return;
+      }
+      // Delete handler
+      const delBtn = e.target.closest('button[data-variant-id]:not(.edit-variant-btn)');
+      if(!delBtn) return;
+      const id = delBtn.getAttribute('data-variant-id');
       Swal.fire({title:'Delete flavor?',icon:'warning',showCancelButton:true}).then(res=>{
         if(!res.isConfirmed) return;
         const fd = new FormData(); fd.append('variant_id', id);
         fetch('ajax/delete_variant.php',{method:'POST', body:fd}).then(r=>r.json()).then(data=>{
           if(data.success){
-            const pid = variantProductSelect.value; if(pid){ loadVariants(pid); }
+            const pid = variantProductSelect.value; if(pid){ loadVariants(pid); } else { loadVariants(null); }
           } else {
             Swal.fire({icon:'error',title:'Delete failed',text:data.error||'Error'});
           }
         }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to delete'}));
       });
+    });
+
+    // Submit Edit Flavor form
+    document.getElementById('editVariantForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const form = this;
+      const fd = new FormData(form);
+      fetch('ajax/update_variant.php',{method:'POST', body:fd}).then(r=>r.json()).then(data=>{
+        if(data.success){
+          bootstrap.Modal.getInstance(document.getElementById('editVariantModal')).hide();
+          const pid = variantProductSelect.value; if(pid){ loadVariants(pid); } else { loadVariants(null); }
+        } else {
+          Swal.fire({icon:'error',title:'Update failed',text:data.error||'Error'});
+        }
+      }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to update'}));
     });
 
     document.querySelector('#sizesTable').addEventListener('click', function(e){
