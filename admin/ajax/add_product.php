@@ -10,8 +10,8 @@ try {
         throw new Exception('Invalid request method');
     }
 
-    // Validate inputs
-    $required = ['product_name', 'category_id', 'price_id'];
+    // Validate inputs (price dropdown removed -> require manual base_price and effective_from)
+    $required = ['product_name', 'category_id', 'base_price', 'effective_from'];
     foreach ($required as $field) {
         if (empty($_POST[$field])) {
             throw new Exception("Missing required field: $field");
@@ -23,7 +23,9 @@ try {
     $product_name = $_POST['product_name'];
     $product_desc = $_POST['product_desc'];
     $category_id = $_POST['category_id'];
-    $price_id = $_POST['price_id'];
+    $base_price = (float)$_POST['base_price'];
+    $effective_from = $_POST['effective_from'];
+    $effective_to = isset($_POST['effective_to']) && $_POST['effective_to']!=='' ? $_POST['effective_to'] : null;
     $admin_id = $_SESSION['admin_id'];
     $product_id = !empty($_POST['product_id']) ? $_POST['product_id'] : null;
 
@@ -46,12 +48,25 @@ try {
         $image_name = $_POST['product_image_existing'];
     }
 
+    // Create/ensure a legacy Price_ID row so existing schema keeps working, then log per-product price
+    // Note: This preserves product.Price_ID usage in queries while transitioning to product_prices log.
+    $legacyPriceId = $db->insertLegacyPriceAndReturnId($base_price, $effective_from, $effective_to);
+
     if ($product_id) {
-        // Update
-        $result = $db->saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id, $product_allergens);
+        // Update product linking to new base price id
+        $result = $db->saveProduct($product_name, $product_desc, $category_id, $legacyPriceId, $admin_id, $image_name, $product_id, $product_allergens);
+        if (!empty($result['product_id'])) {
+            $db->logProductPrice((int)$result['product_id'], $base_price, $effective_from, $effective_to);
+        } else {
+            // Fallback when saveProduct update doesn't return product_id
+            $db->logProductPrice((int)$product_id, $base_price, $effective_from, $effective_to);
+        }
     } else {
-        // Add
-        $result = $db->saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, null, $product_allergens);
+        // Add new product
+        $result = $db->saveProduct($product_name, $product_desc, $category_id, $legacyPriceId, $admin_id, $image_name, null, $product_allergens);
+        if (!empty($result['product_id'])) {
+            $db->logProductPrice((int)$result['product_id'], $base_price, $effective_from, $effective_to);
+        }
     }
 
     echo json_encode($result);

@@ -24,11 +24,7 @@ try {
     $categories_list = [];
 }
 
-try {
-    $prices_list = $db->getAllPrices();
-} catch (PDOException $e) {
-    $prices_list = [];
-}
+// Prices dropdown removed: admins will type price amounts manually now
 
 // Pagination logic
 $currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -99,9 +95,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
-                  <i class="bi bi-cash-coin me-1"></i> Add Price
-                </button>
+                <!-- Global Add Price modal/button removed per new pricing flow -->
               </div>
           </div>
           <div class="card-body">
@@ -250,23 +244,19 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               </select>
             </div>
             <div class="mb-3">
-              <label for="price_id" class="form-label">Price</label>
-              <select class="form-select" id="price_id" name="price_id" required>
-                <option value="">Select Price</option>
-                <?php foreach ($prices_list as $price): ?>
-                  <option value="<?= htmlspecialchars($price['Price_ID']) ?>">
-                    <?= htmlspecialchars($price['Price_Amount']) ?>
-                    (
-                      <?= date('F d, Y', strtotime($price['Effective_From'])) ?>
-                      <?php if ($price['Effective_To']): ?>
-                        to <?= date('F d, Y', strtotime($price['Effective_To'])) ?>
-                      <?php else: ?>
-                        and onwards
-                      <?php endif; ?>
-                    )
-                  </option>
-                <?php endforeach; ?>
-              </select>
+              <label for="base_price" class="form-label">Base Price (₱)</label>
+              <input type="number" step="0.01" min="0.01" class="form-control" id="base_price" name="base_price" placeholder="e.g. 70.00" required>
+              <div class="form-text">Type the product's base price. This will be logged in price history.</div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label for="effective_from" class="form-label">Effective From</label>
+                <input type="date" class="form-control" id="effective_from" name="effective_from" value="<?= date('Y-m-d'); ?>" required>
+              </div>
+              <div class="col-md-6">
+                <label for="effective_to" class="form-label">Effective To (optional)</label>
+                <input type="date" class="form-control" id="effective_to" name="effective_to">
+              </div>
             </div>
             <!-- Allergens input removed -->
 
@@ -280,65 +270,7 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
-    <!-- Add Price Modal (restored) -->
-    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <form class="modal-content" id="addPriceForm">
-          <div class="modal-header py-2">
-            <h6 class="modal-title" id="addPriceModalLabel">Add Price</h6>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Amount (₱)</label>
-                  <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="price_amount" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Effective From</label>
-                  <input type="date" class="form-control form-control-sm" name="effective_from" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Effective To (optional)</label>
-                  <input type="date" class="form-control form-control-sm" name="effective_to">
-                  <div class="form-text small">Leave blank for open-ended pricing.</div>
-                </div>
-                <div class="alert alert-info p-2 small mb-0">New prices appear in dropdowns instantly.</div>
-              </div>
-              <div class="col-md-8">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <strong class="small mb-0">Existing Prices</strong>
-                  <div class="btn-group btn-group-sm" role="group" aria-label="Pagination" id="pricePager" data-page="1">
-                    <button type="button" class="btn btn-outline-secondary" id="pricePrev" disabled>&laquo;</button>
-                    <button type="button" class="btn btn-outline-secondary" id="priceNext" disabled>&raquo;</button>
-                  </div>
-                </div>
-                <div class="table-responsive border rounded" style="max-height:300px; overflow:auto;">
-                  <table class="table table-sm mb-0 align-middle" id="priceListTable">
-                    <thead class="table-light sticky-top">
-                      <tr>
-                        <th style="width:70px;">ID</th>
-                        <th>Amount</th>
-                        <th>Effective Range</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div class="small text-muted mt-1" id="priceMeta"></div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer py-2">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary btn-sm">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Global Add Price modal removed -->
 
     <!-- Set Primary Size Modal -->
     <div class="modal fade" id="primarySizeModal" tabindex="-1" aria-hidden="true">
@@ -399,13 +331,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="display_name">
               </div>
               <div class="col-md-2">
-                <label class="form-label small">Price</label>
-                <select class="form-select form-select-sm" name="price_id" id="addSizePriceId" required>
-                  <option value="">Select Price</option>
-                  <?php foreach ($prices_list as $pr): ?>
-                    <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
-                  <?php endforeach; ?>
-                </select>
+                <label class="form-label small">Amount (₱)</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="addSizePriceAmount" required>
               </div>
               <div class="col-md-2">
                 <label class="form-label small">Mode</label>
@@ -464,13 +391,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                         </select>
                       </div>
                       <div class="col-6">
-                        <label class="form-label small mb-1">Price</label>
-                        <select class="form-select form-select-sm" name="price_id" id="editPriceId" required>
-                          <option value="">Select Price</option>
-                          <?php foreach ($prices_list as $pr): ?>
-                            <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
-                          <?php endforeach; ?>
-                        </select>
+                        <label class="form-label small mb-1">Amount (₱)</label>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="editPriceAmount" required>
                       </div>
                     </div>
                     <div class="mt-2">
@@ -549,107 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-  // Add Price form handler (restored)
-  document.getElementById('addPriceForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const fd = new FormData(this);
-    fetch('ajax/add_price.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
-      if(data.success){
-        Swal.fire({icon:'success',title:'Added',text:data.message, timer:1500, showConfirmButton:false});
-        // Refresh all price dropdowns if server returned updated list
-        if(Array.isArray(data.prices)){
-          refreshPriceDropdowns(data.prices);
-        }
-        bootstrap.Modal.getInstance(document.getElementById('addPriceModal')).hide();
-        this.reset();
-      } else {
-        Swal.fire({icon:'error',title:'Failed',text:data.message||'Could not add price'});
-      }
-    }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
-  });
-
-  function refreshPriceDropdowns(prices){
-    const productPriceSel = document.getElementById('price_id');
-    const addSizePriceSel = document.getElementById('addSizePriceId');
-    const editSizePriceSel = document.getElementById('editPriceId');
-    [productPriceSel, addSizePriceSel, editSizePriceSel].forEach(sel=>{
-      if(!sel) return;
-      const currentVal = sel.value;
-      // Preserve first placeholder option
-      const placeholder = sel.querySelector('option[value=""]');
-      sel.innerHTML = '';
-      if(placeholder){ sel.appendChild(placeholder); } else {
-        const opt = document.createElement('option'); opt.value=''; opt.textContent='Select Price'; sel.appendChild(opt);
-      }
-      prices.forEach(p=>{
-        const opt = document.createElement('option');
-        opt.value = p.Price_ID;
-        const fromTxt = formatDate(p.Effective_From);
-        const toTxt = p.Effective_To ? ' to '+formatDate(p.Effective_To) : ' and onwards';
-        opt.textContent = `${p.Price_Amount} (${fromTxt}${toTxt})`;
-        sel.appendChild(opt);
-      });
-      // Attempt to restore selection
-      if(currentVal){ sel.value = currentVal; }
-    });
-  }
-
-  function formatDate(str){
-  // Load price list when Add Price modal opens
-  document.getElementById('addPriceModal').addEventListener('shown.bs.modal', function(){
-    loadPricePage(1);
-  });
-
-  document.getElementById('pricePrev').addEventListener('click', function(){
-    const pager = document.getElementById('pricePager');
-    const cur = parseInt(pager.getAttribute('data-page'))||1;
-    if(cur>1) loadPricePage(cur-1);
-  });
-  document.getElementById('priceNext').addEventListener('click', function(){
-    const pager = document.getElementById('pricePager');
-    const cur = parseInt(pager.getAttribute('data-page'))||1;
-    loadPricePage(cur+1);
-  });
-
-  function loadPricePage(page){
-    const tbody = document.querySelector('#priceListTable tbody');
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>';
-    fetch(`ajax/list_prices.php?page=${page}`)
-      .then(r=>r.json())
-      .then(data=>{
-        if(!data.success){ tbody.innerHTML = `<tr><td colspan=3 class='text-danger small text-center'>${data.message||'Error'}</td></tr>`; return; }
-        const rows = data.rows;
-        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">No prices found.</td></tr>'; }
-        else {
-          tbody.innerHTML = '';
-          rows.forEach(rw=>{
-            const tr = document.createElement('tr');
-            const effFrom = formatDate(rw.Effective_From);
-            const effTo = rw.Effective_To ? formatDate(rw.Effective_To) : 'Open';
-            tr.innerHTML = `<td>${rw.Price_ID}</td><td>₱${Number(rw.Price_Amount).toFixed(2)}</td><td>${effFrom} - ${effTo}</td>`;
-            tbody.appendChild(tr);
-          });
-        }
-        // Update pager state
-        const pager = document.getElementById('pricePager');
-        pager.setAttribute('data-page', data.current_page);
-        document.getElementById('pricePrev').disabled = (data.current_page <= 1);
-        document.getElementById('priceNext').disabled = (data.current_page >= data.total_pages);
-        document.getElementById('priceMeta').textContent = `Page ${data.current_page} of ${data.total_pages} • Total Prices: ${data.total}`;
-      })
-      .catch(()=>{
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger small">Load failed.</td></tr>';
-      });
-  }
-    if(!str) return '';
-    // Expecting YYYY-MM-DD or datetime
-    const d = new Date(str);
-    if(isNaN(d.getTime())) return str;
-    const mo = d.toLocaleString('en-US',{month:'long'});
-    const day = String(d.getDate()).padStart(2,'0');
-    const yr = d.getFullYear();
-    return `${mo} ${day}, ${yr}`;
-  }
+  // Pricing dropdowns and global Add Price modal removed
 
     // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
@@ -718,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
       fd.append('product_id', form.product_id.value);
       fd.append('size_code', form.size_code.value);
       fd.append('display_name', form.display_name.value);
-      fd.append('price_id', form.price_id ? form.price_id.value : '');
+  if(form.price_amount) fd.append('price_amount', form.price_amount.value);
       fd.append('is_absolute', form.is_absolute.value);
       fetch('ajax/add_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
@@ -739,13 +561,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
         document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
         // Prefer direct price id
-        if(editBtn.dataset.priceId){
-          document.getElementById('editPriceId').value = editBtn.dataset.priceId;
-        } else if(editBtn.dataset.amount){
-          const amount = Number(editBtn.dataset.amount).toFixed(2);
-          const sel = document.getElementById('editPriceId');
-          for(const opt of sel.options){ if(opt.value && opt.text.includes('₱'+amount)){ sel.value = opt.value; break; } }
-        }
+        // Fill amount directly
+        if(editBtn.dataset.amount){ document.getElementById('editPriceAmount').value = Number(editBtn.dataset.amount).toFixed(2); }
         document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editSizeModal')).show();
       }
@@ -759,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
       fd.append('size_code', form.size_code.value);
       fd.append('display_name', form.display_name.value);
       fd.append('price_mode', form.price_mode.value);
-      if(form.price_id) fd.append('price_id', form.price_id.value);
+  if(form.price_amount) fd.append('price_amount', form.price_amount.value);
       fd.append('sort_order', form.sort_order.value||'');
       fetch('ajax/update_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
@@ -779,7 +596,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('product_name').value = this.dataset.productName;
             document.getElementById('product_desc').value = this.dataset.productDesc;
             document.getElementById('category_id').value = this.dataset.categoryId;
-            document.getElementById('price_id').value = this.dataset.priceId;
+            document.getElementById('base_price').value = '';
+            document.getElementById('effective_from').value = '<?= date('Y-m-d'); ?>';
+            document.getElementById('effective_to').value = '';
             document.getElementById('product_id').value = this.dataset.productId;
             document.getElementById('addProductModalLabel').innerText = 'Edit Product';
             document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
