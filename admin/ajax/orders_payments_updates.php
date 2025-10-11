@@ -182,7 +182,7 @@ $db = new database();
   COALESCE(addr.Street, '') AS Street,
   COALESCE(addr.Barangay, '') AS Barangay,
   COALESCE(addr.City, '') AS City,
-  COALESCE(addr.Contact_Number, c.Contact_Number, '') AS Contact_Number,
+  COALESCE(ca.Contact_Number, c.Contact_Number, '') AS Contact_Number,
   COALESCE(addr.customer_lat, '') AS customer_lat,
   COALESCE(addr.customer_lng, '') AS customer_lng,
   COALESCE(od.Delivery_Fee, 0.00) AS Delivery_Fee,
@@ -194,6 +194,7 @@ $db = new database();
       p.Payment_Method AS Payment_Method
     FROM orders o
     LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
+    LEFT JOIN customer_address ca ON ca.Customer_ID = o.Customer_ID
     LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
     LEFT JOIN payment p ON p.Order_ID = o.Order_ID
   LEFT JOIN order_delivery od ON od.Order_ID = o.Order_ID

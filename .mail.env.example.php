@@ -16,8 +16,20 @@ putenv('MAIL_FROM_NAME=Nai Tsa');
 // Optional: force all outgoing test emails to one address (safe for dev)
 // putenv('MAIL_FORCE_TO=you@example.com');
 
+// Optional: add CC/BCC recipients (comma or semicolon separated)
+// putenv('MAIL_CC=yourgmail@gmail.com, teammate@example.com');
+// putenv('MAIL_BCC=archive@example.com');
+
 // Optional: enable SMTP debug (logs via PHP error_log)
 // putenv('MAIL_DEBUG=1');
+// Optional: contact form rate limit controls (for testing you can disable)
+// Disable rate limiting entirely (any non-empty value turns it on)
+putenv('CONTACT_LIMIT_DISABLE=1');
+// Customize limits (only used if not disabled). Defaults: 5 per 3600s
+// putenv('CONTACT_LIMIT_PER_HOUR=10');
+// putenv('CONTACT_LIMIT_WINDOW=3600');
+// Whitelist IPs that bypass limits (comma/semicolon/space separated)
+// putenv('CONTACT_LIMIT_WHITELIST=127.0.0.1; ::1');
 
 // --- Live (Mailtrap Email Delivery) example ---
 // putenv('MAIL_MODE=live');

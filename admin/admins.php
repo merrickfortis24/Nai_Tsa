@@ -61,7 +61,7 @@ try {
                             <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
                         <?php endif; ?>
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>Admin</th>
@@ -69,6 +69,7 @@ try {
                                         <th>Role</th>
                                         <th>Status</th>
                                         <th>Created At</th>
+                                        <th class="text-end">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -87,6 +88,22 @@ try {
                                         <td><span class="role-badge"><?= htmlspecialchars($admin['Admin_Role']) ?></span></td>
                                         <td><span class="status-badge <?= $admin['Status'] === 'Active' ? 'status-active' : 'status-inactive' ?>"><?= htmlspecialchars($admin['Status']) ?></span></td>
                                         <td><?= date('M d, Y', strtotime($admin['Created_At'])) ?></td>
+                                        <td class="text-end">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary me-1 btn-edit-admin"
+                                                    data-admin='<?= json_encode([
+                                                        'Admin_ID' => $admin['Admin_ID'],
+                                                        'Admin_Name' => $admin['Admin_Name'],
+                                                        'Admin_Email' => $admin['Admin_Email'],
+                                                        'Admin_Role' => $admin['Admin_Role'],
+                                                        'Status' => $admin['Status']
+                                                    ], JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>'>
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-admin" data-id="<?= (int)$admin['Admin_ID'] ?>">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -113,7 +130,59 @@ try {
     </div>
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+        <!-- Edit Admin Modal -->
+        <div class="modal fade" id="editAdminModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Admin</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editAdminForm">
+                            <input type="hidden" name="edit_admin_id" id="edit_admin_id">
+                            <div class="mb-2">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" name="edit_admin_name" id="edit_admin_name" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="edit_admin_email" id="edit_admin_email" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Role</label>
+                                <select class="form-select" name="edit_admin_role" id="edit_admin_role" required>
+                                    <option value="Super Admin">Super Admin</option>
+                                    <option value="Manager">Manager</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="edit_status" id="edit_status" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                            <hr>
+                            <div class="mb-2">
+                                <label class="form-label">New Password <span class="text-muted small">(optional)</span></label>
+                                <input type="password" class="form-control" name="edit_admin_password" id="edit_admin_password" autocomplete="new-password">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" name="edit_confirm_password" id="edit_confirm_password" autocomplete="new-password">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveAdminBtn">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
         // Close alerts after 5 seconds
         setTimeout(() => {
             const alerts = document.querySelectorAll('.alert');
@@ -122,6 +191,65 @@ try {
                 bsAlert.close();
             });
         }, 5000);
+
+                function toast(message, type='info', ms=2500){
+                    const timeout = typeof ms === 'number'? ms: 2500;
+                    const wrap = document.createElement('div');
+                    wrap.className = 'position-fixed top-0 end-0 p-3';
+                    wrap.style.zIndex = 1080;
+                    wrap.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0" role="alert">${message}</div>`;
+                    document.body.appendChild(wrap);
+                    setTimeout(()=> wrap.remove(), timeout);
+                }
+
+                // Edit: open modal with row data
+                document.querySelectorAll('.btn-edit-admin').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        try {
+                            const data = JSON.parse(btn.getAttribute('data-admin'));
+                            document.getElementById('edit_admin_id').value = data.Admin_ID || '';
+                            document.getElementById('edit_admin_name').value = data.Admin_Name || '';
+                            document.getElementById('edit_admin_email').value = data.Admin_Email || '';
+                            document.getElementById('edit_admin_role').value = data.Admin_Role || 'Manager';
+                            document.getElementById('edit_status').value = data.Status || 'Active';
+                            document.getElementById('edit_admin_password').value = '';
+                            document.getElementById('edit_confirm_password').value = '';
+                            new bootstrap.Modal(document.getElementById('editAdminModal')).show();
+                        } catch(e){ toast('Failed to open editor','danger'); }
+                    });
+                });
+
+                // Save changes via AJAX
+                document.getElementById('saveAdminBtn').addEventListener('click', async () => {
+                    const form = document.getElementById('editAdminForm');
+                    const fd = new FormData(form);
+                    try {
+                        const res = await fetch('update_admin.php', { method: 'POST', body: fd, credentials: 'same-origin' });
+                        const j = await res.json();
+                        if (!j.success) { toast(j.message || 'Update failed', 'danger', 4000); return; }
+                        toast('Admin updated successfully.', 'success', 3000);
+                        // simple reload to reflect changes
+                        setTimeout(()=> location.reload(), 800);
+                    } catch(e){ toast('Network error', 'danger'); }
+                });
+
+                // Delete admin with confirmation
+                document.querySelectorAll('.btn-delete-admin').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const id = btn.getAttribute('data-id');
+                        if (!id) return;
+                        if (!confirm('Are you sure you want to delete this admin? This action cannot be undone.')) return;
+                        const fd = new FormData(); fd.append('admin_id', id);
+                        try {
+                            const res = await fetch('ajax/delete_admin.php', { method:'POST', body: fd, credentials:'same-origin' });
+                            const j = await res.json();
+                            if (!j.success) { toast(j.message || 'Delete failed', 'danger', 4000); return; }
+                            toast('Admin deleted successfully.', 'success', 2500);
+                            // Remove row from UI
+                            const tr = btn.closest('tr'); if (tr) tr.remove();
+                        } catch(e){ toast('Network error', 'danger'); }
+                    });
+                });
     </script>
 </body>
 </html>

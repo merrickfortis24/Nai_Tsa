@@ -292,6 +292,29 @@ class database {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+        /**
+         * View sales limited by date range (inclusive). If both $from and $to are empty, returns all sales.
+         * $from and $to should be in 'Y-m-d' format.
+         */
+        function viewSalesRange(string $from = '', string $to = ''): array {
+            $con = $this->opencon();
+            $where = [];
+            $params = [];
+            if ($from !== '') { $where[] = 's.Sale_Date >= :fromDate'; $params[':fromDate'] = $from . ' 00:00:00'; }
+            if ($to !== '') { $where[] = 's.Sale_Date <= :toDate'; $params[':toDate'] = $to . ' 23:59:59'; }
+            $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+            $sql = "SELECT s.Sale_ID, s.Product_ID, p.Product_Name, s.Quantity, s.Total_Amount, s.Sale_Date, a.Admin_Name
+                    FROM sales s
+                    JOIN product p ON s.Product_ID = p.Product_ID
+                    JOIN admin a ON s.Admin_ID = a.Admin_ID
+                    $whereSql
+                    ORDER BY s.Sale_Date DESC";
+            $stmt = $con->prepare($sql);
+            foreach ($params as $k=>$v) { $stmt->bindValue($k, $v, PDO::PARAM_STR); }
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
     function fetchOrders() {
         $con = $this->opencon();
         $stmt = $con->prepare("

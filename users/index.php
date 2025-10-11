@@ -1,6 +1,7 @@
 <?php
 session_start();
 // Attempt to restore session from remember-me cookie if present
+//just EDIT
 require_once __DIR__ . '/../includes/remember.php';
 if (!isset($_SESSION['customer_id'])) {
   header('Location: ../login.php'); // was login.php edit ito
@@ -9,16 +10,22 @@ if (!isset($_SESSION['customer_id'])) {
 $customer_name = isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : 'Guest';
 $first_name = explode(' ', trim($customer_name))[0];
 require_once "classes/database.php";
+require_once "classes/shop_repositories.php"; // Repositories for cleaner OOP access
 require_once "classes/order.php"; // Include the Order class
 
 $db = new database();
+$productRepo  = new ProductRepository($db);
+$categoryRepo = new CategoryRepository($db);
+$orderRepo    = new OrderRepository($db);
+$addressRepo  = new AddressRepository($db);
+$reviewRepo   = new ReviewRepository($db);
 $orderObj = new Order(); // Create an instance of the Order class
-$products = $db->fetchAllProducts();
+$products = $productRepo->all();
 $order_id = 123; // The order you want to view
 $items = $orderObj->getOrderItems($order_id); // Get the order items
 
 // Fetch categories for menu dropdown
-$categories = method_exists($db, 'fetchAllCategories') ? $db->fetchAllCategories() : [];
+$categories = $categoryRepo->all();
 
 // Fetch user's orders grouped by status
 $user_id = $_SESSION['customer_id'] ?? null;
@@ -28,35 +35,23 @@ $orders_by_status = [
     'Delivered' => []
 ];
 if ($user_id) {
-    $orders_by_status = $db->getOrdersByStatus($user_id);
+  $orders_by_status = $orderRepo->getOrdersByStatus($user_id);
 }
 
 // Fetch average ratings for all products
-$avg_ratings = $db->getAverageRatings();
+$avg_ratings = $reviewRepo->getAverageRatings();
 
 // Fetch recommended products for the user
-$recommended = $db->getRecommendedProducts($_SESSION['customer_id']);
+$recommended = $productRepo->recommendedForCustomer($_SESSION['customer_id']);
 
 // Fetch bestsellers (e.g., top 4 by order count)
-$bestsellers = $db->getBestsellerProducts(4); // You need to implement this method
-$all_products = $db->fetchAllProducts();
+$bestsellers = $productRepo->bestsellers(4); // Uses repository wrapper
+$all_products = $productRepo->all();
 
-// Fetch saved delivery address (customer_address table) if exists
 $savedAddress = [];
 try {
   if (!empty($user_id)) {
-    $conTmp = $db->opencon();
-    $stmtAddr = $conTmp->prepare("SELECT Street, Barangay, City, Contact_Number FROM customer_address WHERE Customer_ID = ? LIMIT 1");
-    $stmtAddr->execute([$user_id]);
-    $rowAddr = $stmtAddr->fetch(PDO::FETCH_ASSOC);
-    if ($rowAddr) { $savedAddress = $rowAddr; }
-    // Fallback: if contact missing in address table, use customer table contact
-    if ((!isset($savedAddress['Contact_Number']) || $savedAddress['Contact_Number']==='')) {
-        $stmtC = $conTmp->prepare("SELECT Contact_Number FROM customer WHERE Customer_ID=? LIMIT 1");
-        $stmtC->execute([$user_id]);
-        $cnum = $stmtC->fetchColumn();
-        if ($cnum) { $savedAddress['Contact_Number'] = $cnum; }
-    }
+    $savedAddress = $addressRepo->getSavedDeliveryAddress((int)$user_id) ?: [];
   }
 } catch (Throwable $e) { /* ignore */ }
 ?>
@@ -68,6 +63,8 @@ try {
   <title>Nai Tsa - Coffee & Milk Tea</title>
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons for social/phone logos -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <!-- Google Fonts: Poppins for modern look -->
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
@@ -204,18 +201,57 @@ try {
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
-      <form>
+      <?php if (isset($_GET['contact'])): $c = $_GET['contact']; ?>
+        <?php if ($c === 'success'): ?>
+          <div class="alert alert-success">Thank you! Your message has been sent.</div>
+        <?php elseif ($c === 'invalid'): ?>
+          <div class="alert alert-danger">Please check your inputs: make sure name, a valid email, and message are provided.</div>
+        <?php elseif ($c === 'limited'): ?>
+          <div class="alert alert-warning">You’ve reached the limit for submissions. Please try again later.</div>
+        <?php elseif ($c === 'mailcfg'): ?>
+          <div class="alert alert-danger">Mail server is not configured on this site. Please contact the site administrator.</div>
+        <?php elseif ($c === 'sendfail'): ?>
+          <div class="alert alert-danger">We couldn’t send your message due to a temporary email issue. Please try again in a few minutes.</div>
+        <?php elseif ($c === 'auth'): ?>
+          <div class="alert alert-danger">Email server rejected the credentials. Please verify the mailbox email and password in the site settings.</div>
+        <?php elseif ($c === 'connect'): ?>
+          <div class="alert alert-danger">Cannot connect to the email server. If this persists, try again later or contact support.</div>
+        <?php elseif ($c === 'cert'): ?>
+          <div class="alert alert-danger">Certificate validation failed when contacting the email server. Please try again later.</div>
+        <?php elseif ($c === 'addr'): ?>
+          <div class="alert alert-danger">We couldn’t deliver your message to our inbox right now. Please try again later. If this keeps happening, the site mailbox may be unavailable—please contact the site owner.</div>
+        <?php endif; ?>
+      <?php endif; ?>
+      <form method="POST" action="../send_contact.php" novalidate>
         <div class="row">
           <div class="col-md-6 mb-3">
-            <input type="text" class="form-control" placeholder="Your Name" required>
+            <input type="text" class="form-control" name="name" placeholder="Your Name" maxlength="100" value="<?= htmlspecialchars($_SESSION['customer_name'] ?? '') ?>" required>
           </div>
           <div class="col-md-6 mb-3">
-            <input type="email" class="form-control" placeholder="Your Email" required>
+            <input type="email" class="form-control" name="email" placeholder="Your Email" maxlength="150" value="<?= htmlspecialchars($_SESSION['customer_email'] ?? '') ?>" required>
           </div>
         </div>
-        <textarea class="form-control mb-3" rows="3" placeholder="Your Message" required></textarea>
+        <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
+        <!-- Honeypot field to reduce spam -->
+  <input type="hidden" name="website" value="">
+        <!-- Tell handler to return to users page -->
+        <input type="hidden" name="return_to" value="users/index.php">
         <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
       </form>
+
+      <!-- Social / Contact quick links -->
+      <div class="mt-4 d-flex flex-wrap align-items-center justify-content-center gap-3">
+        <a href="https://www.instagram.com/naitsaofficial/" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <i class="bi bi-instagram" style="font-size:1.5rem;color:#C13584;"></i>
+        </a>
+        <a href="https://www.facebook.com/sipnslurp.milkteacorner" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <i class="bi bi-facebook" style="font-size:1.5rem;color:#1877F2;"></i>
+        </a>
+        <a href="tel:09672556259" class="btn btn-light rounded-pill px-3 py-2" aria-label="Call 09672556259">
+          <i class="bi bi-telephone me-2" style="font-size:1.1rem;"></i>
+          <span class="fw-semibold">09672556259</span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -373,6 +409,25 @@ try {
               </div>
             </div>
           </div>
+          <!-- Debug QR: show a scannable GCash QR at checkout -->
+          <div class="mb-3" id="qrDebugBlock">
+            <div class="card" style="border-radius:12px;">
+              <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="small text-muted">Scan to Pay (GCash) — Debug</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
+                </div>
+                <div id="qrWrap">
+                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR Code for 09940780881" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                </div>
+                <div class="mt-2 small">
+                  GCash number: <strong id="gcashNumber">09940780881</strong>
+                  <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
+                </div>
+                <div class="form-text mt-1">For testing only — showing QR does not change your selected payment method.</div>
+              </div>
+            </div>
+          </div>
           <!-- Order Summary -->
           <div id="orderSummary" class="card" style="border-radius:12px;">
             <div class="card-body py-2">
@@ -479,9 +534,57 @@ try {
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    // Clean up contact param in URL after showing the alert once
+    (function(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const contact = params.get('contact');
+        if (contact) {
+          params.delete('contact');
+          const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + window.location.hash;
+          history.replaceState({}, '', newUrl);
+        }
+      } catch (_) { /* noop */ }
+    })();
+  </script>
+  <script>
+    // If SweetAlert2 failed to load from jsDelivr, try another CDN
+    (function(){
+      if (!window.Swal) {
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/sweetalert2@11/dist/sweetalert2.min.js';
+        s.async = true;
+        s.onload = function(){ console.log('SweetAlert2 fallback loaded from unpkg'); };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
   <!-- Leaflet JS for map picker -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
+    // QR (debug) helpers
+    (function(){
+      const copyBtn = document.getElementById('copyGcashBtn');
+      const numEl = document.getElementById('gcashNumber');
+      const toggleBtn = document.getElementById('toggleQrBtn');
+      const wrap = document.getElementById('qrWrap');
+      if(copyBtn && numEl){
+        copyBtn.addEventListener('click', async ()=>{
+          try { await navigator.clipboard.writeText(numEl.textContent.trim());
+            // lightweight toast via SweetAlert2
+            if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
+          } catch(e){}
+        });
+      }
+      if(toggleBtn && wrap){
+        toggleBtn.addEventListener('click', ()=>{
+          const hidden = wrap.style.display === 'none';
+          wrap.style.display = hidden ? 'block' : 'none';
+          toggleBtn.textContent = hidden ? 'Hide' : 'Show';
+        });
+      }
+    })();
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
       link.addEventListener('click', function(e) {
@@ -615,7 +718,9 @@ function renderCartItems() {
       <div class=\"d-flex flex-column align-items-end gap-1\">
         <span class=\"badge bg-secondary\">x${item.qty}</span>
         <div class=\"fw-semibold\">₱${money(line)}</div>
-        <button class=\"remove-cart-item btn btn-sm btn-outline-danger mt-1\" data-idx=\"${idx}\" title=\"Remove\">&times;</button>
+        <button class=\"remove-cart-item btn btn-sm btn-outline-danger mt-1\" data-idx=\"${idx}\" title=\"Remove item\" aria-label=\"Remove item\">
+          <i class=\"bi bi-trash\"></i>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -774,37 +879,34 @@ function computeDeliveryFee(distanceKm){
   return 99 + (8 * extra);
 }
 
+// Rewritten (previous version malformed causing syntax error)
 function updateOrderSummary(){
-  const subtotal = computeCartSubtotal();
-  const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
-  let s = 0;
-  const allProducts = <?php echo json_encode($all_products); ?> || [];
-  cart.forEach(i=>{
-    const prod = allProducts.find(p=>p.Product_Name===i.name);
-    const unit = (i.unitPrice != null) ? Number(i.unitPrice) : Number(prod?.Price_Amount||0);
-    let line = unit * (i.qty||1);
-    if (Array.isArray(i.addons)) {
-      i.addons.forEach(a=>{ line += Number(a.price||0) * Number(a.qty||1); });
-    }
-    s += line;
-  });
-          return s;
+  try {
+    const subtotal = computeCartSubtotal();
+    const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
+    let fee = 0;
+    if (orderType === 'Delivery') {
+      // Attempt distance-based fee only if we have coords
+      const latVal = parseFloat(summary.latInput?.value || '');
+      const lngVal = parseFloat(summary.lngInput?.value || '');
+      if (isFinite(latVal) && isFinite(lngVal)) {
+        const distKm = haversineKm(STORE_COORDS.lat, STORE_COORDS.lng, latVal, lngVal);
+        fee = computeDeliveryFee(distKm);
+        if(summary.distanceInfo){
+          summary.distanceInfo.textContent = `Distance: ${distKm.toFixed(2)} km • Delivery Fee: ₱${fee.toFixed(2)}`;
         }
-        if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
       } else {
-        if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+        if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location or pin the map to estimate the delivery fee.'; }
       }
-      if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
-      if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
-      if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
-      if(summary.distanceInfo){ summary.distanceInfo.textContent = 'Tip: Use your location to estimate the delivery fee.'; }
+    } else {
+      if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
     }
-  } else {
-    if(summary.distanceInfo){ summary.distanceInfo.textContent = ''; }
+    if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
+    if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
+    if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
+  } catch(err){
+    console.warn('updateOrderSummary failed', err);
   }
-  if(summary.subtotalEl) summary.subtotalEl.textContent = moneyPhp(subtotal);
-  if(summary.deliveryEl) summary.deliveryEl.textContent = moneyPhp(fee);
-  if(summary.totalEl) summary.totalEl.textContent = moneyPhp(subtotal + fee);
 }
 
 // Show/hide delivery fields based on order type
@@ -1191,6 +1293,20 @@ if (paymentModalEl){
   paymentModalEl.addEventListener('shown.bs.modal', () => {
     try{ updateOrderSummary(); }catch(e){}
     try{
+
+    // Accessibility: prevent aria-hidden on an ancestor while a focused element remains inside productDetailsModal
+    (function(){
+      const pdEl = document.getElementById('productDetailsModal');
+      if(!pdEl) return;
+      pdEl.addEventListener('hide.bs.modal', ()=>{
+        try {
+          const active = document.activeElement;
+          if (active && pdEl.contains(active) && typeof active.blur === 'function') {
+            active.blur();
+          }
+        } catch(e){}
+      });
+    })();
       const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'Pick Up';
       if (orderType === 'Delivery') ensureMapPicker();
     }catch(e){}
@@ -1797,7 +1913,7 @@ function renderOrders(){
         <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
         <span>${it.Product_Name} x ${it.Quantity}</span>
       </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
-    const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
+    /*const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
     const needsTracking = isDelivery && !['Delivered','Received','Cancelled'].includes(uiStatus);
     const trackingHtml = needsTracking ? `
       <div class="mt-3 p-2 border rounded bg-white" style="border-radius:12px;">
@@ -1806,7 +1922,9 @@ function renderOrders(){
           <button type="button" class="btn btn-outline-soft-orange btn-sm" data-track="${o.Order_ID}">Track</button>
         </div>
         <div id="track-map-${o.Order_ID}" class="mt-2" style="height:160px;border-radius:10px;overflow:hidden;display:none;"></div>
-      </div>` : '';
+      </div>` : '';*/
+    // Delivery tracking temporarily disabled
+    const trackingHtml = '';
 
     return `
       <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
@@ -1835,37 +1953,36 @@ function renderOrders(){
 function renderOrdersPagination(totalPages){
   let pagEl = document.getElementById('ordersPagination');
   if(!pagEl){
-    // Create container just after ordersList
     const listEl = document.getElementById('ordersList');
     if(!listEl) return;
     pagEl = document.createElement('div');
     pagEl.id = 'ordersPagination';
     pagEl.className = 'mt-2';
     listEl.after(pagEl);
-    list.innerHTML = cart.map((item, idx) => {
-  if(totalPages <= 1){ pagEl.innerHTML=''; return; }
-  let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0">';
-      const unit = item.unitPrice != null ? Number(item.unitPrice) : base;
+  }
+  if(totalPages <= 1){ pagEl.innerHTML = ''; return; }
+  let html = '<nav aria-label="Orders pages"><ul class="pagination pagination-sm justify-content-end mb-0">';
   const disabledPrev = ORDERS_PAGE === 1 ? ' disabled' : '';
   html += `<li class="page-item${disabledPrev}"><a class="page-link" data-page="prev" href="#">Previous</a></li>`;
   for(let i=1;i<=totalPages;i++){
     const active = i===ORDERS_PAGE ? ' active' : '';
-      return `<li class="list-group-item d-flex align-items-start justify-content-between">
-        <div>
-          <div><strong>${item.name}</strong> ${item.size ? `<span class='badge bg-info text-dark'>${item.size}</span>`:''} <span class="badge bg-secondary">x${item.qty}</span></div>
+    html += `<li class="page-item${active}"><a class="page-link" data-page="${i}" href="#">${i}</a></li>`;
+  }
+  const disabledNext = ORDERS_PAGE === totalPages ? ' disabled' : '';
   html += `<li class="page-item${disabledNext}"><a class="page-link" data-page="next" href="#">Next</a></li>`;
   html += '</ul></nav>';
   pagEl.innerHTML = html;
-        <div class="text-end">₱${(unit * item.qty).toFixed(2)}<br>
+  pagEl.querySelectorAll('.page-link').forEach(a=>{
     a.addEventListener('click', e=>{
       e.preventDefault();
       const val = a.getAttribute('data-page');
       if(val==='prev' && ORDERS_PAGE>1){ ORDERS_PAGE--; }
       else if(val==='next' && ORDERS_PAGE < totalPages){ ORDERS_PAGE++; }
-      else if(/^[0-9]+$/.test(val)){ const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; } }
+      else if(/^[0-9]+$/.test(val)){
+        const num = parseInt(val,10); if(num!==ORDERS_PAGE){ ORDERS_PAGE = num; }
+      }
       renderOrders();
-      // Scroll to top of modal body for better UX
-      try{ document.querySelector('#myOrdersModal .modal-body').scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+      try{ document.querySelector('#myOrdersModal .modal-body')?.scrollTo({top:0,behavior:'smooth'}); }catch(_){ }
     });
   });
 }
@@ -1931,14 +2048,35 @@ async function confirmOrder(orderId){
       const data = await res.json().catch(()=>({success:false,message:'Invalid response'}));
       console.log('confirm_order.php response', res.status, data);
       if(res.ok && data.success){
-        // Update cache
+        // Update cache and re-render
         const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
-        if(idx!==-1){ ORDERS_CACHE[idx].order_status = data.final_status; }
+        if(idx!==-1 && data.final_status){ ORDERS_CACHE[idx].order_status = data.final_status; }
         renderStatusChips();
         renderOrders();
-        Swal.fire({icon:'success', title: isNaN(orderId)?'Confirmed':'Order confirmed', timer:1200, showConfirmButton:false});
+
+        // For pickup: backend returns success only when already Received by admin
+        // For delivery: we set Delivered. In both cases we can offer a review prompt.
+        if (data.review_prompt) {
+          Swal.fire({
+            icon:'success',
+            title:'Confirmed',
+            text:'Would you like to leave a review?',
+            showCancelButton:true,
+            confirmButtonText:'Yes',
+            cancelButtonText:'Later',
+            confirmButtonColor:'#FFB27A'
+          }).then(r=>{ if(r.isConfirmed){
+            // Open review modal for this order
+            if (typeof openReviewModalByOrderId === 'function') {
+              openReviewModalByOrderId(orderId);
+            }
+          }});
+        } else {
+          Swal.fire({icon:'success', title:'Confirmed', timer:1200, showConfirmButton:false});
+        }
       } else {
-        Swal.fire({icon:'error', title:data.message||'Unable to confirm', timer:1800, showConfirmButton:false});
+        const msg = (data && data.message) ? data.message : 'Unable to confirm';
+        Swal.fire({icon:'error', title:msg, timer:2000, showConfirmButton:false});
         if(btn){ btn.disabled = false; btn.textContent = original; }
       }
     } catch(err){
@@ -2300,7 +2438,8 @@ document.getElementById('submitReviewsBtn').addEventListener('click', async ()=>
   });
 })();
 
-function buildProductModalHtml(product, addons, sizeOptions, basePrice){
+function buildProductModalHtml(product, addons, sizeOptions, basePrice, heading){
+  heading = heading || 'Size';
   basePrice = Number(basePrice||product.Price_Amount||0);
   const priceDisplay = '₱' + basePrice.toFixed(2);
   const addonsHtml = (addons||[]).map(a=>`
@@ -2338,13 +2477,12 @@ function buildProductModalHtml(product, addons, sizeOptions, basePrice){
       </div>
       <div>
         <div class="mb-3">
-          <h5 class="mb-2">Size</h5>
+          <h5 class="mb-2">${heading}</h5>
           <div id="productSizeChoices" class="d-flex flex-wrap gap-2">
             ${sizeOptions.map((s,i)=>{
               const finalPrice = Number(s.final_price||0);
-              const diff = finalPrice - basePrice;
-              const diffDisp = diff>0 ? ` (+₱${diff.toFixed(2)})` : (diff<0 ? ` (−₱${Math.abs(diff).toFixed(2)})` : '');
-              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}${diffDisp}\n              </label>`;
+              // Removed displayed price difference; only show the size label while still storing final price in data attribute.
+              return `<label class=\"btn btn-outline-secondary btn-sm m-0 ${i===0?'active':''}\" style=\"position:relative;\">\n                <input type=\"radio\" name=\"pdSize\" class=\"d-none\" value=\"${s.code}\" data-final=\"${finalPrice.toFixed(2)}\" ${i===0?'checked':''}>\n                ${s.label}\n              </label>`;
             }).join('')}
           </div>
         </div>
@@ -2423,20 +2561,69 @@ function updateProductModalTotal(anchorPrice){
 }
 
 async function openProductDetailsWithAddons(product){
-  // Fetch size variants (anchor-based). If variants exist, ignore product.Price_Amount.
-  let sizePayload = { base_price: Number(product.Price_Amount||0), sizes: [] };
+  // Unified variant fetch. Logic:
+  // 1. Try new get_product_variants (sizes + flavors in one table)
+  // 2. If sizes exist -> show Size section
+  // 3. Else if only flavors exist -> show Variant Choices section
+  // 4. Else fallback to legacy get_product_sizes (if still populated) or default Regular
+  let sizeOptions = [];
+  let heading = 'Size';
+  let anchorPrice = Number(product.Price_Amount||0);
+  let variantsFetched = false;
   try {
-    const res = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
+    const res = await fetch('ajax/get_product_variants.php?product_id='+product.Product_ID+'&t='+Date.now());
     const js = await res.json();
-    if(js.success) sizePayload = js;
-  } catch(e){ /* ignore */ }
-  if(!Array.isArray(sizePayload.sizes) || sizePayload.sizes.length===0){
-    sizePayload.sizes = [{ code:'default', label:'Regular', final_price:sizePayload.base_price }];
+    if(js.success && js.variants){
+      variantsFetched = true;
+      const sizes = Array.isArray(js.variants.size) ? js.variants.size : [];
+      const flavors = Array.isArray(js.variants.flavor) ? js.variants.flavor : [];
+      if(sizes.length){
+        // pick primary size anchor
+        const primary = sizes.find(v=>Number(v.is_primary)===1) || sizes[0];
+        anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        sizeOptions = sizes.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code:v.code, label:v.label, final_price, is_anchor:Number(v.is_primary)||0 };
+        });
+        heading = 'Size';
+      } else if(flavors.length){
+        const primary = flavors.find(v=>Number(v.is_primary)===1) || flavors[0];
+        anchorPrice = (primary.price_mode === 'ABSOLUTE') ? Number(primary.price_value||0) : (Number(product.Price_Amount||0) + Number(primary.price_value||0));
+        sizeOptions = flavors.map(v=>{
+          const final_price = (v.price_mode === 'ABSOLUTE') ? Number(v.price_value||0) : (Number(product.Price_Amount||0) + Number(v.price_value||0));
+          return { code:v.code, label:v.label, final_price, is_anchor:Number(v.is_primary)||0 };
+        });
+        heading = 'Variant Choices';
+      }
+    }
+  } catch(e){ /* ignore unified variant errors */ }
+
+  // Legacy fallback if nothing was fetched
+  if(!sizeOptions.length){
+    try {
+      const res2 = await fetch('ajax/get_product_sizes.php?product_id='+product.Product_ID+'&t='+Date.now());
+      const js2 = await res2.json();
+      if(js2.success && Array.isArray(js2.sizes) && js2.sizes.length){
+        // legacy structure has base_price + sizes[] each with final_price
+        anchorPrice = Number(js2.base_price||product.Price_Amount||0);
+        sizeOptions = js2.sizes.map(v=>({ code:v.code, label:v.label||v.code, final_price:Number(v.final_price||anchorPrice), is_anchor:Number(v.is_anchor)||0 }));
+        heading = 'Size';
+      }
+    } catch(e){ /* ignore legacy errors */ }
   }
-  const sizeOptions = sizePayload.sizes.map((s,i)=>({ code:s.code, label: s.label || s.code, final_price: Number(s.final_price||sizePayload.base_price), is_anchor: s.is_anchor||0 }));
-  window.__currentAnchorPrice = Number(sizePayload.base_price||0);
-  // Build modal HTML (pass anchor as base for header); markup already expects final prices in data-final attributes
-  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice);
+
+  // Final fallback if still empty
+  if(!sizeOptions.length){
+    sizeOptions = [{ code:'default', label:'Regular', final_price:anchorPrice, is_anchor:1 }];
+    heading = variantsFetched ? 'Variant Choices' : 'Size';
+  }
+
+  // Ensure anchorPrice sensible
+  if(!isFinite(anchorPrice) || anchorPrice <= 0){
+    anchorPrice = sizeOptions[0]?.final_price || Number(product.Price_Amount||0) || 0;
+  }
+  window.__currentAnchorPrice = anchorPrice;
+  document.getElementById('productDetailsContent').innerHTML = buildProductModalHtml(product, [], sizeOptions, window.__currentAnchorPrice, heading);
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('productDetailsModal'));
   modal.show();
 
@@ -2451,6 +2638,18 @@ async function openProductDetailsWithAddons(product){
   // Bind size change
   document.getElementById('productDetailsContent').addEventListener('change', e=>{
     if (e.target.name === 'pdSize') updateProductModalTotal(basePrice);
+  });
+  // Also handle clicking on label itself to toggle the hidden radio (improves hit area reliability)
+  document.getElementById('productDetailsContent').addEventListener('click', e=>{
+    const lab = e.target.closest('#productSizeChoices label');
+    if(!lab) return;
+    const input = lab.querySelector('input[name="pdSize"]');
+    if(!input) return;
+    // Manually set checked and remove from others
+    document.querySelectorAll('#productSizeChoices label').forEach(l=> l.classList.remove('active'));
+    input.checked = true;
+    lab.classList.add('active');
+    updateProductModalTotal(basePrice);
   });
   updateProductModalTotal(basePrice);
 
@@ -2496,7 +2695,10 @@ async function openProductDetailsWithAddons(product){
     updateCartBadge();
     renderCartItems();
     Swal.fire({toast:true, position:'top-end', icon:'success', title:'Added to cart!', showConfirmButton:false, timer:1200});
-    modal.hide();
+    // Important: blur focused element before hiding to avoid aria-hidden warning
+    try { const ae = document.activeElement; if (ae && typeof ae.blur === 'function') ae.blur(); } catch(e){}
+    // Defer hide so blur applies first
+    setTimeout(()=>{ modal.hide(); }, 0);
   };
 
   // Fetch add-ons asynchronously and render; on failure keep empty list
@@ -2741,6 +2943,20 @@ async function openProductDetailsWithAddons(product){
     PENDING_ADD_TO_CART = null;
     bootstrap.Modal.getInstance(modalEl).hide();
   });
+  </script>
+
+  <script>
+  // Clean up contact param in URL after showing the alert once (parity with landing page)
+  (function(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('contact')) {
+        params.delete('contact');
+        const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + window.location.hash;
+        history.replaceState({}, '', newUrl);
+      }
+    } catch (_) { /* noop */ }
+  })();
   </script>
 
 </body>

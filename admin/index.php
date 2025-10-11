@@ -166,10 +166,35 @@ try {
                     </div>
                 </div>
 
-                <!-- Add this button above your sales chart card -->
-                <a href="export_sales_pdf.php" class="btn btn-outline-primary mb-2" target="_blank">
-                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
-                </a>
+                <!-- Sales Export: Date Range + Presets -->
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
+                            <div class="col-auto">
+                                <label for="fromDate" class="form-label mb-0 small">From</label>
+                                <input type="date" class="form-control form-control-sm" id="fromDate" name="from">
+                            </div>
+                            <div class="col-auto">
+                                <label for="toDate" class="form-label mb-0 small">To</label>
+                                <input type="date" class="form-control form-control-sm" id="toDate" name="to">
+                            </div>
+                            <div class="col-auto">
+                                <label for="preset" class="form-label mb-0 small">Preset</label>
+                                <select id="preset" name="preset" class="form-select form-select-sm">
+                                    <option value="">Custom</option>
+                                    <option value="this_week">This Week</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="this_year">This Year</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
                 <!-- Recent Sales Card -->
                 <div class="card mt-4">

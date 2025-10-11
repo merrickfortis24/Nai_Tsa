@@ -3,126 +3,96 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// 1. Locate PHPMailer sources
-$phpmailerSrc = null;
-foreach ([
-    __DIR__ . '/PHPMailer-master/src',
-    __DIR__ . '/../PHPMailer-master/src',
-    __DIR__ . '/PHPMailer/src',
-    __DIR__ . '/../PHPMailer/src',
-] as $cand) {
-    if (is_dir($cand) && file_exists($cand . '/PHPMailer.php')) { $phpmailerSrc = $cand; break; }
+require_once __DIR__ . '/utils/mailer.php';
+
+// Helper: safe ellipsize without requiring mbstring
+function safe_ellipsize($str, $max = 500, $ellipsis = '...') {
+    $str = trim((string)$str);
+    if ($max <= 0) return '';
+    if (strlen($str) <= $max) return $str;
+    return substr($str, 0, $max - strlen($ellipsis)) . $ellipsis;
 }
-if (!$phpmailerSrc) { http_response_code(500); echo 'PHPMailer missing'; exit; }
-require_once $phpmailerSrc . '/Exception.php';
-require_once $phpmailerSrc . '/PHPMailer.php';
-require_once $phpmailerSrc . '/SMTP.php';
 
-// 2. Only accept POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: index.php#contact'); exit; }
-
-// 3. Honeypot anti-spam
-if (!empty($_POST['website'])) { header('Location: index.php?contact=success#contact'); exit; }
-
-// 4. Sanitize input
-$name    = trim($_POST['name'] ?? '');
-$email   = trim($_POST['email'] ?? '');
-$message = trim($_POST['message'] ?? '');
-if ($name === '' || $email === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) { header('Location: index.php?contact=error#contact'); exit; }
-if (strlen($name) > 100 || strlen($email) > 150 || strlen($message) > 1000) { header('Location: index.php?contact=error#contact'); exit; }
-
-// 5. Simple rate limit (per IP)
-function rate_limited($ip, $limit = 5, $windowSeconds = 3600) {
-    $file = sys_get_temp_dir() . '/contact_rate_' . preg_replace('/[^A-Fa-f0-9:]/','_', $ip);
-    $now = time();
-    $data = ['start'=>$now,'count'=>0];
-    if (is_file($file)) {
-        $raw = file_get_contents($file);
-        if ($raw) { $d = json_decode($raw, true); if (isset($d['start'],$d['count'])) $data = $d; }
+// Redirect back to landing or users page
+function contact_redirect(string $code, string $anchor = '#contact'): void {
+    $returnTo = 'index.php';
+    if (!empty($_POST['return_to'])) {
+        $rt = trim($_POST['return_to']);
+        if ($rt === 'index.php' || $rt === 'users/index.php') $returnTo = $rt;
     }
-    if (($now - $data['start']) > $windowSeconds) { $data = ['start'=>$now,'count'=>0]; }
-    if ($data['count'] >= $limit) return true;
-    $data['count']++;
-    file_put_contents($file, json_encode($data));
-    return false;
+    header('Location: ' . $returnTo . '?contact=' . urlencode($code) . $anchor);
+    exit;
 }
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-if (rate_limited($ip)) { header('Location: index.php?contact=error#contact'); exit; }
 
-// 6. Load .mail.env.php if present (sets putenv values)
-if (file_exists(__DIR__ . '/.mail.env.php')) { include __DIR__ . '/.mail.env.php'; }
+// Only accept POST submissions
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    contact_redirect('invalid');
+}
 
-// 7. Read env config
-$host      = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
-$port      = (int)(getenv('SMTP_PORT') ?: 587);
-$secure    = strtolower(getenv('SMTP_SECURE') ?: 'tls'); // tls or ssl
-$user      = getenv('SMTP_USER') ?: '';
-$pass      = getenv('SMTP_PASS') ?: '';
-$from      = getenv('MAIL_FROM') ?: $user;
-$fromName  = getenv('MAIL_FROM_NAME') ?: 'Website';
-$forceTo   = getenv('MAIL_FORCE_TO') ?: '';
-$debugFlag = getenv('MAIL_DEBUG');
-if (!$user || !$pass || !$from) { error_log('Mail config missing'); header('Location: index.php?contact=error#contact'); exit; }
-
-// 8. Send mail
-$mail = new PHPMailer(true);
 try {
-    if (isset($_GET['debug_mail']) || $debugFlag) { $mail->SMTPDebug = 2; }
-    $mail->isSMTP();
-    $mail->Host     = $host;
-    $mail->SMTPAuth = true;
-    $mail->Username = $user;
-    $mail->Password = $pass;
-    if ($secure === 'ssl' || $secure === 'smtps') { $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; if ($port === 587) $port = 465; }
-    else { $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; }
-    $mail->Port    = $port;
-    $mail->CharSet = 'UTF-8';
+    $name    = trim($_POST['name'] ?? '');
+    $email   = trim($_POST['email'] ?? '');
+    $message = trim($_POST['message'] ?? '');
+    $hp      = trim($_POST['website'] ?? '');
 
-    $mail->setFrom($from, $fromName);
-    if ($forceTo) { $mail->addAddress($forceTo, 'Forced Recipient'); }
-    else { $mail->addAddress($from, $fromName); }
-    $mail->addReplyTo($email, $name);
-
-    $mail->isHTML(true);
-    $mail->Subject = 'New Contact Message from ' . $name;
-    $safeMsg = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
-    $mail->Body = "<h3>New Contact Submission</h3><p><strong>Name:</strong> " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "<br><strong>Email:</strong> " . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . "</p><p><strong>Message:</strong><br>{$safeMsg}</p><hr><p style='font-size:12px;color:#888'>IP: " . htmlspecialchars($ip, ENT_QUOTES, 'UTF-8') . "</p>";
-    $mail->AltBody = "Name: {$name}\nEmail: {$email}\nMessage:\n{$message}\nIP: {$ip}";
-
-    if (!$mail->send()) { throw new Exception($mail->ErrorInfo); }
-
-    // Send acknowledgment to the user (separate mail instance for clean headers)
-    try {
-        $ack = new PHPMailer(true);
-        if (isset($_GET['debug_mail']) || $debugFlag) { $ack->SMTPDebug = 0; } // keep quiet
-        $ack->isSMTP();
-        $ack->Host       = $host;
-        $ack->SMTPAuth   = true;
-        $ack->Username   = $user;
-        $ack->Password   = $pass;
-        if ($secure === 'ssl' || $secure === 'smtps') { $ack->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; $ack->Port = $port; }
-        else { $ack->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; $ack->Port = $port; }
-        $ack->CharSet = 'UTF-8';
-
-        $ack->setFrom($from, $fromName);
-        $ack->addAddress($email, $name);
-        $ack->Subject = 'Thank you for contacting ' . $fromName;
-        $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
-            . "<p>Thank you for your message. We've received it and will get back to you shortly.</p>"
-            . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(mb_strimwidth($message,0,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
-            . "<p style='font-size:12px;color:#888'>This is an automated acknowledgement. Please do not reply directly; use the website contact form if needed.</p>";
-        $ack->isHTML(true);
-        $ack->Body    = $ackBody;
-        $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . mb_strimwidth($message,0,500,'...');
-        // Ignore failure of acknowledgment to user (no throw)
-        $ack->send();
-    } catch (Exception $e2) {
-        error_log('Ack mail failed: ' . $e2->getMessage());
+    if ($hp !== '' || $name === '' || $message === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        contact_redirect('invalid');
     }
 
-    header('Location: index.php?contact=success#contact');
-} catch (Exception $e) {
-    error_log('Contact form mail error: ' . $e->getMessage());
-    header('Location: index.php?contact=error#contact');
+    $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $fromName = getenv('MAIL_FROM_NAME') ?: 'Nai Tsa';
+    // 8. Send mail using dedicated contact sender (kept separate from verification)
+    try {
+        $result = send_contact_email($name, $email, $message, [
+            'ip' => $ip,
+            'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'now' => date('Y-m-d H:i:s')
+        ]);
+
+        if ($result === true) {
+            // Acknowledgment to the user (best-effort)
+            try {
+                $ack = mailer_instance();
+                $ack->addAddress($email, $name);
+                $ack->Subject = 'Thank you for contacting ' . $fromName;
+                $ackBody = "<p>Hi " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ",</p>"
+                    . "<p>Thank you for your message. We've received it and will get back to you shortly.</p>"
+                    . "<p><strong>Your Message (summary):</strong><br>" . nl2br(htmlspecialchars(safe_ellipsize($message,500,'...'), ENT_QUOTES, 'UTF-8')) . "</p>"
+                    . "<p style='font-size:12px;color:#888'>This is an automated acknowledgement. Please do not reply directly; use the website contact form if needed.</p>";
+                $ack->isHTML(true);
+                $ack->Body    = $ackBody;
+                $ack->AltBody = "Thank you for contacting $fromName. We received your message.\n\nMessage snippet:\n" . safe_ellipsize($message,500,'...');
+                $ack->send();
+            } catch (Exception $e2) { error_log('Ack mail failed: ' . $e2->getMessage()); }
+            contact_redirect('success');
+        }
+
+        // Map result codes/messages to UI
+        $code = 'sendfail';
+        if ($result === 'mailcfg') {
+            $code = 'mailcfg';
+        } elseif ($result === 'addr') {
+            $code = 'addr';
+        } elseif (is_string($result)) {
+            $low = strtolower($result);
+            if (strpos($low, 'authenticate') !== false) {
+                $code = 'auth';
+            } elseif (strpos($low, 'connect') !== false || strpos($low, 'timed out') !== false) {
+                $code = 'connect';
+            } elseif (strpos($low, 'certificate') !== false || strpos($low, 'verify failed') !== false) {
+                $code = 'cert';
+            } elseif (strpos($low, 'invalid address') !== false || strpos($low, 'data not accepted') !== false || strpos($low, 'recipient rejected') !== false) {
+                $code = 'addr';
+            }
+        }
+        contact_redirect($code);
+    } catch (Exception $e) {
+        error_log('Contact form handler error: ' . $e->getMessage());
+        contact_redirect('sendfail');
+    }
+} catch (Throwable $t) {
+    error_log('Contact handler fatal: ' . $t->getMessage());
+    contact_redirect('sendfail');
 }
-exit;
+?>

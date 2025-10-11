@@ -32,6 +32,7 @@ try {
 			pr.Product_ID AS Product_ID, pr.Product_Name, pr.Product_Image
 		 FROM orders o
 		 LEFT JOIN order_address addr ON addr.Order_ID = o.Order_ID
+			 LEFT JOIN customer c ON c.Customer_ID = o.Customer_ID
 		 LEFT JOIN payment p ON o.Order_ID = p.Order_ID
 		 LEFT JOIN order_item oi ON o.Order_ID = oi.Order_ID
 		 LEFT JOIN product pr ON oi.Product_ID = pr.Product_ID

@@ -41,6 +41,8 @@ try {
   <!-- <link rel="manifest" href="/manifest.webmanifest"> -->
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons for social/phone logos -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <!-- Google Fonts: Poppins for modern look -->
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
@@ -58,8 +60,6 @@ try {
     .menu-card-description { font-size:0.9rem; line-height:1.35rem; margin:0 0 .75rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-height:4.05rem; }
     .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
     .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
-    .add-to-cart-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:.55rem; font-weight:600; }
-    .menu-card-price { color:#c97234; font-weight:600; font-size:.9rem; }
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
   </style>
 </head>
@@ -236,11 +236,27 @@ Open daily from 10AM to midnight..</p>
     <div class="section-content">
       <h2 class="section-title" style="font-size:3.2rem;">Contact Us</h2>
       <p class="section-desc">Have a question or want to say hi? Fill out the form below or visit us in-store. We love to connect with our Nai Tsa community!</p>
-      <?php if (isset($_GET['contact']) && $_GET['contact'] === 'success'): ?>
-  <div class="alert alert-success">Thank you! Your message has been sent.</div>
-<?php elseif (isset($_GET['contact']) && $_GET['contact'] === 'error'): ?>
-  <div class="alert alert-danger">Sorry, there was a problem sending your message.</div>
-<?php endif; ?>
+      <?php if (isset($_GET['contact'])): $c = $_GET['contact']; ?>
+        <?php if ($c === 'success'): ?>
+          <div class="alert alert-success">Thank you! Your message has been sent.</div>
+        <?php elseif ($c === 'invalid'): ?>
+          <div class="alert alert-danger">Please check your inputs: make sure name, a valid email, and message are provided.</div>
+        <?php elseif ($c === 'limited'): ?>
+          <div class="alert alert-warning">You’ve reached the limit for submissions. Please try again later.</div>
+        <?php elseif ($c === 'mailcfg'): ?>
+          <div class="alert alert-danger">Mail server is not configured on this site. Please contact the site administrator.</div>
+        <?php elseif ($c === 'sendfail'): ?>
+          <div class="alert alert-danger">We couldn’t send your message due to a temporary email issue. Please try again in a few minutes.</div>
+        <?php elseif ($c === 'auth'): ?>
+          <div class="alert alert-danger">Email server rejected the credentials. Please verify the mailbox email and password in the site settings.</div>
+        <?php elseif ($c === 'connect'): ?>
+          <div class="alert alert-danger">Cannot connect to the email server. If this persists, try again later or contact support.</div>
+        <?php elseif ($c === 'cert'): ?>
+          <div class="alert alert-danger">Certificate validation failed when contacting the email server. Please try again later.</div>
+        <?php elseif ($c === 'addr'): ?>
+          <div class="alert alert-danger">We couldn’t deliver your message to our inbox right now. Please try again later. If this keeps happening, the site mailbox may be unavailable—please contact the site owner.</div>
+        <?php endif; ?>
+      <?php endif; ?>
       <form method="POST" action="send_contact.php" novalidate>
   <div class="row">
     <div class="col-md-6 mb-3">
@@ -251,10 +267,24 @@ Open daily from 10AM to midnight..</p>
     </div>
   </div>
   <textarea class="form-control mb-3" name="message" rows="3" placeholder="Your Message" maxlength="1000" required></textarea>
-  <!-- Honeypot field to reduce spam -->
-  <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+  <!-- Honeypot field to reduce spam (hidden to avoid browser autofill) -->
+  <input type="hidden" name="website" value="">
+  <input type="hidden" name="return_to" value="index.php">
   <button type="submit" class="btn btn-soft-orange px-4">Send Message</button>
 </form>
+      <!-- Social / Contact quick links -->
+      <div class="mt-4 d-flex flex-wrap align-items-center justify-content-center gap-3">
+        <a href="https://www.instagram.com/naitsaofficial/" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <i class="bi bi-instagram" style="font-size:1.5rem;color:#C13584;"></i>
+        </a>
+        <a href="https://www.facebook.com/sipnslurp.milkteacorner" class="btn btn-light rounded-circle p-2" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <i class="bi bi-facebook" style="font-size:1.5rem;color:#1877F2;"></i>
+        </a>
+        <a href="tel:09672556259" class="btn btn-light rounded-pill px-3 py-2" aria-label="Call 09672556259">
+          <i class="bi bi-telephone me-2" style="font-size:1.1rem;"></i>
+          <span class="fw-semibold">09672556259</span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -266,6 +296,32 @@ Open daily from 10AM to midnight..</p>
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    // Clean up contact param in URL after showing the alert once
+    (function(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const contact = params.get('contact');
+        if (contact) {
+          params.delete('contact');
+          const newUrl = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + window.location.hash;
+          history.replaceState({}, '', newUrl);
+        }
+      } catch (_) { /* noop */ }
+    })();
+  </script>
+  <script>
+    // If SweetAlert2 failed to load from jsDelivr, try another CDN
+    (function(){
+      if (!window.Swal) {
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/sweetalert2@11/dist/sweetalert2.min.js';
+        s.async = true;
+        s.onload = function(){ console.log('SweetAlert2 fallback loaded from unpkg'); };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
   <script>
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
@@ -376,19 +432,28 @@ Open daily from 10AM to midnight..</p>
 
     // Force login on any menu interactions
     function promptLogin(e){
-      e.preventDefault();
-      Swal.fire({
-        icon: 'warning',
-        title: 'Not Logged In',
-        text: 'You must log in first to continue.',
-        showCancelButton: true,
-        confirmButtonText: 'Log In',
-        cancelButtonText: 'Cancel'
-      }).then((result) => {
-        if (result.isConfirmed) {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      // Use SweetAlert2 when available; otherwise fall back to native confirm
+      if (window.Swal && typeof Swal.fire === 'function') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Not Logged In',
+          text: 'You must log in first to continue.',
+          showCancelButton: true,
+          confirmButtonText: 'Log In',
+          cancelButtonText: 'Cancel'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = 'login.php';
+          }
+        });
+      } else {
+        // Fallback if CDN blocked/offline
+        console.warn('SweetAlert2 not loaded; using native confirm fallback.');
+        if (window.confirm('You must log in first to continue.\n\nPress OK to go to the login page.')) {
           window.location.href = 'login.php';
         }
-      });
+      }
     }
 
     // Apply login prompt to menu buttons, cards, and More Products
@@ -399,6 +464,15 @@ Open daily from 10AM to midnight..</p>
     }));
     const moreBtn = document.getElementById('moreProductsBtn');
     if (moreBtn) { moreBtn.addEventListener('click', promptLogin); }
+
+    // Defensive: also delegate in case cards/buttons render later or markup varies
+    document.addEventListener('click', function(e){
+      const addBtn = e.target.closest('.add-to-cart-btn');
+      if (addBtn) { return promptLogin(e); }
+      const cardEl = e.target.closest('#menuCards .menu-card');
+      if (cardEl && !e.target.closest('button')) { return promptLogin(e); }
+      if (e.target.closest('#moreProductsBtn')) { return promptLogin(e); }
+    });
 
     // --- Real-time My Orders Modal Refresh ---
     // Place this after your other <script> code, before </body>

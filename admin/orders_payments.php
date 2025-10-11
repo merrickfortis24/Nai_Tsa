@@ -89,9 +89,9 @@ ksort($methods);
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
 .badge-status { font-size:.75rem; }
-.filter-row .short-select { min-width: 120px; }
+.filter-row .short-select { width: 160px; }
 @media (max-width: 768px){
-  .filter-row .short-select { min-width: 100%; }
+  .filter-row .short-select { width: 100%; }
 }
 </style>
 </head>
@@ -110,9 +110,10 @@ ksort($methods);
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
           <!-- debug output removed -->
-          <form method="get" class="row g-2 mb-3 align-items-end filter-row">
+          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row">
+            <input type="hidden" name="page" value="<?= (int)$page ?>" />
             <div class="col-12 col-md flex-grow-1">
-              <input type="text" name="search" value="<?=h($search)?>" class="form-control" placeholder="Search by Order ID or Customer" />
+              <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
             </div>
             <div class="col-auto">
               <select name="status" class="form-select form-select-sm short-select" title="Order Status">
@@ -145,7 +146,7 @@ ksort($methods);
               <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control form-control-sm short-select" placeholder="To" aria-label="To date" />
             </div>
             <div class="col-auto d-grid">
-              <button class="btn btn-primary btn-sm" title="Apply filters"><i class="bi bi-search"></i></button>
+              <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm" title="Clear filters">Clear</button>
             </div>
           </form>
 
@@ -187,7 +188,7 @@ ksort($methods);
               </thead>
               <tbody>
                 <?php if(!$rows): ?>
-                  <tr><td colspan="8" class="text-center text-muted py-4">No records found.</td></tr>
+                  <tr><td colspan="8" class="text-center text-muted py-4">No records found. Try adjusting or clearing the filters.</td></tr>
                 <?php endif; ?>
                   <?php foreach ($rows as $r): ?>
                   <tr>
@@ -444,6 +445,63 @@ ksort($methods);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Detect if any filters are currently active (non-empty)
+function filtersActive(){
+  const form = document.getElementById('filtersForm');
+  if(!form) return false;
+  const get = (n)=>{
+    const el = form.querySelector(`[name="${n}"]`);
+    return (el && (el.value||'').trim()) || '';
+  };
+  return ['search','status','payment','method','from','to'].some(k => get(k) !== '');
+}
+
+// Filters UX: auto-submit on change, reset to page 1, swap invalid date ranges, and provide Clear button
+(function(){
+  const form = document.getElementById('filtersForm');
+  if(!form) return;
+  const pageInput = form.querySelector('input[name="page"]');
+  const statusSel = form.querySelector('select[name="status"]');
+  const paymentSel = form.querySelector('select[name="payment"]');
+  const methodSel = form.querySelector('select[name="method"]');
+  const fromInput = form.querySelector('input[name="from"]');
+  const toInput = form.querySelector('input[name="to"]');
+  const searchInput = form.querySelector('input[name="search"]');
+  const clearBtn = document.getElementById('clearFiltersBtn');
+
+  function submitWithPageReset(){
+    if(pageInput) pageInput.value = '1';
+    if(fromInput && toInput && fromInput.value && toInput.value && fromInput.value > toInput.value){
+      const tmp = fromInput.value; fromInput.value = toInput.value; toInput.value = tmp;
+    }
+    form.submit();
+  }
+  form.addEventListener('submit', (e)=>{
+    if(pageInput) pageInput.value = '1';
+    if(fromInput && toInput && fromInput.value && toInput.value && fromInput.value > toInput.value){
+      const tmp = fromInput.value; fromInput.value = toInput.value; toInput.value = tmp;
+    }
+  });
+  [statusSel, paymentSel, methodSel, fromInput, toInput].forEach(el=>{
+    if(!el) return;
+    el.addEventListener('change', submitWithPageReset);
+  });
+  if(searchInput){
+    searchInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); submitWithPageReset(); } });
+  }
+  if(clearBtn){
+    clearBtn.addEventListener('click', ()=>{
+      if(searchInput) searchInput.value = '';
+      if(statusSel) statusSel.value = '';
+      if(paymentSel) paymentSel.value = '';
+      if(methodSel) methodSel.value = '';
+      if(fromInput) fromInput.value = '';
+      if(toInput) toInput.value = '';
+      submitWithPageReset();
+    });
+  }
+})();
+
 // Helper: load modal HTML on-demand for order items
 async function loadAndShowOrderModal(orderId){
   try{
@@ -544,17 +602,20 @@ function showShareMenu(anchorEl, data){
 }
 
 // Lightweight toast helper (Bootstrap 5 independent minimal)
-function toast(message, type){
+function toast(message, type, ms){
+  const timeout = typeof ms === 'number' ? ms : 2500;
   let box = document.createElement('div');
   box.className = 'position-fixed top-0 end-0 p-3';
   box.style.zIndex = 1080;
-  box.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0">${message}</div>`;
+  box.innerHTML = `<div class="alert alert-${type} py-2 px-3 shadow-sm mb-0" role="alert" aria-live="assertive">${message}</div>`;
   document.body.appendChild(box);
-  setTimeout(()=>{ box.remove(); }, 2500);
+  setTimeout(()=>{ box.remove(); }, timeout);
 }
 
 // ---- Realtime new orders polling ----
 (function(){
+  // When filters are active, do not inject new rows dynamically to keep the filtered view consistent.
+  if (filtersActive()) return;
   const tbody = document.querySelector('table tbody');
   if(!tbody) return;
   let lastId = 0;
@@ -578,6 +639,7 @@ function toast(message, type){
       }
       const data = await res.json();
       if(data.success && Array.isArray(data.rows) && data.rows.length){
+        let __newCount = 0;
         data.rows.forEach(r=>{
           const tr = document.createElement('tr');
           // Decide status options similar to PHP side for consistency; prefer explicit order_type when present
@@ -597,15 +659,16 @@ function toast(message, type){
             <td>₱${Number(r.Order_Amount||0).toFixed(2)}</td>
             <td>
               <form method=\"post\" class=\"mb-0\">
-                <input type=\"hidden\" name=\"order_id\" value=\"${r.Order_ID}\">
-                <select name=\"order_status\" class=\"form-select form-select-sm\" onchange=\"this.form.submit()\">${statusSelect}</select>
+                <input type=\"hidden\" name=\"order_id\" value=\"${r.Order_ID}\"> 
+                <select name=\"order_status\" class=\"form-select form-select-sm order-status-select\" data-order-id=\"${r.Order_ID}\" data-prev=\"${(r.order_status||'').replace(/"/g,'&quot;')}\">${statusSelect}</select>
               </form>
             </td>
             <td>${ r.Payment_ID ? `<form method=\"post\" class=\"mb-0\"><input type=\"hidden\" name=\"payment_id\" value=\"${r.Payment_ID}\">${paySelect}</form>` : '<span class=\"badge bg-warning text-dark\">Unpaid</span>' }</td>
             <td>${ r.Payment_Method ? r.Payment_Method : '<span class=\"text-muted\">-</span>' }</td>
-            <td><span class=\"badge bg-info text-dark\">New</span></td>`;
+            <td><button class=\"btn btn-sm btn-outline-info\" data-bs-toggle=\"modal\" data-bs-target=\"#itemsModal${r.Order_ID}\" aria-label=\"View items\"><i class=\"bi bi-eye\"></i></button></td>`;
           tbody.prepend(tr);
           if(r.Order_ID > lastId) lastId = r.Order_ID;
+          __newCount++;
           // Ensure modal is available for this new row: fetch on-demand when Items button clicked
           // The button in the rendered row uses data-bs-toggle/data-bs-target but we fetch modal lazily instead
           const itemsBtn = tr.querySelector('button[data-bs-toggle="modal"]');
@@ -620,6 +683,15 @@ function toast(message, type){
             });
           }
         });
+        // Notify at top-right that new orders have arrived
+        try {
+          if (__newCount > 0) {
+            const msg = (__newCount === 1)
+              ? 'A new order just arrived. The list has been updated. Click the eye button to view items or update its status.'
+              : `${__newCount} new orders just arrived. The list has been updated. Use filters or the eye buttons to review them.`;
+            toast(msg, 'success', 5000);
+          }
+        } catch(e) { /* ignore */ }
       }
       if(data.stats){
         const fmt = n => new Intl.NumberFormat().format(n||0);
@@ -631,6 +703,58 @@ function toast(message, type){
     finally { setTimeout(poll, 15000); }
   }
   poll();
+})();
+
+// --- Auto-refresh the whole page when new orders arrive (uses ajax/refresh _new_orders.php) ---
+(function(){
+  const tbody = document.querySelector('table tbody');
+  if(!tbody) return;
+  function getMaxId(){
+    let m = 0;
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      const td = tr.querySelector('td');
+      if(!td) return;
+      const v = parseInt((td.textContent||'').trim(),10);
+      if(!isNaN(v) && v>m) m=v;
+    });
+    return m;
+  }
+  let baseId = getMaxId();
+  async function tick(){
+    try{
+      // Recompute baseline from current table in case rows were dynamically inserted
+      baseId = getMaxId();
+      const url = 'ajax/refresh%20_new_orders.php?last_id=' + encodeURIComponent(baseId) + '&t=' + Date.now();
+      const res = await fetch(url, { credentials:'same-origin', cache:'no-store' });
+      if(res.ok){
+        const j = await res.json();
+        if(j && j.success){
+          if(j.has_new){
+            // Flag so we can show a toast immediately after reload
+            try { sessionStorage.setItem('NEW_ORDER_FLAG', '1'); } catch(e) {}
+            // Hard refresh to re-run PHP filters/pagination and counters
+            location.reload();
+            return;
+          }
+          if(typeof j.last_id === 'number' && j.last_id > baseId){
+            baseId = j.last_id; // keep baseline in sync if needed
+          }
+        }
+      }
+    }catch(e){ /* ignore transient errors */ }
+    setTimeout(tick, 12000); // 12s interval
+  }
+  setTimeout(tick, 12000);
+})();
+
+// Show post-reload notification if we just refreshed due to new order
+(function(){
+  try {
+    if (sessionStorage.getItem('NEW_ORDER_FLAG') === '1') {
+      sessionStorage.removeItem('NEW_ORDER_FLAG');
+  toast('A new order was received and the page was refreshed to include it. Review the latest entry at the top of the list.', 'success', 5000);
+    }
+  } catch(e) { /* ignore */ }
 })();
 
 // --- AJAX order status updates ---
