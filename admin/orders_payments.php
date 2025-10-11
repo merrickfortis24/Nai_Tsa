@@ -93,6 +93,14 @@ ksort($methods);
 @media (max-width: 768px){
   .filter-row .short-select { width: 100%; }
 }
+/* Uniform field heights for the top filter row */
+.uniform-fields .form-label{ margin-bottom:4px }
+.uniform-fields .form-control.form-control-sm,
+.uniform-fields .form-select.form-select-sm{ height:36px }
+.uniform-fields input[type="date"].form-control-sm{ height:36px }
+.filter-row .btn-sm{ height:36px; display:inline-flex; align-items:center; }
+/* Consistent stat tiles */
+.stats-row .tile{ min-height:76px; display:flex; flex-direction:column; justify-content:center; align-items:center; }
 </style>
 </head>
 <body class="dashboard-page">
@@ -110,7 +118,7 @@ ksort($methods);
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
           <!-- debug output removed -->
-          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row">
+          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row uniform-fields">
             <input type="hidden" name="page" value="<?= (int)$page ?>" />
             <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
@@ -151,21 +159,21 @@ ksort($methods);
           </form>
 
           <!-- Stats -->
-          <div class="row g-3 mb-3 small">
+          <div class="row g-3 mb-3 small stats-row">
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Total Records</div>
                 <div class="fw-semibold" id="statTotal"><?=number_format($total)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Unpaid Payments</div>
                 <div class="fw-semibold text-danger" id="statUnpaid"><?=number_format($unpaidPayments)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Pending / Processing Orders</div>
                 <div class="fw-semibold text-warning" id="statPendingProc"><?=number_format($pendingProcessingCount)?></div>
               </div>
