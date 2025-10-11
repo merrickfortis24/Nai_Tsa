@@ -54,6 +54,17 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       .table .desc-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;word-break:break-word;}
       .table .desc-expanded{display:block;-webkit-line-clamp:unset;max-height:none;}
       .desc-toggle{cursor:pointer;}
+      /* Uniform modal header fields */
+      .uniform-fields .form-label{margin-bottom:4px}
+      .uniform-fields .form-control.form-control-sm,
+      .uniform-fields .form-select.form-select-sm,
+      .uniform-fields .input-group.input-group-sm>.form-control,
+      .uniform-fields .input-group.input-group-sm>.input-group-text{height:36px}
+      .uniform-fields .input-group-text{min-width:38px;justify-content:center}
+      @media (min-width: 992px){ /* lg */
+        .uniform-fields .col-md-3{max-width:25%}
+        .uniform-fields .col-md-2{max-width:20%}
+      }
     </style>
 </head>
 <body class="dashboard-page">
@@ -307,8 +318,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <div class="alert alert-info small mb-3">
               Add and manage flavor variants per product. Flavor prices support Absolute (full price) or Delta (added to the product's base price).
             </div>
-            <form id="addVariantForm" class="row g-3 align-items-end mb-3">
-              <div class="col-md-4">
+            <form id="addVariantForm" class="row g-3 align-items-end mb-3 uniform-fields">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Product</label>
                 <select class="form-select form-select-sm" name="product_id" required id="variantProductSelect">
                   <option value="">Select...</option>
@@ -319,26 +330,29 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                   <?php endforeach; ?>
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Code</label>
                 <input type="text" maxlength="32" placeholder="e.g. CHOCO" class="form-control form-control-sm" name="code" required>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Label</label>
                 <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="label" required>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Mode</label>
                 <select class="form-select form-select-sm" name="price_mode" required>
                   <option value="ABSOLUTE">Absolute</option>
                   <option value="DELTA" selected>Delta (+)</option>
                 </select>
               </div>
-              <div class="col-md-1">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Amount</label>
-                <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_value" required>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" class="form-control form-control-sm text-end bg-white text-dark" name="price_value" required>
+                </div>
               </div>
-              <div class="col-md-12 d-flex align-items-center gap-3">
+              <div class="col-12 d-flex align-items-center gap-3 flex-wrap">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" value="1" id="variantPrimaryCheck" name="is_primary">
                   <label class="form-check-label small" for="variantPrimaryCheck">Set as Primary</label>
@@ -792,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r=>r.json()).then(data=>{
           if(data.success){
             form.reset();
-            if(pid){ loadVariants(pid); }
+            if(pid){ loadVariants(pid); } else { loadVariants(null); }
           } else {
             Swal.fire({icon:'error',title:'Flavor not added',text:data.error||'Failed'});
           }
