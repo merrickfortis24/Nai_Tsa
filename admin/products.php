@@ -688,22 +688,47 @@ document.addEventListener('DOMContentLoaded', function() {
             rows = rows.filter(r => r.Product_ID !== undefined ? allowedIds.has(String(r.Product_ID)) : true);
           }
           if(!rows.length){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No flavors yet.</td></tr>'; return; }
-          variantsTableBody.innerHTML = '';
-          rows.forEach((row,i)=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${i+1}</td>
-              <td>${escapeHtml(row.Product_Name||'')}</td>
-              <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
-              <td>${escapeHtml(row.label||'')}</td>
-              <td>${row.price_mode||''}</td>
-              <td>₱${Number(row.price_value||0).toFixed(2)}</td>
-              <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
-              <td>${row.sort_order||0}</td>
-              <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
-            `;
-            variantsTableBody.appendChild(tr);
+          // Group flavors by product so Product appears once with rowspan
+          const groups = new Map();
+          rows.forEach(r => {
+            const pid = (r.Product_ID!==undefined && r.Product_ID!==null) ? String(r.Product_ID) : 'unknown';
+            if(!groups.has(pid)) groups.set(pid, { name: r.Product_Name || '', items: [] });
+            groups.get(pid).items.push(r);
           });
+          variantsTableBody.innerHTML = '';
+          let rowIndex = 0;
+          for(const [pid, group] of groups.entries()){
+            const count = group.items.length;
+            group.items.forEach((row, idx) => {
+              rowIndex++;
+              const tr = document.createElement('tr');
+              if(idx === 0){
+                tr.innerHTML = `
+                  <td>${rowIndex}</td>
+                  <td rowspan="${count}">${escapeHtml(group.name||'')}</td>
+                  <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
+                  <td>${escapeHtml(row.label||'')}</td>
+                  <td>${row.price_mode||''}</td>
+                  <td>₱${Number(row.price_value||0).toFixed(2)}</td>
+                  <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
+                  <td>${row.sort_order||0}</td>
+                  <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
+                `;
+              } else {
+                tr.innerHTML = `
+                  <td>${rowIndex}</td>
+                  <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
+                  <td>${escapeHtml(row.label||'')}</td>
+                  <td>${row.price_mode||''}</td>
+                  <td>₱${Number(row.price_value||0).toFixed(2)}</td>
+                  <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
+                  <td>${row.sort_order||0}</td>
+                  <td><button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}"><i class="bi bi-x"></i></button></td>
+                `;
+              }
+              variantsTableBody.appendChild(tr);
+            });
+          }
         })
         .catch(()=> variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-danger small text-center">Error loading.</td></tr>');
     }
