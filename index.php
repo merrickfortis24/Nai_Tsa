@@ -61,6 +61,17 @@ try {
     .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
     .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
+    /* === Single steady background for the whole site === */
+    body {
+      background-image: url('assets/bg7.jpg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      /* Keep the background visually steady (doesn't move when scrolling) */
+      background-attachment: fixed;
+    }
+    /* Prevent per-section inline/background swapping from overriding the site background */
+    .section { background-image: none !important; background-color: transparent !important; }
   </style>
 </head>
 <body>
@@ -358,45 +369,7 @@ Open daily from 10AM to midnight..</p>
       });
     });
 
-    // Rotating background images for all main sections using local assets
-    function setupRotatingBg(sectionId, images) {
-      const section = document.getElementById(sectionId);
-      let idx = 0;
-      function changeBg() {
-        section.style.backgroundImage = `url('${images[idx]}')`;
-        idx = (idx + 1) % images.length;
-      }
-      changeBg();
-      setInterval(changeBg, 3000);
-    }
-
-    // Use your downloaded images from assets folder
-    const homeImages = [
-      "assets/bg7.jpg",
-      "assets/b6.jpg",
-      "assets/bg1.jpg"
-    ];
-    const aboutImages = [
-      "assets/bg11.jpg",
-      "assets/bg7.jpg",
-      "assets/bg12.jpg"
-    ];
-    const menuImages = [
-      "assets/bg3.jpg",
-      "assets/bg9.jpg",
-      "assets/bg5.jpg"
-    ];
-    const contactImages = [
-      "assets/bg14.jpg",
-      "assets/bg8.jpg",
-      "assets/bg10.jpg"
-    ];
-
-    // Setup rotating backgrounds
-    setupRotatingBg("home", homeImages);
-    setupRotatingBg("about", aboutImages);
-    setupRotatingBg("menu", menuImages);
-    setupRotatingBg("contact", contactImages);
+    // Rotating background JavaScript removed — site uses a single fixed background image via CSS
 
     // Category filtering with Bestsellers default
     (function(){
