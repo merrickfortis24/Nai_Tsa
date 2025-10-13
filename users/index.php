@@ -402,10 +402,25 @@ try {
               <input class="form-check-input" type="radio" name="paymentMethod" id="cod" value="COD" checked>
               <label class="form-check-label" for="cod">Cash on Delivery</label>
             </div>
-            <div class="mt-2">
-              <div class="alert alert-info mb-0" role="status" aria-live="polite" style="font-size:0.95rem;">
-                <strong>Note:</strong> We accept GCash as a payment method, but we do not accept online transactions processed through our website.
-                Please pay via GCash in-person to the number <strong>09940780881</strong> or present proof of transfer to the rider or at pickup.
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="paymentMethod" id="gcash" value="GCash">
+              <label class="form-check-label" for="gcash">GCash (upload receipt)</label>
+            </div>
+            <div id="gcashFields" class="mt-2" style="display:none;">
+              <div class="alert alert-info mb-2" role="status" aria-live="polite" style="font-size:0.95rem;">
+                Transfer payment to <strong>09940780881</strong>, then upload your receipt image and enter the GCash Reference Number. Your order will be processed after admin verification.
+              </div>
+              <div class="mb-2">
+                <label class="form-label">GCash Reference Number</label>
+                <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234 5678 9012">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Amount Paid (₱)</label>
+                <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Upload Receipt Image</label>
+                <input type="file" accept="image/*" class="form-control" id="gcashFile">
               </div>
             </div>
           </div>
@@ -924,12 +939,17 @@ document.querySelectorAll('input[name="orderType"]').forEach(function(radio) {
 // Show/hide payment fields based on payment method
 document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
   radio.addEventListener('change', function() {
-    document.getElementById('gcashFields').style.display = this.value === 'GCash' ? 'block' : 'none';
-    document.getElementById('creditFields').style.display = this.value === 'Credit Card' ? 'block' : 'none';
-    if (this.value === 'Credit Card') {
-      document.getElementById('generatedCardNumber').textContent = generateCreditCardNumber();
+    const gf = document.getElementById('gcashFields');
+    if (gf) gf.style.display = this.value === 'GCash' ? 'block' : 'none';
+    const cf = document.getElementById('creditFields');
+    if (cf) {
+      cf.style.display = this.value === 'Credit Card' ? 'block' : 'none';
+      if (this.value === 'Credit Card') {
+        const gen = document.getElementById('generatedCardNumber');
+        if (gen) gen.textContent = generateCreditCardNumber();
+      }
     }
-  updateOrderSummary();
+    updateOrderSummary();
   });
 });
 
@@ -1358,38 +1378,19 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       size: it.size || '16oz'
     }))
   };
-  // If GCash via PayMongo: create source first, then submit order only after returning success (simplified: we create order immediately as pending then redirect)
+  // If GCash selected, ensure local fields are provided (reference, amount, file)
   if (paymentMethod === 'GCash') {
-    // Calculate total locally (reuse summary) to send to PayMongo
-    try {
-      const subtotal = cart.reduce((sum,i)=>{
-        const prod = (<?php echo json_encode($all_products); ?>||[]).find(p=>p.Product_Name===i.name);
-        if(!prod) return sum;
-        let base = Number(prod.Price_Amount||0) * (i.qty||1);
-        if (Array.isArray(i.addons)) {
-          i.addons.forEach(ad=>{ base += (Number(ad.price)||0) * (i.qty||1); });
-        }
-        return sum + base;
-      },0);
-      // Rough delivery fee (already computed when modal opened & summary updated) - parse from DOM
-      let deliveryFee = 0; const dfEl = document.getElementById('summaryDelivery');
-      if (dfEl) { const m = dfEl.textContent.match(/([0-9]+(?:\.[0-9]+)?)/); if (m) deliveryFee = parseFloat(m[1])||0; }
-      const grand = subtotal + deliveryFee;
-      // Create PayMongo source
-      const pmRes = await fetch('paymongo_create_source.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:grand})});
-      const pmJson = await pmRes.json();
-      if(!pmJson.success){ throw new Error(pmJson.message||'GCash source error'); }
-      // Redirect user to GCash checkout
-      window.location.href = pmJson.redirect;
-      return; // stop normal order creation until success callback
-    } catch(err){
-      Swal.fire({icon:'error', title:'GCash Error', text: err.message||'Unable to start GCash payment', confirmButtonColor:'#FFB27A'});
+    const ref = document.getElementById('gcashRef')?.value?.trim();
+    const amt = parseFloat(document.getElementById('gcashAmt')?.value || '0');
+    const file = document.getElementById('gcashFile')?.files?.[0];
+    if (!ref || !(amt > 0) || !file) {
+      Swal.fire({icon:'warning', title:'GCash details required', text:'Enter the reference number, amount, and upload the receipt image.', confirmButtonColor:'#FFB27A'});
       return;
     }
   }
 
   // Send data to PHP (non-GCash flows)
-  fetch('ajax/checkout_process.php', {
+  const orderRes = await fetch('ajax/checkout_process.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -1403,18 +1404,34 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       lng,
       cart
     })
-  })
-  .then(async res => {
-    const text = await res.text();
-    console.log('Raw response:', text); // <-- Add this line
+  });
+  const rawResp = await orderRes.text();
+  let data;
+  try { data = JSON.parse(rawResp); } catch(e) {
+    Swal.fire({icon:'error', title:'Order Failed', text:'Invalid server response: ' + rawResp, confirmButtonColor:'#FFB27A'});
+    return;
+  }
+  // If GCash, immediately upload the receipt linked to new order
+  if (data && data.success && paymentMethod === 'GCash') {
     try {
-      return JSON.parse(text);
+      const fd = new FormData();
+      fd.append('order_id', String(data.order_id||''));
+      fd.append('ref_number', document.getElementById('gcashRef').value.trim());
+      fd.append('amount', document.getElementById('gcashAmt').value.trim());
+      fd.append('receipt', document.getElementById('gcashFile').files[0]);
+      const up = await fetch('ajax/upload_gcash_receipt.php', { method:'POST', body: fd });
+      const j = await up.json();
+      if (!j.success) {
+        // Soft warning; order is created but receipt missing
+        console.warn('Receipt upload failed', j);
+        Swal.fire({icon:'warning', title:'Receipt upload failed', text:j.message||'Please retry uploading from My Orders.', confirmButtonColor:'#FFB27A'});
+      }
     } catch (e) {
-      throw new Error('Invalid JSON: ' + text);
+      console.warn('Receipt upload exception', e);
     }
-  })
-  .then(data => {
-    if (data.success) {
+  }
+  // Continue normal success flow
+  if (data.success) {
       const feeLine = (typeof data.delivery_fee !== 'undefined') ? `\nDelivery Fee: ${moneyPhp(data.delivery_fee)}${data.distance_km?` (Distance: ${Number(data.distance_km).toFixed(2)} km)`:''}` : '';
       Swal.fire({
         icon: 'success',
@@ -1447,23 +1464,15 @@ document.getElementById('paymentForm').addEventListener('submit', async function
           }})
           .catch(()=>{});
       });
-    } else {
+  } else {
       Swal.fire({
         icon: 'error',
         title: 'Order Failed',
         text: data.message || 'There was a problem processing your order.',
         confirmButtonColor: '#FFB27A'
       });
-    }
-  })
-  .catch(err => {
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Failed',
-      text: err.message || 'A network or server error occurred.',
-      confirmButtonColor: '#FFB27A'
-    });
-  });
+  }
+  return;
 });
 
 document.addEventListener('DOMContentLoaded', () => {

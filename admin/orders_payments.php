@@ -15,7 +15,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['payment_id'], $_POST['payment_status'])) {
     try {
       $pid = (int)$_POST['payment_id'];
-      if ($db->updatePaymentStatus($pid, $_POST['payment_status'])) {
+      $newStatus = trim((string)$_POST['payment_status']);
+      // Gating: if setting Paid for GCash, require verified receipt
+      if (strcasecmp($newStatus,'Paid')===0) {
+        try {
+          $con = $db->opencon();
+          $st = $con->prepare("SELECT Order_ID, Payment_Method FROM payment WHERE Payment_ID=? LIMIT 1");
+          $st->execute([$pid]);
+          $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+          $oid = (int)($row['Order_ID'] ?? 0);
+          $isGCash = isset($row['Payment_Method']) && strcasecmp($row['Payment_Method'],'GCash')===0;
+          if ($oid && $isGCash) {
+            $rc = $con->prepare("SELECT Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+            $rc->execute([$oid]);
+            $rcs = (string)$rc->fetchColumn();
+            if (!($rcs && strcasecmp($rcs,'verified')===0)) {
+              // Block update by skipping and redirecting back with message (optional: flash)
+              $qs = $_GET; unset($qs['page']);
+              header('Location: orders_payments.php' . ($qs ? ('?' . http_build_query($qs)) : ''));
+              exit;
+            }
+          }
+        } catch (Throwable $e) { /* if gating check fails, proceed */ }
+      }
+      if ($db->updatePaymentStatus($pid, $newStatus)) {
         $oid = $db->getOrderIdByPaymentId($pid);
         if ($oid) {
           $adminId = (int)($_SESSION['admin_id'] ?? 0);
@@ -242,7 +265,38 @@ ksort($methods);
                         <span class="badge bg-warning text-dark">Unpaid</span>
                       <?php endif; ?>
                     </td>
-                    <td><?= $r['Payment_Method']? h($r['Payment_Method']) : '<span class="text-muted">-</span>' ?></td>
+                    <td>
+                      <?php if (!empty($r['Payment_Method']) && strcasecmp($r['Payment_Method'],'GCash')===0): ?>
+                        <div class="d-flex flex-column gap-1">
+                          <span class="badge bg-info text-dark align-self-start">GCash</span>
+                          <?php
+                            // Fetch latest receipt if any
+                            try {
+                              $con = $db->opencon();
+                              $rs = $con->prepare("SELECT Payment_Receipt_ID, Proof_Photo, Reference_Number, Submitted_Amount, Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+                              $rs->execute([$r['Order_ID']]);
+                              $gc = $rs->fetch(PDO::FETCH_ASSOC) ?: null;
+                            } catch (Throwable $e) { $gc = null; }
+                          ?>
+                          <?php if ($gc): ?>
+                            <div class="small">Ref: <strong><?=h($gc['Reference_Number']?:'-')?></strong></div>
+                            <div class="small">Amount: ₱<?= number_format((float)($gc['Submitted_Amount']?:0),2) ?></div>
+                            <div class="small">Status: <span class="badge <?= $gc['Status']==='verified'?'bg-success':($gc['Status']==='rejected'?'bg-danger':'bg-secondary') ?>"><?=h(ucfirst($gc['Status']))?></span></div>
+                            <?php if (!empty($gc['Proof_Photo'])): ?>
+                              <a href="<?=h('../admin/' . ltrim($gc['Proof_Photo'],'/'))?>" target="_blank" class="small">View receipt</a>
+                            <?php endif; ?>
+                            <div class="d-flex gap-1 mt-1">
+                              <button type="button" class="btn btn-sm btn-outline-success" data-action="verify" data-rid="<?= (int)$gc['Payment_Receipt_ID'] ?>" data-oid="<?= (int)$r['Order_ID'] ?>">Verify</button>
+                              <button type="button" class="btn btn-sm btn-outline-danger" data-action="reject" data-rid="<?= (int)$gc['Payment_Receipt_ID'] ?>" data-oid="<?= (int)$r['Order_ID'] ?>">Reject</button>
+                            </div>
+                          <?php else: ?>
+                            <span class="small text-muted">No receipt uploaded</span>
+                          <?php endif; ?>
+                        </div>
+                      <?php else: ?>
+                        <?= $r['Payment_Method']? h($r['Payment_Method']) : '<span class="text-muted">-</span>' ?>
+                      <?php endif; ?>
+                    </td>
                     <td>
                       <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#itemsModal<?=h($r['Order_ID'])?>"><i class="bi bi-eye"></i></button>
                     </td>
@@ -250,6 +304,28 @@ ksort($methods);
                 <?php endforeach; ?>
               </tbody>
             </table>
+              // Handle GCash verify/reject buttons
+              document.addEventListener('click', async function(e){
+                const btn = e.target.closest('button[data-action][data-rid]');
+                if(!btn) return;
+                const action = btn.getAttribute('data-action');
+                const rid = btn.getAttribute('data-rid');
+                const oid = btn.getAttribute('data-oid');
+                let body = { action, receipt_id: rid, order_id: oid };
+                if (action === 'reject') {
+                  const reason = prompt('Reason for rejection? (optional)') || '';
+                  body.reason = reason;
+                }
+                btn.disabled = true;
+                try {
+                  const res = await fetch('ajax/gcash_verify.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                  const j = await res.json();
+                  if(!j.success){ alert(j.message||'Action failed'); return; }
+                  // Reload just this page to reflect changes quickly (keeps filters)
+                  window.location.reload();
+                } catch(err){ console.warn(err); alert('Network error'); }
+                finally { btn.disabled = false; }
+              });
           </div>
 
           <?php if ($totalPages > 1): ?>
