@@ -16,14 +16,7 @@
       min-height: 100vh;
       margin: 0;
       padding: 0;
-      /* Modern single steady background: soft warm gradient + very subtle texture (inline SVG) */
-      background-image:
-        linear-gradient(180deg, rgba(255,246,237,1) 0%, rgba(255,244,238,1) 100%),
-        url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='6'%20height='6'%20viewBox='0%200%206%206'%3E%3Crect%20width='6'%20height='6'%20fill='%23ffffff'%20opacity='0.02'/%3E%3Ccircle%20cx='3'%20cy='3'%20r='0.5'%20fill='%23ffffff'%20opacity='0.02'/%3E%3C/svg%3E");
-      background-color: var(--beige); /* fallback */
-      background-size: cover, 6px 6px; /* gradient covers, SVG is a tiny repeating texture */
-      background-repeat: no-repeat, repeat; /* keep steady and fast-loading */
-      background-position: center center;
+      background: var(--beige);
     }
 
     .section {
@@ -35,17 +28,20 @@
       position: relative;
       padding: 0;
       margin: 0;
-      /* Sections sit on top of the single body background. Keep transparent so the unified background shows through. */
-      background: transparent;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      transition: background-image 0.6s cubic-bezier(.77,0,.18,1);
+      /* For fallback color if image fails */
+      background-color: var(--beige);
     }
     .section-overlay {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      /* subtle translucent overlay to keep text readable while letting the background show */
-      background: linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(255,246,237,0.42) 100%);
-      opacity: 1; /* overlay already semi-transparent via the gradient stops */
+      background: linear-gradient(120deg, var(--beige) 88%, var(--soft-orange) 100%);
+      opacity: 0.25; /* reduced so background image shows through more clearly */
       z-index: 1;
       pointer-events: none;
       transition: opacity 0.4s;
