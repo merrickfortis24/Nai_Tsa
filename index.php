@@ -61,11 +61,13 @@ try {
     .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
     .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
-  /* === Plain background color for main sections === */
-  /* Use a neutral warm background. Change the hex below if you prefer another color. */
-  :root { --section-bg: #faf7f3; }
-  body { background-color: var(--section-bg); }
-  .section { background: transparent; }
+    /* === Steady single backgrounds for main sections === */
+    .section { background-size: cover; background-repeat: no-repeat; background-position: center center; background-attachment: fixed; background-color: transparent; }
+    /* Assign single static images per section (no rotation) */
+    #home { background-image: url('assets/bg7.jpg'); }
+    #about { background-image: url('assets/bg11.jpg'); }
+    #menu { background-image: url('assets/bg3.jpg'); }
+    #contact { background-image: url('assets/bg14.jpg'); }
   </style>
 </head>
 <body>
