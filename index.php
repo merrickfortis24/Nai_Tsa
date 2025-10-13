@@ -116,7 +116,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
+  <section class="section" id="about" style="background-image: url('assets/bgnew2.png');">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
