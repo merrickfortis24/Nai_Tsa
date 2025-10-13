@@ -283,7 +283,14 @@ ksort($methods);
                             <div class="small">Amount: ₱<?= number_format((float)($gc['Submitted_Amount']?:0),2) ?></div>
                             <div class="small">Status: <span class="badge <?= $gc['Status']==='verified'?'bg-success':($gc['Status']==='rejected'?'bg-danger':'bg-secondary') ?>"><?=h(ucfirst($gc['Status']))?></span></div>
                             <?php if (!empty($gc['Proof_Photo'])): ?>
-                              <a href="<?=h('../admin/' . ltrim($gc['Proof_Photo'],'/'))?>" target="_blank" class="small">View receipt</a>
+                              <button type="button"
+                                      class="btn btn-link p-0 small view-receipt-btn"
+                                      data-src="<?= h($gc['Proof_Photo']) ?>"
+                                      data-ref="<?= h($gc['Reference_Number'] ?: '') ?>"
+                                      data-amount="<?= h($gc['Submitted_Amount'] ?: '') ?>"
+                                      data-order="<?= (int)$r['Order_ID'] ?>">
+                                View receipt
+                              </button>
                             <?php endif; ?>
                             <div class="d-flex gap-1 mt-1">
                               <button type="button" class="btn btn-sm btn-outline-success" data-action="verify" data-rid="<?= (int)$gc['Payment_Receipt_ID'] ?>" data-oid="<?= (int)$r['Order_ID'] ?>">Verify</button>
@@ -527,8 +534,67 @@ ksort($methods);
     </div>
   </div>
 </div>
+
+<!-- Receipt Preview Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">GCash Receipt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="min-height:200px;">
+        <div id="receiptMeta" class="small text-muted mb-2"></div>
+        <div class="d-flex justify-content-center align-items-center" style="min-height:200px;">
+          <img id="receiptImg" src="" alt="Receipt" class="img-fluid rounded border" style="max-height:70vh; display:none;" />
+          <div id="receiptError" class="text-muted" style="display:none;">Unable to load receipt image.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="receiptOpenNew" href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary">Open in new tab</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// View Receipt: open modal and load image
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.view-receipt-btn');
+  if(!btn) return;
+  const raw = btn.getAttribute('data-src') || '';
+  // Normalize relative path; stored path is typically 'uploads/gcash/...'
+  let src = raw.trim();
+  // If it starts with '/', trim to relative so it works from /admin/
+  if (src.startsWith('/')) src = src.replace(/^\/+/, '');
+  const orderId = btn.getAttribute('data-order') || '';
+  const ref = btn.getAttribute('data-ref') || '';
+  const amt = btn.getAttribute('data-amount') || '';
+  const meta = [];
+  if (orderId) meta.push('Order #' + orderId);
+  if (ref) meta.push('Ref: ' + ref);
+  if (amt) meta.push('Amount: ₱' + (Number(amt)||0).toFixed(2));
+  const metaEl = document.getElementById('receiptMeta');
+  const imgEl = document.getElementById('receiptImg');
+  const errEl = document.getElementById('receiptError');
+  const openNew = document.getElementById('receiptOpenNew');
+  if (metaEl) metaEl.textContent = meta.join(' • ');
+  if (imgEl && errEl) {
+    imgEl.style.display = 'none';
+    errEl.style.display = 'none';
+    imgEl.onload = function(){ imgEl.style.display = 'block'; };
+    imgEl.onerror = function(){ imgEl.style.display = 'none'; errEl.style.display = 'block'; };
+    imgEl.src = src;
+  }
+  if (openNew) {
+    // If not absolute URL, keep as relative to /admin/
+    openNew.href = src;
+  }
+  const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+  modal.show();
+});
 // Detect if any filters are currently active (non-empty)
 function filtersActive(){
   const form = document.getElementById('filtersForm');
