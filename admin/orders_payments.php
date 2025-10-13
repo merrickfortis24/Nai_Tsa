@@ -311,28 +311,6 @@ ksort($methods);
                 <?php endforeach; ?>
               </tbody>
             </table>
-              // Handle GCash verify/reject buttons
-              document.addEventListener('click', async function(e){
-                const btn = e.target.closest('button[data-action][data-rid]');
-                if(!btn) return;
-                const action = btn.getAttribute('data-action');
-                const rid = btn.getAttribute('data-rid');
-                const oid = btn.getAttribute('data-oid');
-                let body = { action, receipt_id: rid, order_id: oid };
-                if (action === 'reject') {
-                  const reason = prompt('Reason for rejection? (optional)') || '';
-                  body.reason = reason;
-                }
-                btn.disabled = true;
-                try {
-                  const res = await fetch('ajax/gcash_verify.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-                  const j = await res.json();
-                  if(!j.success){ alert(j.message||'Action failed'); return; }
-                  // Reload just this page to reflect changes quickly (keeps filters)
-                  window.location.reload();
-                } catch(err){ console.warn(err); alert('Network error'); }
-                finally { btn.disabled = false; }
-              });
           </div>
 
           <?php if ($totalPages > 1): ?>
@@ -594,6 +572,40 @@ document.addEventListener('click', function(e){
   }
   const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
   modal.show();
+});
+
+// Handle GCash verify/reject buttons (admin actions)
+document.addEventListener('click', async function(e){
+  const btn = e.target.closest('button[data-action][data-rid]');
+  if(!btn) return;
+  const action = btn.getAttribute('data-action');
+  const rid = btn.getAttribute('data-rid');
+  const oid = btn.getAttribute('data-oid');
+  let body = { action, receipt_id: rid, order_id: oid };
+  if (action === 'reject') {
+    const reason = prompt('Reason for rejection? (optional)') || '';
+    body.reason = reason;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch('ajax/gcash_verify.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if(!j.success){
+      alert(j.message||'Action failed');
+      return;
+    }
+    // Reload just this page to reflect changes quickly (keeps filters)
+    window.location.reload();
+  } catch(err){
+    console.warn(err);
+    alert('Network error');
+  } finally {
+    btn.disabled = false;
+  }
 });
 // Detect if any filters are currently active (non-empty)
 function filtersActive(){
