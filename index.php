@@ -65,7 +65,7 @@ try {
   .section { background-size: cover; background-repeat: no-repeat; background-position: center center; /* allow normal scrolling on background images */ background-color: transparent; }
     /* Assign single static images per section (no rotation) */
     #home { background-image: url('assets/bgnew1.png'); }
-    #about { background-image: url('assets/bgnew2.png'); }
+    #about { background-image: url('assets/bgbei.png'); }
     #menu { background-image: url('assets/bg3.jpg'); }
     #contact { background-image: url('assets/bg14.jpg'); }
   </style>
@@ -116,7 +116,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bgnew2.png');">
+  <section class="section" id="about" style="background-image: url('assets/bgbei.png');">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
