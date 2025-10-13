@@ -65,7 +65,7 @@ try {
     .section { background-size: cover; background-repeat: no-repeat; background-position: center center; background-attachment: fixed; background-color: transparent; }
     /* Assign single static images per section (no rotation) */
     #home { background-image: url('assets/bgnew1.png'); }
-    #about { background-image: url('assets/bg11.jpg'); }
+    #about { background-image: url('assets/bgnew2.png'); }
     #menu { background-image: url('assets/bg3.jpg'); }
     #contact { background-image: url('assets/bg14.jpg'); }
   </style>
