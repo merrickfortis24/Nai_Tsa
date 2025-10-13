@@ -2,6 +2,7 @@
 session_start();
 // Attempt to restore session from remember-me cookie if present
 //just EDIT
+//hahaha
 require_once __DIR__ . '/../includes/remember.php';
 if (!isset($_SESSION['customer_id'])) {
   header('Location: ../login.php'); // was login.php edit ito
