@@ -66,8 +66,8 @@ try {
     /* Assign single static images per section (no rotation) */
     #home { background-image: url('assets/bgnew1.png'); }
     #about { background-image: url('assets/bgbai.png'); }
-    #menu { background-image: url('assets/bg3.jpg'); }
-    #contact { background-image: url('assets/bg14.jpg'); }
+    #menu { background-image: url('assets/bgnew2.png'); }
+    #contact { background-image: url('assets/bgbai.png'); }
   </style>
 </head>
 <body>
