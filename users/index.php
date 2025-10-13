@@ -1935,6 +1935,22 @@ function renderOrders(){
     // Delivery tracking temporarily disabled
     const trackingHtml = '';
 
+    // If GCash method and latest receipt was rejected, surface a warning with retry action
+    const isGCash = String(o.Payment_Method||'').toLowerCase()==='gcash';
+    const rejected = isGCash && String(o.latest_receipt_status||'').toLowerCase()==='rejected';
+    const rejectReason = o.latest_receipt_reason || '';
+    const rejectedBanner = rejected ? `
+      <div class="alert alert-warning d-flex justify-content-between align-items-center py-2 px-3 mt-2" role="alert" style="border-radius:10px;">
+        <div>
+          <div class="fw-semibold">GCash payment rejected</div>
+          ${rejectReason ? `<div class="small">Reason: ${escapeHtml(rejectReason)}</div>` : ''}
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-secondary" data-action="view-last-receipt" data-id="${o.Order_ID}">View receipt</button>
+          <button class="btn btn-sm btn-soft-orange" data-action="retry-payment" data-id="${o.Order_ID}">Try Again</button>
+        </div>
+      </div>` : '';
+
     return `
       <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
         <div class="card-body">
@@ -1945,6 +1961,7 @@ function renderOrders(){
             </div>
             <span class="badge ${badgeClass} order-status-badge" data-status="${uiStatus}" style="height:fit-content;">${uiStatus}</span>
           </div>
+          ${rejectedBanner}
           <div class="mt-2">${itemsPreview}</div>
           <div class="mt-3 d-flex flex-wrap gap-2">
             ${actionButtons(uiStatus,o.Order_ID)}
@@ -2003,6 +2020,8 @@ function actionButtons(status,id){
   const type = (order?.order_type||'').toLowerCase();
   const isPickup = type.includes('pick');
   const isDelivery = type.includes('deliver') || (!isPickup && (order?.Street || order?.City || order?.Contact_Number));
+  const isGCash = String(order?.Payment_Method||'').toLowerCase()==='gcash';
+  const wasRejected = isGCash && String(order?.latest_receipt_status||'').toLowerCase()==='rejected';
 
   // Decide if confirm button should show
   // Backend allows: (Pickup) Pending, Processing, Ready to pick up -> Received
@@ -2022,6 +2041,7 @@ function actionButtons(status,id){
       // Offer cancel; optionally confirm (if user wants to prematurely mark). We'll keep only cancel to reduce mistakes.
       return `<div class="d-flex gap-1">`+
         `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`+
+        (wasRejected ? `<button class="btn btn-soft-orange btn-sm" data-action="retry-payment" data-id="${id}">Try Again</button>` : '')+
         (showConfirm && status!=='Pending' ? `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm</button>`:'')+
         `</div>`;
     case 'Ready to deliver':
@@ -2040,6 +2060,87 @@ function actionButtons(status,id){
       return '';
   }
 }
+
+// Basic HTML escape helper
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
+}
+
+// Handle Try Again (re-upload GCash receipt) and View receipt
+document.addEventListener('click', async (e)=>{
+  const retryBtn = e.target.closest('[data-action="retry-payment"][data-id]');
+  const viewBtn = e.target.closest('[data-action="view-last-receipt"][data-id]');
+  if(!retryBtn && !viewBtn) return;
+  const orderId = (retryBtn||viewBtn).getAttribute('data-id');
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(orderId));
+  if(!order) return;
+  if(viewBtn){
+    const path = order.latest_receipt_file ? '../admin/' + String(order.latest_receipt_file).replace(/^\/+/, '') : '';
+    if(path){ window.open(path, '_blank'); }
+    return;
+  }
+  // Build a small modal to capture new ref/amount/image
+  const html = `
+    <form id="retryGcashForm" class="text-start">
+      <div class="mb-2"><label class="form-label">GCash Reference Number</label>
+        <input type="text" class="form-control" name="ref_number" required value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
+      <div class="mb-2"><label class="form-label">Amount</label>
+        <input type="number" step="0.01" min="1" class="form-control" name="amount" required value="${order.Order_Amount?Number(order.Order_Amount).toFixed(2):''}" /></div>
+      <div class="mb-2"><label class="form-label">Receipt Image</label>
+        <input type="file" class="form-control" name="receipt" accept="image/*" required /></div>
+    </form>`;
+  const { value: confirmed } = await Swal.fire({
+    title: `Resend GCash Payment for Order #${orderId}`,
+    html,
+    showCancelButton: true,
+    confirmButtonText: 'Upload',
+    cancelButtonText: 'Cancel',
+    width: 560,
+    focusConfirm: false,
+    didOpen: () => {
+      const f = document.getElementById('retryGcashForm');
+      if(f){ f.querySelector('input[name="ref_number"]').focus(); }
+    },
+    preConfirm: () => {
+      const f = document.getElementById('retryGcashForm');
+      if(!f) return false;
+      const ref = f.querySelector('[name="ref_number"]').value.trim();
+      const amt = parseFloat(f.querySelector('[name="amount"]').value);
+      const file = f.querySelector('[name="receipt"]').files[0];
+      if(!ref || !(amt>0) || !file){
+        Swal.showValidationMessage('Please provide ref, amount, and receipt image.');
+        return false;
+      }
+      return {ref, amt, file};
+    }
+  });
+  if(!confirmed) return;
+  // Upload via existing endpoint
+  try{
+    const fd = new FormData();
+    fd.append('order_id', orderId);
+    fd.append('ref_number', confirmed.ref);
+    fd.append('amount', confirmed.amt);
+    fd.append('receipt', confirmed.file);
+    const res = await fetch('ajax/upload_gcash_receipt.php', { method:'POST', body: fd });
+    const j = await res.json();
+    if(!res.ok || !j.success){
+      throw new Error(j.message || 'Upload failed');
+    }
+    Swal.fire({icon:'success', title:'Receipt uploaded. Awaiting verification.', timer:1600, showConfirmButton:false});
+    // Update local cache flags for this order
+    const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
+    if(idx!==-1){
+      ORDERS_CACHE[idx].latest_receipt_status = 'pending';
+      ORDERS_CACHE[idx].latest_receipt_reason = null;
+      ORDERS_CACHE[idx].latest_receipt_ref = confirmed.ref;
+      ORDERS_CACHE[idx].latest_receipt_amount = confirmed.amt;
+    }
+    renderOrders();
+  } catch(err){
+    Swal.fire({icon:'error', title:'Upload failed', text:String(err).slice(0,180)});
+  }
+});
 
 // Confirm order helper (calls ajax/confirm_order.php)
 async function confirmOrder(orderId){
@@ -2234,6 +2335,53 @@ pollOrderStatuses();
 // Search / date filter
 document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
 document.getElementById('ordersFilter').addEventListener('change', ()=>renderOrders());
+
+// --- Global notice: surface rejected GCash payments on page load ---
+(async function checkRejectedReceipts(){
+  try {
+    const res = await fetch('ajax/fetch_orders.php?t=' + Date.now(), {headers:{'Accept':'application/json'}});
+    if(!res.ok) return;
+    const payload = await res.json();
+    if(!payload.success) return;
+    const flat = Array.isArray(payload.flat) ? payload.flat : [];
+    const rejected = flat.filter(o => String(o.Payment_Method||'').toLowerCase()==='gcash' && String(o.latest_receipt_status||'').toLowerCase()==='rejected');
+    if(!rejected.length) return;
+    const first = rejected[0];
+    const count = rejected.length;
+    const note = document.createElement('div');
+    note.id = 'rejectedNotice';
+    note.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+    note.style.zIndex = 1090;
+    note.innerHTML = `
+      <div class="alert alert-warning shadow-sm d-flex align-items-center gap-3 mb-0" role="alert" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+          <div class="fw-semibold">Your GCash payment was rejected</div>
+          <div class="small">${count>1? `${count} orders have rejected payments.` : `Order #${first.Order_ID} has a rejected payment.`} Please review and resend.</div>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="rejectedReviewBtn">Review</button>
+          <button type="button" class="btn-close" aria-label="Close" id="rejectedCloseBtn"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(note);
+    document.getElementById('rejectedCloseBtn')?.addEventListener('click', ()=> note.remove());
+    document.getElementById('rejectedReviewBtn')?.addEventListener('click', ()=>{
+      note.remove();
+      // Open My Orders and scroll to first rejected order if present
+      const modalEl = document.getElementById('myOrdersModal');
+      if(modalEl){
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        // Load and then scroll
+        setTimeout(()=>{
+          const card = document.querySelector(`#ordersList .card[data-order-id='${first.Order_ID}']`);
+          if(card){ card.scrollIntoView({behavior:'smooth', block:'center'}); card.classList.add('border','border-warning'); setTimeout(()=>card.classList.remove('border','border-warning'), 2500); }
+        }, 1000);
+      }
+    });
+  } catch(e) { /* ignore */ }
+})();
 
 // ---------- Review Items (My Orders) ----------
 let CURRENT_REVIEW_ORDER_ID = null;
