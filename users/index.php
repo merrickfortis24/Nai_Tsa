@@ -109,6 +109,39 @@ try {
 </div>
       </div>
     </div>
+
+<!-- Retry GCash Modal (used when Try Again clicked) -->
+<div class="modal fade" id="retryGcashModal" tabindex="-1" aria-labelledby="retryGcashModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:12px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+        <h5 class="modal-title" id="retryGcashModalLabel">Resend GCash Payment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="retryGcashModalForm" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="text-center mb-3">
+            <div class="fw-semibold mb-1">Send payment to:</div>
+            <div class="mb-2"><span class="badge bg-soft-orange text-dark">09940780881</span></div>
+            <img id="retryGcashQr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
+            <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
+          </div>
+          <div class="mb-2"><label class="form-label">GCash Reference Number</label>
+            <input type="text" class="form-control" name="ref_number" id="retry_ref_number" required /></div>
+          <div class="mb-2"><label class="form-label">Amount</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="retry_amount" required /></div>
+          <div class="mb-2"><label class="form-label">Receipt Image</label>
+            <input type="file" accept="image/*" class="form-control" name="receipt" id="retry_receipt" /></div>
+          <input type="hidden" name="order_id" id="retry_order_id" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-soft-orange" id="retrySubmitBtn">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
   </nav>
 
   <!-- Home Section -->
@@ -2102,88 +2135,60 @@ document.addEventListener('click', async (e)=>{
     if(path){ window.open(path, '_blank'); }
     return;
   }
-  // Build a modal with GCash info and upload form
-  const gcashNumber = '09940780881';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${gcashNumber}`;
-  const html = `
-    <div class="mb-3 text-center">
-      <div class="fw-semibold mb-1">Send payment to:</div>
-      <div class="mb-2" style="font-size:1.2em;"><span class="badge bg-soft-orange text-dark" style="font-size:1.1em;">${gcashNumber}</span></div>
-      <img src="${qrUrl}" alt="GCash QR Code" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
-      <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
-    </div>
-    <form id="retryGcashForm" class="text-start">
-      <div class="mb-2"><label class="form-label">GCash Reference Number</label>
-        <input type="text" tabindex="0" class="form-control" name="ref_number" required value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
-      <div class="mb-2"><label class="form-label">Amount</label>
-        <input type="number" tabindex="0" step="0.01" min="0.01" class="form-control" name="amount" required value="${order.latest_receipt_amount?Number(order.latest_receipt_amount).toFixed(2):(order.Order_Amount?Number(order.Order_Amount).toFixed(2):'')}" /></div>
-      <div class="mb-2"><label class="form-label">Receipt Image (required)</label>
-        <input type="file" class="form-control" name="receipt" accept="image/*" required /></div>
-    </form>`;
-  const { value: confirmed } = await Swal.fire({
-    title: `Resend GCash Payment for Order #${orderId}`,
-    html,
-    showCancelButton: true,
-    confirmButtonText: 'Upload',
-    cancelButtonText: 'Cancel',
-    width: 560,
-    focusConfirm: false,
-    didOpen: () => {
-      const f = document.getElementById('retryGcashForm');
-      if(f){ f.querySelector('input[name="ref_number"]').focus(); }
-    },
-    preConfirm: () => {
-      const f = document.getElementById('retryGcashForm');
-      if(!f) return false;
-      const ref = f.querySelector('[name="ref_number"]').value.trim();
-      const amtRaw = f.querySelector('[name="amount"]').value;
-      const amt = amtRaw === '' ? null : parseFloat(amtRaw);
-      const file = f.querySelector('[name="receipt"]').files[0];
+  // Open Bootstrap modal to edit reference, amount and re-upload receipt
+  openRetryGcashModal(order);
+});
 
-      // Validation rules:
-      // - If a file is provided, require ref and a positive amount
-      // - If no file, require at least ref OR a positive amount (metadata-only update)
-      if (file) {
-        if (!ref || !(amt > 0)) {
-          Swal.showValidationMessage('When replacing the receipt image, please provide a reference number and a valid amount.');
-          return false;
-        }
-      } else {
-        if ((!ref || ref.length === 0) && (amt === null || !(amt > 0))) {
-          Swal.showValidationMessage('Provide a new reference number or a valid amount to update metadata, or attach a receipt image to replace it.');
-          return false;
-        }
+// Populate and show the retry modal
+function openRetryGcashModal(order){
+  try{
+    const modalEl = document.getElementById('retryGcashModal');
+    if(!modalEl) return;
+    const refEl = document.getElementById('retry_ref_number');
+    const amtEl = document.getElementById('retry_amount');
+    const orderIdEl = document.getElementById('retry_order_id');
+    if(refEl) refEl.value = order.latest_receipt_ref || '';
+    if(amtEl) amtEl.value = order.latest_receipt_amount ? Number(order.latest_receipt_amount).toFixed(2) : (order.Order_Amount?Number(order.Order_Amount).toFixed(2):'');
+    if(orderIdEl) orderIdEl.value = order.Order_ID;
+    const bm = new bootstrap.Modal(modalEl);
+    bm.show();
+  }catch(e){ console.warn('openRetryGcashModal', e); }
+}
+
+// Handle modal form submission
+const retryForm = document.getElementById('retryGcashModalForm');
+if(retryForm){
+  retryForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const submitBtn = document.getElementById('retrySubmitBtn');
+    const orig = submitBtn ? submitBtn.textContent : '';
+    if(submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Uploading...'; }
+    try{
+      const fd = new FormData(retryForm);
+      const orderId = fd.get('order_id');
+      if(!orderId) throw new Error('Missing order id');
+      const res = await fetch('ajax/upload_gcash_receipt.php', { method: 'POST', body: fd });
+      const j = await res.json().catch(()=>({success:false,message:'Invalid response'}));
+      if(!res.ok || !j.success) throw new Error(j.message || 'Upload failed');
+      // update cache
+      const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
+      if(idx!==-1){
+        ORDERS_CACHE[idx].latest_receipt_status = 'pending';
+        ORDERS_CACHE[idx].latest_receipt_reason = null;
+        ORDERS_CACHE[idx].latest_receipt_ref = fd.get('ref_number');
+        ORDERS_CACHE[idx].latest_receipt_amount = parseFloat(fd.get('amount')) || 0;
       }
-      return {ref, amt, file};
+      renderOrders();
+      bootstrap.Modal.getInstance(document.getElementById('retryGcashModal'))?.hide();
+      Swal.fire({icon:'success', title:'Receipt uploaded. Awaiting verification.', timer:1400, showConfirmButton:false});
+    }catch(err){
+      console.error('retry upload error', err);
+      Swal.fire({icon:'error', title:'Upload failed', text: String(err).slice(0,180)});
+    } finally {
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = orig; }
     }
   });
-  if(!confirmed) return;
-  // Upload via existing endpoint
-  try{
-    const fd = new FormData();
-    fd.append('order_id', orderId);
-    fd.append('ref_number', confirmed.ref);
-    fd.append('amount', confirmed.amt);
-    fd.append('receipt', confirmed.file);
-    const res = await fetch('ajax/upload_gcash_receipt.php', { method:'POST', body: fd });
-    const j = await res.json();
-    if(!res.ok || !j.success){
-      throw new Error(j.message || 'Upload failed');
-    }
-    Swal.fire({icon:'success', title:'Receipt uploaded. Awaiting verification.', timer:1600, showConfirmButton:false});
-    // Update local cache flags for this order
-    const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
-    if(idx!==-1){
-      ORDERS_CACHE[idx].latest_receipt_status = 'pending';
-      ORDERS_CACHE[idx].latest_receipt_reason = null;
-      ORDERS_CACHE[idx].latest_receipt_ref = confirmed.ref;
-      ORDERS_CACHE[idx].latest_receipt_amount = confirmed.amt;
-    }
-    renderOrders();
-  } catch(err){
-    Swal.fire({icon:'error', title:'Upload failed', text:String(err).slice(0,180)});
-  }
-});
+}
 
 // Confirm order helper (calls ajax/confirm_order.php)
 async function confirmOrder(orderId){
