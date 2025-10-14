@@ -2083,12 +2083,11 @@ document.addEventListener('click', async (e)=>{
   const html = `
     <form id="retryGcashForm" class="text-start">
       <div class="mb-2"><label class="form-label">GCash Reference Number</label>
-        <input type="text" class="form-control" name="ref_number" value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
+        <input type="text" tabindex="0" class="form-control" name="ref_number" required value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
       <div class="mb-2"><label class="form-label">Amount</label>
-        <input type="number" step="0.01" min="0" class="form-control" name="amount" value="${order.latest_receipt_amount?Number(order.latest_receipt_amount).toFixed(2):(order.Order_Amount?Number(order.Order_Amount).toFixed(2):'')}" /></div>
-      <div class="mb-2"><label class="form-label">Receipt Image (optional)</label>
-        <input type="file" class="form-control" name="receipt" accept="image/*" /></div>
-      <div class="form-text">You may update the reference and/or amount without re-uploading the image. To replace the image, attach a new receipt.</div>
+        <input type="number" tabindex="0" step="0.01" min="0.01" class="form-control" name="amount" required value="${order.latest_receipt_amount?Number(order.latest_receipt_amount).toFixed(2):(order.Order_Amount?Number(order.Order_Amount).toFixed(2):'')}" /></div>
+      <div class="mb-2"><label class="form-label">Receipt Image (required)</label>
+        <input type="file" class="form-control" name="receipt" accept="image/*" required /></div>
     </form>`;
   const { value: confirmed } = await Swal.fire({
     title: `Resend GCash Payment for Order #${orderId}`,

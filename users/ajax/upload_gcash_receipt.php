@@ -69,43 +69,10 @@ try {
     // ignore here; if table missing we'll hit outer catch
   }
 
-  // If no file uploaded, but metadata is provided, allow metadata-only update (edit ref/amount)
+  // Require a file upload for resend/initial upload. Metadata-only updates are not allowed here.
   $hasFile = isset($_FILES['receipt']) && is_uploaded_file($_FILES['receipt']['tmp_name']);
   if (!$hasFile) {
-    if ($ref === null && $amount === null) {
-      echo json_encode(['success'=>false,'message'=>'Receipt image is required']);
-      exit;
-    }
-
-    // Attempt metadata-only update
-    if (!$existing) {
-      echo json_encode(['success'=>false,'message'=>'No existing receipt to update; please upload a receipt image']);
-      exit;
-    }
-
-    // Prevent editing if already verified
-    $existingStatus = isset($existing['Status']) ? strtolower((string)$existing['Status']) : '';
-    if ($existingStatus === 'verified') {
-      echo json_encode(['success'=>false,'message'=>'Cannot modify a verified receipt']);
-      exit;
-    }
-
-    $updFields = [];
-    $params = [];
-    if ($ref !== null) { $updFields[] = 'Reference_Number = ?'; $params[] = $ref; }
-    if ($amount !== null) { $updFields[] = 'Submitted_Amount = ?'; $params[] = $amount; }
-    if (empty($updFields)) {
-      echo json_encode(['success'=>false,'message'=>'Nothing to update']);
-      exit;
-    }
-    $params[] = (int)$existing['Payment_Receipt_ID'];
-    $upd = $con->prepare('UPDATE order_payment_receipt SET ' . implode(', ', $updFields) . ' WHERE Payment_Receipt_ID = ?');
-    $ok = $upd->execute($params);
-    if ($ok) {
-      echo json_encode(['success'=>true,'receipt_id'=> (int)$existing['Payment_Receipt_ID'], 'order_id'=>$orderId, 'updated'=>true, 'meta_only'=>true]);
-      exit;
-    }
-    echo json_encode(['success'=>false,'message'=>'Failed to update receipt metadata']);
+    echo json_encode(['success'=>false,'message'=>'Receipt image is required']);
     exit;
   }
 
