@@ -59,8 +59,53 @@ try {
     exit;
   }
 
-  if (!isset($_FILES['receipt']) || !is_uploaded_file($_FILES['receipt']['tmp_name'])) {
-    echo json_encode(['success'=>false,'message'=>'Receipt image is required']);
+  // Find existing receipt (if any) early so we can support metadata-only updates
+  $existing = null;
+  try {
+    $s = $con->prepare("SELECT Payment_Receipt_ID, Proof_Photo, Status, Reference_Number, Submitted_Amount FROM order_payment_receipt WHERE Order_ID = ? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+    $s->execute([$orderId]);
+    $existing = $s->fetch(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    // ignore here; if table missing we'll hit outer catch
+  }
+
+  // If no file uploaded, but metadata is provided, allow metadata-only update (edit ref/amount)
+  $hasFile = isset($_FILES['receipt']) && is_uploaded_file($_FILES['receipt']['tmp_name']);
+  if (!$hasFile) {
+    if ($ref === null && $amount === null) {
+      echo json_encode(['success'=>false,'message'=>'Receipt image is required']);
+      exit;
+    }
+
+    // Attempt metadata-only update
+    if (!$existing) {
+      echo json_encode(['success'=>false,'message'=>'No existing receipt to update; please upload a receipt image']);
+      exit;
+    }
+
+    // Prevent editing if already verified
+    $existingStatus = isset($existing['Status']) ? strtolower((string)$existing['Status']) : '';
+    if ($existingStatus === 'verified') {
+      echo json_encode(['success'=>false,'message'=>'Cannot modify a verified receipt']);
+      exit;
+    }
+
+    $updFields = [];
+    $params = [];
+    if ($ref !== null) { $updFields[] = 'Reference_Number = ?'; $params[] = $ref; }
+    if ($amount !== null) { $updFields[] = 'Submitted_Amount = ?'; $params[] = $amount; }
+    if (empty($updFields)) {
+      echo json_encode(['success'=>false,'message'=>'Nothing to update']);
+      exit;
+    }
+    $params[] = (int)$existing['Payment_Receipt_ID'];
+    $upd = $con->prepare('UPDATE order_payment_receipt SET ' . implode(', ', $updFields) . ' WHERE Payment_Receipt_ID = ?');
+    $ok = $upd->execute($params);
+    if ($ok) {
+      echo json_encode(['success'=>true,'receipt_id'=> (int)$existing['Payment_Receipt_ID'], 'order_id'=>$orderId, 'updated'=>true, 'meta_only'=>true]);
+      exit;
+    }
+    echo json_encode(['success'=>false,'message'=>'Failed to update receipt metadata']);
     exit;
   }
 
@@ -133,16 +178,7 @@ try {
     }
   } catch (Throwable $e) { /* ignore; default to 'pending' */ }
 
-  // Check if an existing receipt is present for this order (prefer updating rejected/pending receipts)
-  $existing = null;
-  try {
-    $s = $con->prepare("SELECT Payment_Receipt_ID, Proof_Photo, Status FROM order_payment_receipt WHERE Order_ID = ? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
-    $s->execute([$orderId]);
-    $existing = $s->fetch(PDO::FETCH_ASSOC);
-  } catch (Throwable $e) {
-    // If table/columns are missing this will throw; let the outer catch handle it
-    throw $e;
-  }
+  // (existing was loaded earlier to support metadata-only updates)
 
   if ($existing) {
     // normalize status for decision-making
