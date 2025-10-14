@@ -2150,6 +2150,28 @@ function openRetryGcashModal(order){
     if(refEl) refEl.value = order.latest_receipt_ref || '';
     if(amtEl) amtEl.value = order.latest_receipt_amount ? Number(order.latest_receipt_amount).toFixed(2) : (order.Order_Amount?Number(order.Order_Amount).toFixed(2):'');
     if(orderIdEl) orderIdEl.value = order.Order_ID;
+    // Move modal to document.body so it isn't constrained by the My Orders modal stacking context
+    try{ document.body.appendChild(modalEl); }catch(e){}
+
+    // Ensure the retry modal's backdrop and modal sit above any existing modal
+    if (!modalEl.__retryModalZHandled) {
+      modalEl.__retryModalZHandled = true;
+      modalEl.addEventListener('show.bs.modal', function(){
+        // After Bootstrap inserts the backdrop, bump z-indexes
+        setTimeout(()=>{
+          try{
+            // Highest existing modal z-index in Bootstrap is often 1055; we raise ours a bit higher
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            const lastBackdrop = backdrops[backdrops.length-1];
+            if(lastBackdrop) lastBackdrop.style.zIndex = '1070';
+            modalEl.style.zIndex = '1075';
+          }catch(e){/* ignore */}
+        }, 0);
+      });
+      // Also ensure it gets focus when shown
+      modalEl.addEventListener('shown.bs.modal', function(){ try{ modalEl.focus(); }catch(e){} });
+    }
+
     const bm = new bootstrap.Modal(modalEl);
     bm.show();
   }catch(e){ console.warn('openRetryGcashModal', e); }
