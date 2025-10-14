@@ -2079,8 +2079,16 @@ document.addEventListener('click', async (e)=>{
     if(path){ window.open(path, '_blank'); }
     return;
   }
-  // Build a small modal to capture new ref/amount/image
+  // Build a modal with GCash info and upload form
+  const gcashNumber = '09940780881';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${gcashNumber}`;
   const html = `
+    <div class="mb-3 text-center">
+      <div class="fw-semibold mb-1">Send payment to:</div>
+      <div class="mb-2" style="font-size:1.2em;"><span class="badge bg-soft-orange text-dark" style="font-size:1.1em;">${gcashNumber}</span></div>
+      <img src="${qrUrl}" alt="GCash QR Code" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
+      <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
+    </div>
     <form id="retryGcashForm" class="text-start">
       <div class="mb-2"><label class="form-label">GCash Reference Number</label>
         <input type="text" tabindex="0" class="form-control" name="ref_number" required value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
