@@ -2083,11 +2083,12 @@ document.addEventListener('click', async (e)=>{
   const html = `
     <form id="retryGcashForm" class="text-start">
       <div class="mb-2"><label class="form-label">GCash Reference Number</label>
-        <input type="text" class="form-control" name="ref_number" required value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
+        <input type="text" class="form-control" name="ref_number" value="${order.latest_receipt_ref?escapeHtml(order.latest_receipt_ref):''}" /></div>
       <div class="mb-2"><label class="form-label">Amount</label>
-        <input type="number" step="0.01" min="1" class="form-control" name="amount" required value="${order.Order_Amount?Number(order.Order_Amount).toFixed(2):''}" /></div>
-      <div class="mb-2"><label class="form-label">Receipt Image</label>
-        <input type="file" class="form-control" name="receipt" accept="image/*" required /></div>
+        <input type="number" step="0.01" min="0" class="form-control" name="amount" value="${order.latest_receipt_amount?Number(order.latest_receipt_amount).toFixed(2):(order.Order_Amount?Number(order.Order_Amount).toFixed(2):'')}" /></div>
+      <div class="mb-2"><label class="form-label">Receipt Image (optional)</label>
+        <input type="file" class="form-control" name="receipt" accept="image/*" /></div>
+      <div class="form-text">You may update the reference and/or amount without re-uploading the image. To replace the image, attach a new receipt.</div>
     </form>`;
   const { value: confirmed } = await Swal.fire({
     title: `Resend GCash Payment for Order #${orderId}`,
@@ -2105,11 +2106,23 @@ document.addEventListener('click', async (e)=>{
       const f = document.getElementById('retryGcashForm');
       if(!f) return false;
       const ref = f.querySelector('[name="ref_number"]').value.trim();
-      const amt = parseFloat(f.querySelector('[name="amount"]').value);
+      const amtRaw = f.querySelector('[name="amount"]').value;
+      const amt = amtRaw === '' ? null : parseFloat(amtRaw);
       const file = f.querySelector('[name="receipt"]').files[0];
-      if(!ref || !(amt>0) || !file){
-        Swal.showValidationMessage('Please provide ref, amount, and receipt image.');
-        return false;
+
+      // Validation rules:
+      // - If a file is provided, require ref and a positive amount
+      // - If no file, require at least ref OR a positive amount (metadata-only update)
+      if (file) {
+        if (!ref || !(amt > 0)) {
+          Swal.showValidationMessage('When replacing the receipt image, please provide a reference number and a valid amount.');
+          return false;
+        }
+      } else {
+        if ((!ref || ref.length === 0) && (amt === null || !(amt > 0))) {
+          Swal.showValidationMessage('Provide a new reference number or a valid amount to update metadata, or attach a receipt image to replace it.');
+          return false;
+        }
       }
       return {ref, amt, file};
     }
