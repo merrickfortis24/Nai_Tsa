@@ -68,8 +68,7 @@ try {
 
     // Supplement with all other orders (any status) so statuses like Processing / Ready to pick up appear
     $con = $db->opencon();
-    // Include payment join to get payment_status and method for all orders
-    $allStmt = $con->prepare("SELECT o.*, p.payment_status, p.Payment_Method FROM orders o LEFT JOIN payment p ON p.Order_ID=o.Order_ID WHERE o.Customer_ID = ? ORDER BY o.Order_Date DESC");
+    $allStmt = $con->prepare("SELECT * FROM orders WHERE Customer_ID = ? ORDER BY Order_Date DESC");
     $allStmt->execute([$user_id]);
     $allOrders = $allStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     foreach ($allOrders as $row) {
@@ -85,44 +84,6 @@ try {
             $row['items'] = $orderObj->getOrderItems($oid);
         } catch (Throwable $e) { $row['items'] = []; }
         $flat[] = $row;
-    }
-
-    // Enrich ALL orders with payment method and latest receipt info in bulk
-    $orderIds = array_values(array_unique(array_map(function($o){ return (int)($o['Order_ID'] ?? 0); }, $flat)));
-    if ($orderIds) {
-        // Build IN clause safely
-        $in = implode(',', array_fill(0, count($orderIds), '?'));
-        // Payment methods/status map
-        try {
-            $pmtStmt = $con->prepare("SELECT Order_ID, Payment_Method, payment_status FROM payment WHERE Order_ID IN ($in)");
-            $pmtStmt->execute($orderIds);
-            $payMap = [];
-            while ($r = $pmtStmt->fetch(PDO::FETCH_ASSOC)) { $payMap[(int)$r['Order_ID']] = $r; }
-        } catch (Throwable $e) { $payMap = []; }
-        // Latest receipt per order (if any)
-        $rcpMap = [];
-        try {
-            $latestStmt = $con->prepare("SELECT opr.Order_ID, opr.Status AS latest_receipt_status, opr.Reject_Reason AS latest_receipt_reason, opr.Reference_Number AS latest_receipt_ref, opr.Submitted_Amount AS latest_receipt_amount, opr.Proof_Photo AS latest_receipt_file
-                                          FROM order_payment_receipt opr
-                                          JOIN (
-                                            SELECT Order_ID, MAX(Payment_Receipt_ID) AS max_id
-                                            FROM order_payment_receipt
-                                            WHERE Order_ID IN ($in)
-                                            GROUP BY Order_ID
-                                          ) t ON t.max_id = opr.Payment_Receipt_ID");
-            $latestStmt->execute($orderIds);
-            while ($r = $latestStmt->fetch(PDO::FETCH_ASSOC)) { $rcpMap[(int)$r['Order_ID']] = $r; }
-        } catch (Throwable $e) { $rcpMap = []; }
-        // Attach to flat
-        foreach ($flat as &$o) {
-            $oid = (int)$o['Order_ID'];
-            if (isset($payMap[$oid])) {
-                $o['payment_status'] = $o['payment_status'] ?? $payMap[$oid]['payment_status'];
-                $o['Payment_Method'] = $o['Payment_Method'] ?? $payMap[$oid]['Payment_Method'];
-            }
-            if (isset($rcpMap[$oid])) { $o = array_merge($o, $rcpMap[$oid]); }
-        }
-        unset($o);
     }
 
     // Recompute simple grouped structure (optional) so legacy keys still exist even if empty
