@@ -18,6 +18,37 @@ try {
   $db = new database();
   $con = $db->opencon();
 
+  // Ensure target table exists to avoid PDO exceptions on fresh deployments
+  $ensureTable = function(PDO $con){
+    try {
+      $chk = $con->query("SHOW TABLES LIKE 'order_payment_receipt'");
+      if ($chk && $chk->rowCount() > 0) return; // table already exists
+    } catch (Throwable $e) { /* continue to attempt create */ }
+    try {
+      $con->exec(
+        "CREATE TABLE IF NOT EXISTS order_payment_receipt (
+           Payment_Receipt_ID INT NOT NULL AUTO_INCREMENT,
+           Order_ID INT NULL,
+           Proof_Photo VARCHAR(255) NOT NULL,
+           Reference_Number VARCHAR(100) NULL,
+           Submitted_Amount DECIMAL(10,2) NULL,
+           Status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
+           Verified_By INT NULL,
+           Verified_At DATETIME NULL,
+           Reject_Reason VARCHAR(255) NULL,
+           Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+           PRIMARY KEY (Payment_Receipt_ID),
+           INDEX idx_opr_order (Order_ID)
+         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+      );
+      // Best-effort: add FK if possible (ignore failures silently)
+      try { $con->exec("ALTER TABLE order_payment_receipt ADD CONSTRAINT fk_opr_order FOREIGN KEY (Order_ID) REFERENCES orders (Order_ID) ON DELETE SET NULL ON UPDATE CASCADE"); } catch (Throwable $e) {}
+    } catch (Throwable $e) {
+      // Swallow create errors; insert will fail later with a clearer message
+    }
+  };
+  $ensureTable($con);
+
   // Validate inputs
   $orderId = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
   $ref = trim((string)($_POST['ref_number'] ?? ''));
@@ -57,12 +88,14 @@ try {
   }
 
   // Ensure upload directory exists (store under ../admin/uploads/gcash)
-  $uploadDir = realpath(__DIR__ . '/../../admin/uploads');
-  if (!$uploadDir) { @mkdir(__DIR__ . '/../../admin/uploads', 0775, true); $uploadDir = realpath(__DIR__ . '/../../admin/uploads'); }
-  $gcashDir = $uploadDir ? ($uploadDir . DIRECTORY_SEPARATOR . 'gcash') : null;
-  if ($gcashDir && !is_dir($gcashDir)) { @mkdir($gcashDir, 0775, true); }
-  if (!$gcashDir || !is_dir($gcashDir)) {
-    echo json_encode(['success'=>false,'message'=>'Server storage path not available']);
+  $root = realpath(__DIR__ . '/../../');
+  if (!$root) { $root = dirname(dirname(__DIR__), 1); }
+  $uploadsBase = $root . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'uploads';
+  if (!is_dir($uploadsBase)) { @mkdir($uploadsBase, 0775, true); }
+  $gcashDir = $uploadsBase . DIRECTORY_SEPARATOR . 'gcash';
+  if (!is_dir($gcashDir)) { @mkdir($gcashDir, 0775, true); }
+  if (!is_dir($gcashDir) || !is_writable($gcashDir)) {
+    echo json_encode(['success'=>false,'message'=>'Server storage path not available or not writable']);
     exit;
   }
 
@@ -83,5 +116,7 @@ try {
   echo json_encode(['success'=>true,'receipt_id'=>$rid,'order_id'=>$orderId, 'file'=>$relPath]);
 } catch (Throwable $e) {
   http_response_code(500);
+  // Log server-side for diagnostics
+  error_log('upload_gcash_receipt.php error: ' . $e->getMessage());
   echo json_encode(['success'=>false,'message'=>'Server error','error'=>$e->getMessage()]);
 }
