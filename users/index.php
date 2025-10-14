@@ -1965,14 +1965,23 @@ function renderOrders(){
         </div>
       </div>` : '';
 
+    // Format order date as full readable string (avoid aliasing like Today/Yesterday)
+    const parsedDate = new Date(String(o.Order_Date || '').replace(' ', 'T'));
+    let displayOrderDate = String(o.Order_Date || '');
+    if (!isNaN(parsedDate.getTime())){
+      try{
+        displayOrderDate = parsedDate.toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }catch(e){ /* fall back to raw string */ }
+    }
+
     return `
-      <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between flex-wrap gap-2">
-            <div>
-              <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
-              <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
-            </div>
+        <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
+          <div class="card-body">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+              <div>
+                <strong>Order #${o.Order_ID}</strong> • ${displayOrderDate}
+                <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
+              </div>
             <span class="badge ${badgeClass} order-status-badge" data-status="${uiStatus}" style="height:fit-content;">${uiStatus}</span>
           </div>
           ${rejectedBanner}
