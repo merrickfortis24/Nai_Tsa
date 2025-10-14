@@ -9,6 +9,8 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 require_once __DIR__ . '/../classes/database.php';
+// mailer helper
+require_once __DIR__ . '/../../utils/mailer.php';
 
 try {
   $db = new database();
@@ -48,7 +50,36 @@ try {
         try { $db->insertSalesIfDeliveredAndPaid($orderId, $adminId); } catch (Throwable $e) {}
       } catch (Throwable $e) { /* ignore */ }
     }
+    // Send notification email to customer that payment was verified
+    $emailResult = null;
+    try {
+      $q = $con->prepare("SELECT c.Customer_Email, c.Customer_Name FROM orders o JOIN customer c ON o.Customer_ID = c.Customer_ID WHERE o.Order_ID = ? LIMIT 1");
+      $q->execute([$orderId]);
+      $cx = $q->fetch(PDO::FETCH_ASSOC);
+      if ($cx && !empty($cx['Customer_Email']) && filter_var($cx['Customer_Email'], FILTER_VALIDATE_EMAIL)) {
+        // Build email
+        $to = $cx['Customer_Email'];
+        $name = $cx['Customer_Name'] ?: '';
+        $mail = mailer_instance();
+        $mail->addAddress($to, $name ?: null);
+        $mail->isHTML(true);
+        $mail->Subject = 'Your Nai Tsa payment has been verified';
+        $body = '<p>Hi ' . htmlspecialchars($name) . ',</p>'
+              . '<p>Thank you — we have verified your payment for Order #' . intval($orderId) . '.</p>'
+              . '<p>Your order is now being processed. We appreciate your business!</p>'
+              . '<p>— Nai Tsa Team</p>';
+        $mail->Body = $body;
+        $mail->AltBody = 'Hi ' . $name . ',\n\nYour payment for Order #' . intval($orderId) . ' has been verified. Your order is now being processed.\n\n— Nai Tsa Team';
+        $mail->send();
+        $emailResult = true;
+      }
+    } catch (Throwable $e) {
+      // Log but don't fail the verify action
+      error_log('gcash_verify: email send failed for order ' . $orderId . ' - ' . $e->getMessage());
+      $emailResult = false;
+    }
     echo json_encode(['success'=>true,'status'=>'verified']);
+    exit;
     exit;
   } elseif ($action === 'reject') {
     $u = $con->prepare("UPDATE order_payment_receipt SET Status='rejected', Verified_By=?, Verified_At=NOW(), Reject_Reason=? WHERE Payment_Receipt_ID=?");
