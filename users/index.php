@@ -941,6 +941,16 @@ document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio)
   radio.addEventListener('change', function() {
     const gf = document.getElementById('gcashFields');
     if (gf) gf.style.display = this.value === 'GCash' ? 'block' : 'none';
+    // If user selected GCash, prefill the GCash amount with the computed total
+    if (this.value === 'GCash'){
+      try{
+        const totalText = document.getElementById('summaryTotal')?.textContent || '';
+        // strip non-numeric characters (e.g., currency symbol) and parse
+        const numeric = parseFloat((totalText||'').replace(/[^0-9\.\-]/g,'')) || 0;
+        const ga = document.getElementById('gcashAmt');
+        if(ga) ga.value = numeric.toFixed(2);
+      }catch(e){}
+    }
     const cf = document.getElementById('creditFields');
     if (cf) {
       cf.style.display = this.value === 'Credit Card' ? 'block' : 'none';
