@@ -49,34 +49,6 @@ try {
   };
   $ensureTable($con);
 
-  // Ensure required columns exist (self-heal if table exists but is older schema)
-  $ensureColumns = function(PDO $con){
-    try {
-      $cols = [];
-      foreach ($con->query("SHOW COLUMNS FROM order_payment_receipt") as $c) {
-        $cols[strtolower($c['Field'])] = true;
-      }
-      $alters = [];
-      if (!isset($cols['proof_photo'])) {
-        $alters[] = "ADD COLUMN Proof_Photo VARCHAR(255) NOT NULL AFTER Order_ID";
-      }
-      if (!isset($cols['reference_number'])) {
-        $alters[] = "ADD COLUMN Reference_Number VARCHAR(100) NULL";
-      }
-      if (!isset($cols['submitted_amount'])) {
-        $alters[] = "ADD COLUMN Submitted_Amount DECIMAL(10,2) NULL";
-      }
-      if (!isset($cols['status'])) {
-        $alters[] = "ADD COLUMN Status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending'";
-      }
-      if ($alters) {
-        $sql = "ALTER TABLE order_payment_receipt \n" . implode(",\n", $alters);
-        try { $con->exec($sql); } catch (Throwable $e) { /* ignore if no privilege */ }
-      }
-    } catch (Throwable $e) { /* ignore */ }
-  };
-  $ensureColumns($con);
-
   // Validate inputs
   $orderId = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
   $ref = trim((string)($_POST['ref_number'] ?? ''));
@@ -162,15 +134,8 @@ try {
       }
     }
   } catch (Throwable $e) { /* ignore; default to 'pending' */ }
-  try {
-    $stmt = $con->prepare("INSERT INTO order_payment_receipt (Order_ID, Proof_Photo, Reference_Number, Submitted_Amount, Status) VALUES (?,?,?,?, ?)");
-    $stmt->execute([$orderId, $relPath, $ref, $amount, $statusVal]);
-  } catch (Throwable $e) {
-    http_response_code(500);
-    error_log('upload_gcash_receipt.php insert error: ' . $e->getMessage());
-    echo json_encode(['success'=>false,'message'=>'DB insert failed','error'=>$e->getMessage()]);
-    exit;
-  }
+  $stmt = $con->prepare("INSERT INTO order_payment_receipt (Order_ID, Proof_Photo, Reference_Number, Submitted_Amount, Status) VALUES (?,?,?,?, ?)");
+  $stmt->execute([$orderId, $relPath, $ref, $amount, $statusVal]);
   $rid = (int)$con->lastInsertId();
 
   echo json_encode(['success'=>true,'receipt_id'=>$rid,'order_id'=>$orderId, 'file'=>$relPath]);

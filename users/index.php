@@ -2336,6 +2336,53 @@ pollOrderStatuses();
 document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
 document.getElementById('ordersFilter').addEventListener('change', ()=>renderOrders());
 
+// --- Global notice: surface rejected GCash payments on page load ---
+(async function checkRejectedReceipts(){
+  try {
+    const res = await fetch('ajax/fetch_orders.php?t=' + Date.now(), {headers:{'Accept':'application/json'}});
+    if(!res.ok) return;
+    const payload = await res.json();
+    if(!payload.success) return;
+    const flat = Array.isArray(payload.flat) ? payload.flat : [];
+    const rejected = flat.filter(o => String(o.Payment_Method||'').toLowerCase()==='gcash' && String(o.latest_receipt_status||'').toLowerCase()==='rejected');
+    if(!rejected.length) return;
+    const first = rejected[0];
+    const count = rejected.length;
+    const note = document.createElement('div');
+    note.id = 'rejectedNotice';
+    note.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+    note.style.zIndex = 1090;
+    note.innerHTML = `
+      <div class="alert alert-warning shadow-sm d-flex align-items-center gap-3 mb-0" role="alert" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+          <div class="fw-semibold">Your GCash payment was rejected</div>
+          <div class="small">${count>1? `${count} orders have rejected payments.` : `Order #${first.Order_ID} has a rejected payment.`} Please review and resend.</div>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="rejectedReviewBtn">Review</button>
+          <button type="button" class="btn-close" aria-label="Close" id="rejectedCloseBtn"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(note);
+    document.getElementById('rejectedCloseBtn')?.addEventListener('click', ()=> note.remove());
+    document.getElementById('rejectedReviewBtn')?.addEventListener('click', ()=>{
+      note.remove();
+      // Open My Orders and scroll to first rejected order if present
+      const modalEl = document.getElementById('myOrdersModal');
+      if(modalEl){
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        // Load and then scroll
+        setTimeout(()=>{
+          const card = document.querySelector(`#ordersList .card[data-order-id='${first.Order_ID}']`);
+          if(card){ card.scrollIntoView({behavior:'smooth', block:'center'}); card.classList.add('border','border-warning'); setTimeout(()=>card.classList.remove('border','border-warning'), 2500); }
+        }, 1000);
+      }
+    });
+  } catch(e) { /* ignore */ }
+})();
+
 // ---------- Review Items (My Orders) ----------
 let CURRENT_REVIEW_ORDER_ID = null;
 
