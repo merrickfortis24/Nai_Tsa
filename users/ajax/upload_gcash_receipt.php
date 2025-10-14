@@ -51,14 +51,11 @@ try {
 
   // Validate inputs
   $orderId = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
-  $ref = trim((string)($_POST['ref_number'] ?? ''));
-  $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0.0;
+  // For Try Again flows we allow ref_number and amount to be omitted (they'll remain unchanged on update)
+  $ref = array_key_exists('ref_number', $_POST) ? trim((string)($_POST['ref_number'] ?? '')) : null;
+  $amount = array_key_exists('amount', $_POST) ? (float)$_POST['amount'] : null;
   if ($orderId <= 0) {
     echo json_encode(['success'=>false,'message'=>'Missing or invalid order ID']);
-    exit;
-  }
-  if ($ref === '' || $amount <= 0) {
-    echo json_encode(['success'=>false,'message'=>'Reference number and amount are required']);
     exit;
   }
 
@@ -119,26 +116,74 @@ try {
     exit;
   }
 
-  // Store DB record in order_payment_receipt with status=pending
+  // Store DB record in order_payment_receipt with status=pending OR update existing receipt for this order
   $relPath = 'uploads/gcash/' . $base; // relative to admin/
+
   // Detect proper Status casing if enum differs (e.g., 'Pending' vs 'pending')
   $statusVal = 'pending';
   try {
     $col = $con->query("SHOW COLUMNS FROM order_payment_receipt LIKE 'Status'");
     $info = $col ? $col->fetch(PDO::FETCH_ASSOC) : null;
     if ($info && isset($info['Type'])) {
-      $type = strtolower((string)$info['Type']); // example: enum('pending','verified','rejected')
-      if (strpos($type, "'pending'") === false && strpos(strtolower($type), "'pending'") === false) {
-        // Try uppercase 'Pending'
-        if (stripos($info['Type'], "'Pending'") !== false) { $statusVal = 'Pending'; }
+      $type = (string)$info['Type'];
+      // If enum uses 'Pending' instead of 'pending'
+      if (stripos($type, "'pending'") === false && stripos($type, "'Pending'") !== false) {
+        $statusVal = 'Pending';
       }
     }
   } catch (Throwable $e) { /* ignore; default to 'pending' */ }
+
+  // Check if an existing receipt is present for this order (prefer updating rejected/pending receipts)
+  $existing = null;
+  try {
+    $s = $con->prepare("SELECT Payment_Receipt_ID, Proof_Photo, Status FROM order_payment_receipt WHERE Order_ID = ? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+    $s->execute([$orderId]);
+    $existing = $s->fetch(PDO::FETCH_ASSOC);
+  } catch (Throwable $e) {
+    // If table/columns are missing this will throw; let the outer catch handle it
+    throw $e;
+  }
+
+  if ($existing) {
+    // normalize status for decision-making
+    $existingStatus = isset($existing['Status']) ? strtolower((string)$existing['Status']) : '';
+    if ($existingStatus === 'verified') {
+      // If already verified, create new record instead of overwriting
+      $existing = null;
+    }
+  }
+
+  if ($existing) {
+    // Update the existing receipt row (Try Again flow)
+    $updateFields = "Proof_Photo = ?, Status = ?, Verified_By = NULL, Verified_At = NULL, Reject_Reason = NULL";
+    $params = [$relPath, $statusVal];
+    if ($ref !== null) { $updateFields .= ", Reference_Number = ?"; $params[] = $ref; }
+    if ($amount !== null) { $updateFields .= ", Submitted_Amount = ?"; $params[] = $amount; }
+    $params[] = (int)$existing['Payment_Receipt_ID'];
+    $upd = $con->prepare("UPDATE order_payment_receipt SET $updateFields WHERE Payment_Receipt_ID = ?");
+    $upd->execute($params);
+    $rid = (int)$existing['Payment_Receipt_ID'];
+
+    // Optionally remove old file if it's different and exists inside uploads/gcash
+    try {
+      if (!empty($existing['Proof_Photo']) && $existing['Proof_Photo'] !== $relPath) {
+        $old = $root . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . $existing['Proof_Photo'];
+        if (strpos(realpath($old) ?: '', realpath($gcashDir) ?: '') === 0 && is_file($old)) {
+          @unlink($old);
+        }
+      }
+    } catch (Throwable $e) { /* ignore cleanup failures */ }
+
+    echo json_encode(['success'=>true,'receipt_id'=>$rid,'order_id'=>$orderId, 'file'=>$relPath, 'updated'=>true]);
+    exit;
+  }
+
+  // No existing updatable receipt: insert new
   $stmt = $con->prepare("INSERT INTO order_payment_receipt (Order_ID, Proof_Photo, Reference_Number, Submitted_Amount, Status) VALUES (?,?,?,?, ?)");
   $stmt->execute([$orderId, $relPath, $ref, $amount, $statusVal]);
   $rid = (int)$con->lastInsertId();
 
-  echo json_encode(['success'=>true,'receipt_id'=>$rid,'order_id'=>$orderId, 'file'=>$relPath]);
+  echo json_encode(['success'=>true,'receipt_id'=>$rid,'order_id'=>$orderId, 'file'=>$relPath, 'updated'=>false]);
 } catch (Throwable $e) {
   http_response_code(500);
   // Log server-side for diagnostics
