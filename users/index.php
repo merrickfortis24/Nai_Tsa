@@ -1945,8 +1945,8 @@ function renderOrders(){
           <div class="fw-semibold">GCash payment rejected</div>
           ${rejectReason ? `<div class="small">Reason: ${escapeHtml(rejectReason)}</div>` : ''}
           ${o.latest_receipt_ref || o.latest_receipt_amount ? `
-            <div class="small mt-1">Ref: <span class="text-decoration-underline" data-action="retry-payment" data-field="ref" data-id="${o.Order_ID}" style="cursor:pointer">${escapeHtml(o.latest_receipt_ref || '—')}</span>
-            &nbsp;•&nbsp;Amount: <span class="text-decoration-underline" data-action="retry-payment" data-field="amount" data-id="${o.Order_ID}" style="cursor:pointer">${o.latest_receipt_amount ? Number(o.latest_receipt_amount).toFixed(2) : '—'}</span></div>
+            <div class="small mt-1">Ref: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${escapeHtml(o.latest_receipt_ref || '—')}</span>
+            &nbsp;•&nbsp;Amount: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${o.latest_receipt_amount ? Number(o.latest_receipt_amount).toFixed(2) : '—'}</span></div>
           ` : ''}
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -2164,70 +2164,6 @@ document.addEventListener('click', async (e)=>{
   } catch(err){
     Swal.fire({icon:'error', title:'Upload failed', text:String(err).slice(0,180)});
   }
-});
-
-// Inline edit support for ref/amount inside rejected banner
-document.addEventListener('click', async function(e){
-  const span = e.target.closest('span[data-action="retry-payment"][data-field]');
-  if(!span) return;
-  const field = span.getAttribute('data-field');
-  const orderId = span.getAttribute('data-id');
-  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(orderId));
-  if(!order) return;
-
-  // Replace span with an inline input
-  const origText = span.textContent.trim();
-  let input;
-  if(field === 'amount'){
-    input = document.createElement('input');
-    input.type = 'number'; input.step = '0.01'; input.min = '0.01';
-    input.value = order.latest_receipt_amount ? Number(order.latest_receipt_amount).toFixed(2) : (order.Order_Amount?Number(order.Order_Amount).toFixed(2):'');
-    input.className = 'form-control form-control-sm d-inline-block';
-    input.style.width = '100px';
-  } else {
-    input = document.createElement('input');
-    input.type = 'text'; input.value = order.latest_receipt_ref || '';
-    input.className = 'form-control form-control-sm d-inline-block';
-    input.style.width = '160px';
-  }
-  // swap element
-  span.replaceWith(input);
-  input.focus();
-
-  function finish(commit){
-    const newVal = input.value.trim();
-    // restore span
-    const newSpan = document.createElement('span');
-    newSpan.className = 'text-decoration-underline';
-    newSpan.setAttribute('data-action','retry-payment');
-    newSpan.setAttribute('data-field', field);
-    newSpan.setAttribute('data-id', orderId);
-    newSpan.style.cursor = 'pointer';
-    if(commit && newVal !== ''){
-      if(field === 'amount'){
-        const num = parseFloat(newVal) || 0;
-        newSpan.textContent = num.toFixed(2);
-        // update cache
-        const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
-        if(idx!==-1) ORDERS_CACHE[idx].latest_receipt_amount = num;
-      } else {
-        newSpan.textContent = newVal;
-        const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
-        if(idx!==-1) ORDERS_CACHE[idx].latest_receipt_ref = newVal;
-      }
-    } else {
-      newSpan.textContent = origText || '—';
-    }
-    input.replaceWith(newSpan);
-    // Re-render orders list to reflect changes in UI where necessary
-    try { renderOrders(); } catch(e){}
-  }
-
-  input.addEventListener('blur', ()=> finish(true));
-  input.addEventListener('keydown', (ke)=>{
-    if(ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
-    if(ke.key === 'Escape') { ke.preventDefault(); finish(false); }
-  });
 });
 
 // Confirm order helper (calls ajax/confirm_order.php)
