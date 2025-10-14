@@ -1944,6 +1944,10 @@ function renderOrders(){
         <div>
           <div class="fw-semibold">GCash payment rejected</div>
           ${rejectReason ? `<div class="small">Reason: ${escapeHtml(rejectReason)}</div>` : ''}
+          ${o.latest_receipt_ref || o.latest_receipt_amount ? `
+            <div class="small mt-1">Ref: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${escapeHtml(o.latest_receipt_ref || '—')}</span>
+            &nbsp;•&nbsp;Amount: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${o.latest_receipt_amount ? Number(o.latest_receipt_amount).toFixed(2) : '—'}</span></div>
+          ` : ''}
         </div>
         <div class="d-flex gap-2 flex-wrap">
           <button class="btn btn-sm btn-outline-secondary" data-action="view-last-receipt" data-id="${o.Order_ID}">View receipt</button>
