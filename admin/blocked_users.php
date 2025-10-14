@@ -67,7 +67,7 @@ try {
       <div class="card shadow-sm mb-4">
         <div class="card-body">
           <div class="alert alert-warning py-2 small">
-            Manual unblocks are respected for 48 hours. The auto-scan will skip re-blocking those users during this grace period.
+            Manual unblocks are no longer protected by a grace period. Users manually unblocked by an admin may be auto-blocked immediately if they violate the rules again.
           </div>
           <div class="mb-3">
             <h6 class="mb-2"><i class="bi bi-clock-history me-1"></i>Recent Block Events</h6>
