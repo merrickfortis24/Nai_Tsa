@@ -9,6 +9,22 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments) || !isset($blocke
 }
 ?>
 <div class="pt-3">
+        <style>
+            /* Ensure offcanvas sidebar matches desktop sidebar visuals across all pages */
+            .offcanvas.offcanvas-start .offcanvas-body { 
+                background: linear-gradient(180deg, var(--primary-color,#4361ee), var(--secondary-color,#3f37c9));
+                color: white;
+                padding: 0.75rem 0.5rem;
+                min-height: 100%;
+            }
+            .offcanvas.offcanvas-start { --bs-offcanvas-width: 260px; }
+            .offcanvas.offcanvas-start .nav { padding-left: 0.5rem; }
+            .offcanvas.offcanvas-start .nav-link { color: rgba(255,255,255,0.95); }
+            .offcanvas.offcanvas-start .nav-link i { color: rgba(255,255,255,0.95); }
+            .offcanvas.offcanvas-start .nav-link .badge { background: rgba(255,255,255,0.12); color: white; margin-left:auto; }
+            /* Keep desktop/sidebar consistent */
+            .sidebar { background: linear-gradient(180deg, var(--primary-color,#4361ee), var(--secondary-color,#3f37c9)); }
+        </style>
     <div class="d-flex align-items-center mb-4 px-3">
         <div class="bg-white p-2 rounded me-2">
             <i class="bi bi-shield-lock text-primary fs-4"></i>
