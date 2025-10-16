@@ -768,6 +768,64 @@ document.addEventListener('DOMContentLoaded', function() {
       }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to add size.'}));
     });
 
+    // Auto-fill Amount when Absolute is selected: fetch product base price
+    async function fetchBasePrice(productId){
+      if(!productId) return null;
+      try{
+        const res = await fetch('ajax/get_product_base_price.php?product_id='+encodeURIComponent(productId));
+        const j = await res.json();
+        if(j.success) return j.price; else return null;
+      } catch(e){ return null; }
+    }
+
+    // When product selection changes in add size form, update placeholder
+    document.querySelector('select[name="is_absolute"][name]')?.addEventListener?.('change', ()=>{}); // noop to keep consistent
+    const sizeProductSelectEl = document.getElementById('sizeProductSelect');
+    const sizeModeSelect = document.querySelector('#manageSizesModal select[name="is_absolute"]');
+    const sizeAmountInput = document.querySelector('#manageSizesModal input[name="price_amount"]');
+    if(sizeModeSelect && sizeProductSelectEl && sizeAmountInput){
+      sizeModeSelect.addEventListener('change', async function(){
+        const mode = this.value; // '1' = Absolute, '0' = Delta
+        if(mode === '1'){
+          const pid = sizeProductSelectEl.value;
+          const base = await fetchBasePrice(pid);
+          if(base !== null){ sizeAmountInput.placeholder = Number(base).toFixed(2); }
+        } else {
+          sizeAmountInput.placeholder = '0.00';
+        }
+      });
+      // Also update when product select changes while Absolute active
+      sizeProductSelectEl.addEventListener('change', async function(){
+        if(sizeModeSelect.value === '1'){
+          const base = await fetchBasePrice(this.value);
+          if(base !== null) sizeAmountInput.placeholder = Number(base).toFixed(2);
+        }
+      });
+    }
+
+    // Variants: similar behavior
+    const variantProductSelectEl = document.getElementById('variantProductSelect');
+    const variantModeSelect = document.querySelector('#manageVariantsModal select[name="price_mode"]');
+    const variantAmountInput = document.querySelector('#manageVariantsModal input[name="price_value"]');
+    if(variantModeSelect && variantProductSelectEl && variantAmountInput){
+      variantModeSelect.addEventListener('change', async function(){
+        const mode = (this.value||'').toUpperCase();
+        if(mode === 'ABSOLUTE'){
+          const pid = variantProductSelectEl.value;
+          const base = await fetchBasePrice(pid);
+          if(base !== null){ variantAmountInput.placeholder = Number(base).toFixed(2); }
+        } else {
+          variantAmountInput.placeholder = '0.00';
+        }
+      });
+      variantProductSelectEl.addEventListener('change', async function(){
+        if((variantModeSelect.value||'').toUpperCase() === 'ABSOLUTE'){
+          const base = await fetchBasePrice(this.value);
+          if(base !== null) variantAmountInput.placeholder = Number(base).toFixed(2);
+        }
+      });
+    }
+
     // Manage Flavor Variants
     const manageVariantsModal = document.getElementById('manageVariantsModal');
     const variantsTableBody = document.querySelector('#variantsTable tbody');
