@@ -23,7 +23,11 @@ try {
     $baseAmount = null;
     try {
         $baseRow = $db->getCurrentProductPrice($productId);
-        if(isset($baseRow['Price_Amount'])) $baseAmount = (float)$baseRow['Price_Amount'];
+        if(is_array($baseRow) && isset($baseRow['Price_Amount'])){
+            $baseAmount = (float)$baseRow['Price_Amount'];
+        } elseif(is_numeric($baseRow)){
+            $baseAmount = (float)$baseRow;
+        }
     } catch(Throwable $ignore){}
     if($priceMode === 'DELTA'){
         if($baseAmount === null){

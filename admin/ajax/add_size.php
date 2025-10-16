@@ -96,7 +96,13 @@ try {
   // Use history-aware helper to find the product base price (if any)
   try {
     $baseRow = $db->getCurrentProductPrice($product_id);
-    $baseAmount = isset($baseRow['Price_Amount']) ? (float)$baseRow['Price_Amount'] : null;
+    if(is_array($baseRow) && isset($baseRow['Price_Amount'])){
+      $baseAmount = (float)$baseRow['Price_Amount'];
+    } elseif (is_numeric($baseRow)){
+      $baseAmount = (float)$baseRow;
+    } else {
+      $baseAmount = null;
+    }
   } catch(Throwable $ignore) {
     $baseAmount = null;
   }
