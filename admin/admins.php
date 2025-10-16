@@ -32,27 +32,27 @@ try {
 <body class="dashboard-page">
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
+            <!-- Desktop sidebar (visible on md+) -->
+            <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
                 <?php include 'sidebar.php'; ?>
+            </div>
+            <!-- Offcanvas sidebar for small screens -->
+            <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
+                <div class="offcanvas-body p-0">
+                    <?php include 'sidebar.php'; ?>
+                </div>
             </div>
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
-                <div class="header d-flex justify-content-between align-items-center">
-                    <!-- Mobile burger: toggles the sidebar collapse on small screens -->
-                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2 mobile-burger"
-                            type="button"
-                            data-bs-toggle="collapse"
-                            data-bs-target=".sidebar"
-                            aria-controls="sidebar"
-                            aria-expanded="false"
-                            aria-label="Toggle navigation">
-                        <i class="bi bi-list"></i>
-                    </button>
+                <div class="header d-flex justify-content-between align-items-center mt-3">
                     <div>
                         <h4 class="mb-0 fw-bold">Admins</h4>
                         <p class="mb-0 text-muted">List of all administrators</p>
                     </div>
+                    <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+                    <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                        <i class="bi bi-list" style="font-size:1.7rem;"></i>
+                    </button>
                 </div>
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
