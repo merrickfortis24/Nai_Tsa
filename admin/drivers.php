@@ -78,7 +78,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
                     <p class="mb-0 text-muted">Manage delivery drivers</p>
                 </div>
                 <!-- Sidebar toggle button for small screens (opens offcanvas) -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size:1.7rem;"></i>
                 </button>
             </div>

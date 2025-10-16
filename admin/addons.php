@@ -33,8 +33,8 @@ if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
           <h4 class="mb-0 fw-bold">Add-ons</h4>
           <p class="mb-0 text-muted">Manage add-ons and product mappings</p>
         </div>
-        <!-- Sidebar toggle button for small screens (opens offcanvas) -->
-        <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+  <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+  <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
           <i class="bi bi-list" style="font-size:1.7rem;"></i>
         </button>
       </div>
