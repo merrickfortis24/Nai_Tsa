@@ -20,17 +20,6 @@
             position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
         }
-
-        /* Sidebar sizing and offcanvas consistency */
-        :root { --sidebar-width: 260px; }
-        .sidebar { width: var(--sidebar-width); }
-        .offcanvas.offcanvas-start { --bs-offcanvas-width: var(--sidebar-width); }
-        .offcanvas.offcanvas-start .offcanvas-body {
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            padding: 0.75rem 0.5rem;
-            min-height: 100%;
-        }
         
         .sidebar .nav-link {
             color: rgba(255,255,255,0.85);
@@ -283,27 +272,10 @@
         }
         
         @media (max-width: 768px) {
-            /* On small devices hide the fixed sidebar column; offcanvas will be used */
-            .sidebar { display: none; }
-
-            /* Fixed-position mobile burger button (consistent across pages) */
-            .mobile-burger {
-                position: fixed;
-                left: 12px;
-                top: 12px;
-                z-index: 1080; /* above offcanvas backdrop */
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 42px;
-                height: 42px;
-                border-radius: 8px;
-                background: white;
-                color: var(--primary-color);
-                box-shadow: 0 4px 18px rgba(0,0,0,0.12);
-                border: none;
+            .sidebar {
+                width: 0;
+                display: none;
             }
-            .header .btn[data-bs-target="#sidebarOffcanvas"]{ display: none; }
         }
         
         @media (max-width: 576px) {

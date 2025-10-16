@@ -9,10 +9,6 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments) || !isset($blocke
 }
 ?>
 <div class="pt-3">
-            <!-- Mobile burger button (fixed position) -->
-            <button class="mobile-burger d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
-                <i class="bi bi-list" style="font-size:1.1rem"></i>
-            </button>
     <div class="d-flex align-items-center mb-4 px-3">
         <div class="bg-white p-2 rounded me-2">
             <i class="bi bi-shield-lock text-primary fs-4"></i>
