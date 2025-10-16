@@ -110,7 +110,7 @@ try {
                 </div>
                 
                 <!-- Add this button inside your .header div, preferably at the start or left side -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="collapse" data-bs-target=".sidebar" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size:1.7rem;"></i>
                 </button>
 

@@ -8,7 +8,7 @@ if (!isset($pendingProcessingCount) || !isset($unpaidPayments) || !isset($blocke
     @require_once __DIR__ . '/sidebar_counts.php';
 }
 ?>
-<div class="pt-3">
+<div class="pt-3 sidebar">
     <div class="d-flex align-items-center mb-4 px-3">
         <div class="bg-white p-2 rounded me-2">
             <i class="bi bi-shield-lock text-primary fs-4"></i>

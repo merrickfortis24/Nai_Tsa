@@ -135,7 +135,7 @@ ksort($methods);
     <div class="col-md-10 col-lg-10 main-content">
       <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
   <h4 class="fw-bold mb-0">Orders & Payments</h4>
-        <button class="btn btn-outline-primary d-lg-none" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse"><i class="bi bi-list"></i></button>
+        <button class="btn btn-outline-primary d-md-none" data-bs-toggle="collapse" data-bs-target=".sidebar"><i class="bi bi-list"></i></button>
       </div>
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>

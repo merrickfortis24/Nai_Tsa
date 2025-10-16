@@ -53,7 +53,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
 <head>
     <meta charset="UTF-8">
     <title>Drivers - Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -171,7 +171,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function showEdit(form) {
     document.getElementById('edit_id').value = form.driver_id.value;
