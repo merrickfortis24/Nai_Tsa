@@ -72,7 +72,7 @@ try {
   <!-- Inline fallback / ensure steady fixed background like landing page -->
   <style>
     body {
-      background-image: url('../assets/bg10.jpg');
+      background-image: url('../assets/bg7.jpg');
       background-size: cover;
       background-position: center center;
       background-repeat: no-repeat;
