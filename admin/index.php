@@ -90,7 +90,7 @@ try {
                 <?php include 'sidebar.php'; ?>
             </div>
                 <!-- Offcanvas sidebar for small screens -->
-                <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
+                <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
                     <div class="offcanvas-body">
                         <?php include 'sidebar.php'; ?>
                     </div>
@@ -102,7 +102,7 @@ try {
                 <div class="header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <!-- Mobile burger button for offcanvas sidebar -->
-                            <button class="btn btn-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
+                            <button class="btn btn-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
                                 <i class="bi bi-list"></i>
                             </button>
                             <div>
@@ -122,7 +122,7 @@ try {
                 </div>
                 
                 <!-- Sidebar toggle button for small screens (opens offcanvas) -->
-                <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size:1.7rem;"></i>
                 </button>
 
