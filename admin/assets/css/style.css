@@ -175,10 +175,14 @@
         }
 
         /* Debug helpers (comment/uncomment while debugging) */
-        /*
-        .sidebar { outline: 2px solid rgba(66,133,244,0.25); }
-        .main-content { outline: 2px dashed rgba(76,175,80,0.25); }
-        */
+    /* Temporary debug outlines — remove when finished debugging */
+    .sidebar { outline: 3px solid rgba(66,133,244,0.35) !important; }
+    .main-content { outline: 3px dashed rgba(76,175,80,0.35) !important; }
+    .container-fluid { outline: 2px dotted rgba(255,165,0,0.3) !important; padding-top: 0 !important; margin-top: 0 !important; }
+    .container-fluid > .row, .row { align-items: flex-start !important; margin-top: 0 !important; padding-top: 0 !important; }
+    body { padding-top: 0 !important; }
+    .main-content { margin-top: 0 !important; padding-top: 0 !important; }
+    .main-content .header { margin-top: 0 !important; }
 
         /* Safe fallback to prevent horizontal scroll when offcanvas is open */
         body { overflow-x: hidden; }
