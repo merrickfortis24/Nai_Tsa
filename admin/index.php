@@ -91,7 +91,7 @@ try {
             </div>
             <!-- Offcanvas sidebar for small screens -->
             <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
-                <div class="offcanvas-body p-0">
+                <div class="offcanvas-body">
                     <?php include 'sidebar.php'; ?>
                 </div>
             </div>
