@@ -341,8 +341,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Mode</label>
                 <select class="form-select form-select-sm" name="price_mode" required>
-                  <option value="ABSOLUTE">Absolute</option>
-                  <option value="DELTA" selected>Delta (+)</option>
+                  <option value="ABSOLUTE" selected>Absolute</option>
+                  <option value="DELTA">Delta (+)</option>
                 </select>
               </div>
               <div class="col-md-2 col-sm-6">
@@ -682,6 +682,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const sel = select.options[select.selectedIndex];
         if(sel && sel.hidden){ select.value = ''; }
       }
+      // Trigger mode change to auto-fill when modal opens (default Absolute expected)
+      try{
+        const sizeMode = document.querySelector('#manageSizesModal select[name="is_absolute"]');
+        if(sizeMode){
+          sizeMode.dispatchEvent(new Event('change'));
+        }
+      }catch(e){}
       loadSizes();
     });
 
@@ -864,6 +871,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const sel = variantProductSelect.options[variantProductSelect.selectedIndex];
         if(sel && sel.hidden){ variantProductSelect.value = ''; }
       }
+      // Trigger the variant mode handler so Amount auto-fills (default Absolute)
+      try{
+        const vMode = document.querySelector('#manageVariantsModal select[name="price_mode"]');
+        if(vMode) vMode.dispatchEvent(new Event('change'));
+      }catch(e){}
       // Like Manage Sizes: load all flavors without requiring a product selection
       variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
       loadVariants(null);
