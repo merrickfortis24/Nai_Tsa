@@ -86,11 +86,20 @@ class database {
                     if ($anchor && $anchor['Price_Mode']==='ABS') {
                         $r['Price_Amount'] = (float)$anchor['Price_Value'];
                     } else {
-                        $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
+                        // Resolve historical/active base price via helper so scheduled prices are applied
+                        try {
+                            $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$pid);
+                        } catch (Throwable $e) {
+                            $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
+                        }
                     }
                 } else {
-                    // No sizes -> use product base price
-                    $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
+                    // No sizes -> use resolved product base price
+                    try {
+                        $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$pid);
+                    } catch (Throwable $e) {
+                        $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
+                    }
                 }
             }
             return $rows;
@@ -233,11 +242,28 @@ class database {
 
     // Fetch product price by product_id
     function fetchProductPrice($product_id) {
+        return $this->getCurrentProductPrice((int)$product_id);
+    }
+
+    /**
+     * Resolve current product price using product_price_history (preferred) and fallback to legacy.
+     */
+    public function getCurrentProductPrice(int $product_id, ?string $date = null) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID = (SELECT Price_ID FROM product WHERE Product_ID = ?)");
-        $stmt->execute([$product_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['Price_Amount'] : 0;
+        $d = $date ?? date('Y-m-d');
+        try {
+            $stmt = $con->prepare("SELECT Price FROM product_price_history WHERE Prod_ID = :pid AND Effective_From <= :d AND (Effective_To IS NULL OR Effective_To >= :d) ORDER BY Effective_From DESC LIMIT 1");
+            $stmt->execute([':pid' => $product_id, ':d' => $d]);
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null) return (float)$val;
+        } catch (Throwable $e) { /* ignore */ }
+        // fallback to legacy
+        try {
+            $stmt2 = $con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID = pp.Price_ID WHERE p.Product_ID = ? LIMIT 1");
+            $stmt2->execute([$product_id]);
+            $v2 = $stmt2->fetchColumn();
+            return $v2 !== false && $v2 !== null ? (float)$v2 : 0.0;
+        } catch (Throwable $e) { return 0.0; }
     }
 
   

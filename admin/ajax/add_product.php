@@ -74,20 +74,38 @@ try {
     }
 
     // Create/ensure a legacy Price_ID row so existing schema keeps working, then log per-product price
-    // Note: This preserves product.Price_ID usage in queries while transitioning to product_prices log.
+    // Note: We still insert the new price row, but when editing a product and the new Effective_From
+    // is in the future we DO NOT immediately assign product.Price_ID to that future row. Instead we
+    // preserve the existing Price_ID so the new price only takes effect on its scheduled date.
     $legacyPriceId = $db->insertLegacyPriceAndReturnId($base_price, $effective_from, $effective_to);
 
+    $today = date('Y-m-d');
+    $priceToAssign = $legacyPriceId; // default: assign the newly inserted price row
+
     if ($product_id) {
-        // Update product linking to new base price id
-        $result = $db->saveProduct($product_name, $product_desc, $category_id, $legacyPriceId, $admin_id, $image_name, $product_id, $product_allergens);
-        if (!empty($result['product_id'])) {
-            $db->logProductPrice((int)$result['product_id'], $base_price, $effective_from, $effective_to);
-        } else {
-            // Fallback when saveProduct update doesn't return product_id
-            $db->logProductPrice((int)$product_id, $base_price, $effective_from, $effective_to);
+        // When editing: fetch current product price id so we can preserve it for future-dated changes
+        try {
+            $con = $db->opencon();
+            $stmtCur = $con->prepare("SELECT Price_ID FROM product WHERE Product_ID = ? LIMIT 1");
+            $stmtCur->execute([$product_id]);
+            $existingPriceId = $stmtCur->fetchColumn();
+            if ($existingPriceId === false) { $existingPriceId = null; }
+        } catch (Throwable $e) {
+            $existingPriceId = null;
         }
+
+        // If the new Effective_From is strictly in the future, keep the current Price_ID so site pricing
+        // remains unchanged until the scheduled date. Otherwise assign the new price row immediately.
+        if ($effective_from > $today && $existingPriceId) {
+            $priceToAssign = $existingPriceId;
+        }
+
+        // Update product linking to the chosen price id
+        $result = $db->saveProduct($product_name, $product_desc, $category_id, $priceToAssign, $admin_id, $image_name, $product_id, $product_allergens);
+        $pidToLog = !empty($result['product_id']) ? (int)$result['product_id'] : (int)$product_id;
+        $db->logProductPrice($pidToLog, $base_price, $effective_from, $effective_to);
     } else {
-        // Add new product
+        // Add new product: must assign the created legacy price so product has a base price row
         $result = $db->saveProduct($product_name, $product_desc, $category_id, $legacyPriceId, $admin_id, $image_name, null, $product_allergens);
         if (!empty($result['product_id'])) {
             $db->logProductPrice((int)$result['product_id'], $base_price, $effective_from, $effective_to);

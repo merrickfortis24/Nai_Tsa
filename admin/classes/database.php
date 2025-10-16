@@ -100,6 +100,15 @@ class database {
             $pid = $r['Product_ID'];
             $sizesByProduct[$pid][] = $r;
         }
+        // Resolve current base price from history/runtime (preferred) so scheduled prices apply automatically
+        foreach ($rows as &$__rowForPriceResolve) {
+            try {
+                $__rowForPriceResolve['Base_Price_Amount'] = (float)$this->getCurrentProductPrice((int)$__rowForPriceResolve['Product_ID']);
+            } catch (Throwable $e) {
+                // leave existing Base_Price_Amount if helper fails
+            }
+        }
+
         // Attach effective display price and size info
         foreach($rows as &$r){
             $pid = $r['Product_ID'];
@@ -188,6 +197,32 @@ class database {
             $stmt->execute();
         }
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Return the current resolved price for a product using product_price_history (preferred)
+     * Falls back to legacy product_price row referenced by product.Price_ID
+     */
+    public function getCurrentProductPrice(int $product_id, ?string $date = null) {
+        $con = $this->opencon();
+        $d = $date ?? date('Y-m-d');
+        try {
+            // Look for an active history row first
+            $stmt = $con->prepare("SELECT Price FROM product_price_history WHERE Prod_ID = :pid AND Effective_From <= :d AND (Effective_To IS NULL OR Effective_To >= :d) ORDER BY Effective_From DESC LIMIT 1");
+            $stmt->execute([':pid' => $product_id, ':d' => $d]);
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null) return (float)$val;
+        } catch (Throwable $e) { /* ignore and fallback */ }
+
+        // Fallback: legacy product_price via product.Price_ID
+        try {
+            $stmt2 = $con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID = pp.Price_ID WHERE p.Product_ID = ? LIMIT 1");
+            $stmt2->execute([$product_id]);
+            $v2 = $stmt2->fetchColumn();
+            return $v2 !== false && $v2 !== null ? (float)$v2 : 0.0;
+        } catch (Throwable $e) {
+            return 0.0;
+        }
     }
 
     function saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id = null, $product_allergens = '')

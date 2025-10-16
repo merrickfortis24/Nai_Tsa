@@ -11,10 +11,11 @@ try {
   $db = new database();
   $con = $db->opencon();
 
-  // Fetch legacy product base (used only if no size data OR no anchor found)
-  $stmtBase = $con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID=pp.Price_ID WHERE p.Product_ID=? LIMIT 1");
-  $stmtBase->execute([$productId]);
-  $legacyBase = (float)$stmtBase->fetchColumn();
+  // Resolve product base price using history helper (preferred)
+  $legacyBase = 0.0;
+  try {
+    $legacyBase = (float)(new \database())->getCurrentProductPrice((int)$productId);
+  } catch (Throwable $e) { /* ignore and fallback to zero */ }
 
   $sizes = [];
   $anchorPrice = null;
