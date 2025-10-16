@@ -47,6 +47,16 @@ try {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <!-- Inline fallback: ensure background displays even if .bg-fixed isn't applied by some browsers -->
+  <style>
+    body {
+      background-image: url('assets/bg10.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+  </style>
   <style>
     /* === Menu Card Layout Enhancements === */
     #menuCards.menu-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:32px; align-items:stretch; }

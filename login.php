@@ -151,9 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script>
     // Rotating background images for login page using local assets
     const loginImages = [
-      "assets/bg10.jpg",
-      "assets/b6.jpg",
-      "assets/bg11.jpg"
+      "assets/b6.jpg"
       // Add more local images if you want
     ];
     const section = document.querySelector('.login-section');
