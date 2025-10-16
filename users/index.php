@@ -69,6 +69,16 @@ try {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <!-- Inline fallback / ensure steady fixed background like landing page -->
+  <style>
+    body {
+      background-image: url('../assets/bg7.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+  </style>
   <!-- Leaflet CSS for interactive map picker -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
@@ -669,44 +679,8 @@ try {
       });
     });
 
-    // Rotating background images for all main sections
-    function setupRotatingBg(sectionId, images) {
-      const section = document.getElementById(sectionId);
-      let idx = 0;
-      function changeBg() {
-        section.style.backgroundImage = `url('${images[idx]}')`;
-        idx = (idx + 1) % images.length;
-      }
-      changeBg();
-      setInterval(changeBg, 3000);
-    }
-
-    // Use your downloaded images from assets folder
-    const homeImages = [
-      "assets/bg1.jpg",
-      "assets/bg7.jpg",
-      "assets/bg3.jpg"
-    ];
-    const menuImages = [
-      "assets/bg4.jpg",
-       "assets/bg2.jpg",
-      "assets/bg5.jpg"
-    ];
-    const aboutImages = [
-      "assets/bg8.jpg",
-       "assets/bg11.jpg",
-      "assets/bg9.jpg"
-    ];
-    const contactImages = [
-      "assets/bg12.jpg",
-       "assets/bg10.jpg",
-      "assets/bg13.jpg"
-    ];
-
-    setupRotatingBg("home", homeImages);
-    setupRotatingBg("menu", menuImages);
-    setupRotatingBg("about", aboutImages);
-    setupRotatingBg("contact", contactImages);
+    // Rotating background behavior removed — using a single fixed background on <body>
+    // Sections are intentionally left transparent so the page-wide background shows through.
 
     // Cart logic
 let cart = [];
