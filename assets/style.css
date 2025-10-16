@@ -190,30 +190,21 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      body {
-        font-family: 'Poppins', sans-serif;
-        color: var(--text-dark);
-        min-height: 100vh;
-        margin: 0;
-        padding: 0;
-        /* Visual fallback color while the fixed background image loads */
-        background-color: var(--beige);
-        -webkit-font-smoothing:antialiased;
-        -moz-osx-font-smoothing:grayscale;
-      }
-
-      /* Fixed full-viewport background element for consistent fixed behavior across browsers (including iOS) */
-      .bg-fixed {
-        position: fixed;
-        inset: 0;
-        z-index: -1; /* behind all content */
-        pointer-events: none;
-        background-image: url('../assets/bgnew1.png');
-        background-size: cover;
-        background-position: center center;
-        background-repeat: no-repeat;
-        will-change: transform;
-      }
+      backdrop-filter: blur(8px);
+    }
+    .navbar-brand {
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: var(--soft-orange) !important;
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55em;
+      padding: 0;
+      margin: 0;
+    }
+    .navbar-brand img {
+      height: 54px;
       width: 54px;
       object-fit: cover;
       display: block;
@@ -422,17 +413,18 @@
         gap: 1.2rem;
       }
       .section-title {
-        .section-overlay {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          /* slightly stronger translucent overlay to guarantee readability over the fixed image */
-          background: linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,246,237,0.55) 100%);
-          z-index: 1;
-          pointer-events: none;
-          transition: opacity 0.4s;
-        }
+        font-size: 1.6rem;
+      }
+    }
+    @media (max-width: 575px) {
+      .navbar {
+        border-radius: 0 0 16px 16px;
+      }
+      .section-content {
+        padding: 1.4rem 0.7rem;
+      }
+      .section-title {
+        font-size: 2rem;
       }
       .footer {
         border-radius: 14px 14px 0 0;
