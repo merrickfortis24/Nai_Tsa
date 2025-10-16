@@ -26,7 +26,7 @@
   inset: 0; /* top:0; right:0; bottom:0; left:0 */
   z-index: -1;
   /* Image should be placed in the same `assets/` folder as this CSS file */
-  background-image: url('bg7.jpg');
+  background-image: url('bg10.jpeg');
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
