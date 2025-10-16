@@ -624,27 +624,31 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Product Added',
-                    text: data.message
-                }).then(() => {
-                    // Hide modal and reload page to show new product
-                    var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
-                    modal.hide();
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message
-                });
-            }
-        })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Determine if this was an update (product_id present) or an add
+        var isUpdate = !!document.getElementById('product_id').value;
+        var title = isUpdate ? 'Product Updated' : 'Product Added';
+        var defaultText = isUpdate ? 'Product successfully updated' : 'Product successfully added';
+        Swal.fire({
+          icon: 'success',
+          title: title,
+          text: data.message || defaultText
+        }).then(() => {
+          // Hide modal and reload page to show new product
+          var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+          modal.hide();
+          location.reload();
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.message
+        });
+      }
+    })
         .catch(error => {
             Swal.fire({
                 icon: 'error',
