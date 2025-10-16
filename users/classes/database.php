@@ -728,6 +728,12 @@ public function getRecommendedProducts($customer_id, $limit = 4) {
             $stmt2->execute();
             $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
         }
+        // Ensure returned products include history-aware Price_Amount
+        foreach ($products as &$p) {
+            try {
+                $p['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$p['Product_ID']);
+            } catch (Throwable $e) { /* leave as-is */ }
+        }
         return $products;
 }
 
@@ -755,7 +761,11 @@ public function getBestsellerProducts($limit = 4) {
         $stmt = $con->prepare($sql);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            try { $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$r['Product_ID']); } catch (Throwable $e) {}
+        }
+        return $rows;
 }
 
 public function fetchAllCategories() {
