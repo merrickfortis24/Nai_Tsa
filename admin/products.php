@@ -75,13 +75,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
         <?php include 'sidebar.php'; ?>
       </div>
-      <!-- Offcanvas sidebar for small screens -->
-      <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
-        <div class="offcanvas-header">
-          <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Admin Panel</h5>
-          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body">
+      <!-- Offcanvas sidebar for small screens: treat the offcanvas itself as the sidebar so styles apply consistently -->
+      <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
+        <div class="offcanvas-body p-0">
           <?php include 'sidebar.php'; ?>
         </div>
       </div>
