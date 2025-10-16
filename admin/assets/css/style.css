@@ -93,6 +93,9 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
         .offcanvas .sidebar > * {
             display: block !important;
