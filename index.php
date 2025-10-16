@@ -20,7 +20,7 @@ try {
   }
 } catch (Throwable $e) {
   // leave arrays empty; UI will degrade gracefully
-  //testing only: echo "Error loading data: " . $e->getMessage();
+  //testing only: echo "Error loading data: " . $e->getMessage();HELLOOOO
 }
 ?>
 <!DOCTYPE html>
