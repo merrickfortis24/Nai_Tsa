@@ -15,10 +15,9 @@
         
         /* Sidebar: fixed on larger screens with explicit width to avoid layout overflow */
         .sidebar {
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
             color: white;
             height: 100vh;
-            position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
             width: 260px; /* matches --bs-offcanvas-width used for mobile */
             /* overflow: hidden;  Remove this so icons/nav are visible in offcanvas */
@@ -87,7 +86,7 @@
             min-height: 100vh;
             height: 100%;
             box-shadow: none;
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
             color: white;
             padding: 2rem 1rem 2rem 1rem;
             overflow: visible;
