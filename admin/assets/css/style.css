@@ -13,12 +13,15 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* Sidebar: fixed on larger screens with explicit width to avoid layout overflow */
         .sidebar {
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
             color: white;
             height: 100vh;
             position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 260px; /* matches --bs-offcanvas-width used for mobile */
+            overflow: hidden;
         }
         
         .sidebar .nav-link {
@@ -105,10 +108,31 @@
         .offcanvas .offcanvas-header { border-bottom: none; }
 
         
+        /* Main content: don't offset by default (prevents overflow on small screens). Offset only on larger viewports where sidebar is visible */
         .main-content {
-            margin-left: 250px;
+            margin-left: 0;
             padding: 20px;
         }
+
+        /* Large screens: leave room for full sidebar */
+        @media (min-width: 992px) {
+            .main-content { margin-left: 260px; }
+        }
+
+        /* Medium screens: collapsed sidebar width (icons only) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .sidebar { width: 70px; }
+            .main-content { margin-left: 70px; }
+        }
+
+        /* Small screens: hide sidebar, content takes full width */
+        @media (max-width: 767.98px) {
+            .sidebar { display: none; width: 0; }
+            .main-content { margin-left: 0; }
+        }
+
+        /* Safe fallback to prevent horizontal scroll when offcanvas is open */
+        body { overflow-x: hidden; }
         
         .header {
             background: white;
