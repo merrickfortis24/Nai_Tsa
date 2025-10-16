@@ -84,12 +84,21 @@
         }
         .offcanvas .sidebar {
             position: relative;
+            min-height: 100vh;
             height: 100%;
             box-shadow: none;
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding: 1.5rem 0.5rem 1.5rem 0.5rem;
+            padding: 2rem 1rem 2rem 1rem;
             overflow: visible;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        .offcanvas .sidebar > * {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
         .offcanvas .sidebar .nav-link {
             color: rgba(255,255,255,0.95);
