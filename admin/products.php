@@ -71,8 +71,19 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
   <div class="container-fluid">
     <div class="row">
       <!-- Sidebar -->
-      <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+      <!-- Desktop sidebar (visible on md+) -->
+      <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
         <?php include 'sidebar.php'; ?>
+      </div>
+      <!-- Offcanvas sidebar for small screens -->
+      <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+        <div class="offcanvas-header">
+          <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Admin Panel</h5>
+          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <?php include 'sidebar.php'; ?>
+        </div>
       </div>
       <!-- Main Content -->
       <div class="col-md-10 col-lg-10 main-content">
@@ -82,8 +93,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <h4 class="mb-0 fw-bold">Products</h4>
             <p class="mb-0 text-muted">Manage your products</p>
           </div>
-          <!-- Sidebar toggle button for small screens -->
-          <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+          <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
             <i class="bi bi-list" style="font-size:1.7rem;"></i>
           </button>
         </div>
