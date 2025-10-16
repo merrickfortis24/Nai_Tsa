@@ -63,11 +63,12 @@ try {
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
   /* === Steady single backgrounds for main sections === */
   .section { background-size: cover; background-repeat: no-repeat; background-position: center center; /* allow normal scrolling on background images */ background-color: transparent; }
-  /* Shared background for About, Menu and Contact sections */
-  .section.shared-bg { background-image: url('assets/bgnew1.png'); background-size: cover; background-position: center; background-repeat: no-repeat; }
+  /* Sections use the single fixed background via .bg-fixed element */
   </style>
 </head>
 <body>
+  <!-- Fixed background element (covers viewport and stays fixed while sections scroll) -->
+  <div class="bg-fixed" aria-hidden="true"></div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg shadow-sm" style="background: rgba(255,255,255,0.68); box-shadow: 0 4px 20px rgba(255, 178, 122, 0.15); border-radius: 0 0 24px 24px; padding: 0.9rem 0;">
     <div class="container px-2">
@@ -113,7 +114,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section shared-bg" id="about">
+  <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
@@ -154,7 +155,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- Menu Section (public view imitating user menu UI) -->
-  <section class="section shared-bg" id="menu">
+  <section class="section" id="menu">
     <div class="section-overlay"></div>
     <div class="section-content section-content--wide">
       <h2 class="section-title text-center w-100" style="font-size:3.2rem;">Menu</h2>
@@ -235,7 +236,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- Contact Section -->
-  <section class="section shared-bg" id="contact">
+  <section class="section" id="contact">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title" style="font-size:3.2rem;">Contact Us</h2>
