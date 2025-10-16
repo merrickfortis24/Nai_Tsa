@@ -124,21 +124,14 @@
         .offcanvas .offcanvas-header { border-bottom: none; }
 
         
-        /* Main content: don't offset by default (prevents overflow on small screens). Offset only on larger viewports where sidebar is visible */
+        /* Main content: let the Bootstrap grid control placement (avoid double-offsets)
+           Previously .main-content was manually offset to account for a fixed sidebar width.
+           Because the layout uses Bootstrap columns (col-*) alongside a fixed-width .sidebar,
+           the manual margins were pushing content off-screen. Keep margin-left:0 so the
+           grid places content correctly. */
         .main-content {
             margin-left: 0;
             padding: 20px;
-        }
-
-        /* Large screens: leave room for full sidebar */
-        @media (min-width: 992px) {
-            .main-content { margin-left: 260px; }
-        }
-
-        /* Medium screens: collapsed sidebar width (icons only) */
-        @media (min-width: 768px) and (max-width: 991.98px) {
-            .sidebar { width: 70px; }
-            .main-content { margin-left: 70px; }
         }
 
         /* Small screens: hide sidebar, content takes full width */
@@ -323,8 +316,9 @@
                 font-size: 1.3rem;
             }
 
+            /* Use the grid columns to position content; don't force extra left margin */
             .main-content {
-                margin-left: 70px;
+                margin-left: 0;
             }
         }
 
