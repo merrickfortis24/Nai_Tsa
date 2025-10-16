@@ -81,6 +81,10 @@
             /* ensure offcanvas width matches desktop sidebar */
             --bs-offcanvas-width: 260px;
         }
+        .offcanvas .offcanvas-body {
+            padding: 0 !important;
+            background: transparent !important;
+        }
         .offcanvas .sidebar {
             position: relative;
             min-height: 100vh;
