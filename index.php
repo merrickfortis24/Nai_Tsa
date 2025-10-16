@@ -64,13 +64,12 @@ try {
   /* === Steady single backgrounds for main sections === */
   .section { background-size: cover; background-repeat: no-repeat; background-position: center center; /* allow normal scrolling on background images */ background-color: transparent; }
     /* Assign single static images per section (no rotation) */
-    #home { background-image: url('assets/bgnew1.png'); }
-    #about { background-image: url('assets/bgbai.png'); }
-    #menu { background-image: url('assets/bgnew2.png'); }
-    #contact { background-image: url('assets/bgbai.png'); }
+    /* === Sections are transparent so the shared fixed background shows through === */
+    .section { background-size: cover; background-repeat: no-repeat; background-position: center center; background-color: transparent; }
   </style>
 </head>
 <body>
+  <div class="bg-fixed" aria-hidden="true"></div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg shadow-sm" style="background: rgba(255,255,255,0.68); box-shadow: 0 4px 20px rgba(255, 178, 122, 0.15); border-radius: 0 0 24px 24px; padding: 0.9rem 0;">
     <div class="container px-2">
@@ -116,7 +115,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bgbai.png');">
+  <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
