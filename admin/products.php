@@ -1315,6 +1315,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     });
+    // --- Instrumentation for smoke testing sidebar behavior ---
+    try{
+      const sidebarOffcanvasEl = document.getElementById('sidebarOffcanvas');
+      if(sidebarOffcanvasEl){
+        sidebarOffcanvasEl.addEventListener('shown.bs.offcanvas', function(){
+          console.log('Offcanvas opened (mobile test)');
+          const items = sidebarOffcanvasEl.querySelectorAll('.nav-link');
+          const uniform = Array.from(items).every(el => el.querySelector('i') && el.querySelector('span'));
+          const badges = sidebarOffcanvasEl.querySelectorAll('.nav-link .badge');
+          console.log('Sidebar items (offcanvas):', items.length, 'uniform icon+label:', uniform, 'badges:', badges.length);
+          if(window.Swal){
+            Swal.fire({icon:'info', title:'Sidebar (mobile)', html:`Items: ${items.length}<br>Icon+Label: ${uniform}<br>Badges: ${badges.length}`, timer:1800, showConfirmButton:false});
+          }
+        });
+      }
+      // Desktop check: presence of sidebar and spacing
+      const desktopSidebar = document.getElementById('sidebarCollapse');
+      const mainContent = document.querySelector('.main-content');
+      function reportDesktop(){
+        const sidebarVisible = desktopSidebar && window.getComputedStyle(desktopSidebar).display !== 'none';
+        const marginLeft = mainContent? window.getComputedStyle(mainContent).marginLeft : 'unknown';
+        console.log('Desktop sidebar visible:', sidebarVisible, 'main-content margin-left:', marginLeft);
+        if(window.Swal){
+          // Only show short notification when user resizes to desktop width
+          if(window.innerWidth >= 768){
+            Swal.fire({icon:'success', title:'Desktop layout', html:`Sidebar visible: ${sidebarVisible}<br>Main margin-left: ${marginLeft}`, timer:1400, showConfirmButton:false});
+          }
+        }
+      }
+      // Run once and on resize
+      reportDesktop();
+      window.addEventListener('resize', function(){
+        // debounce quick resizes
+        clearTimeout(window.__sidebarTestTimeout);
+        window.__sidebarTestTimeout = setTimeout(reportDesktop, 200);
+      });
+    }catch(e){ console.warn('Sidebar test instrumentation error', e); }
 });
     </script>
 </body>
