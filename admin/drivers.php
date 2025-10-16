@@ -64,12 +64,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
         <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
             <?php include 'sidebar.php'; ?>
         </div>
-        <!-- Offcanvas sidebar for small screens -->
-    <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
-            <div class="offcanvas-body p-0">
-                <?php include 'sidebar.php'; ?>
-            </div>
-        </div>
+        <!-- Offcanvas sidebar for small screens (moved to end of page) -->
         <!-- Main Content -->
         <div class="col-md-10 col-lg-10 main-content">
             <div class="header d-flex justify-content-between align-items-center mt-3">
@@ -183,3 +178,4 @@ function showEdit(form) {
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>
