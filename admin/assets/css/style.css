@@ -12,7 +12,7 @@
             background-color: #f5f7fb;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+         
         /* Sidebar: fixed on larger screens with explicit width to avoid layout overflow */
         .sidebar {
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
@@ -559,3 +559,15 @@
         margin-left: 0 !important;
     }
 }
+
+    /* Desktop/tablet: ensure offcanvas containers don't interfere with the grid/layout.
+         Some pages include an offcanvas element (for mobile) in the DOM before the main
+         content. If an offcanvas is accidentally visible or not hidden correctly it
+         can push the page content down. Hide offcanvas on >=768px to guarantee the
+         desktop grid controls layout. */
+    @media (min-width: 768px) {
+        .offcanvas {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    }
