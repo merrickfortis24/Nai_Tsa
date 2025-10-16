@@ -789,8 +789,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if(mode === '1'){
           const pid = sizeProductSelectEl.value;
           const base = await fetchBasePrice(pid);
-          if(base !== null){ sizeAmountInput.placeholder = Number(base).toFixed(2); }
+          if(base !== null){
+            // Auto-populate value only if empty to avoid overwriting admin input
+            if(!sizeAmountInput.value || Number(sizeAmountInput.value) === 0){
+              sizeAmountInput.value = Number(base).toFixed(2);
+            }
+            sizeAmountInput.placeholder = Number(base).toFixed(2);
+          }
         } else {
+          // For delta mode, clear only placeholder but keep value if admin set
           sizeAmountInput.placeholder = '0.00';
         }
       });
@@ -798,7 +805,12 @@ document.addEventListener('DOMContentLoaded', function() {
       sizeProductSelectEl.addEventListener('change', async function(){
         if(sizeModeSelect.value === '1'){
           const base = await fetchBasePrice(this.value);
-          if(base !== null) sizeAmountInput.placeholder = Number(base).toFixed(2);
+          if(base !== null){
+            if(!sizeAmountInput.value || Number(sizeAmountInput.value) === 0){
+              sizeAmountInput.value = Number(base).toFixed(2);
+            }
+            sizeAmountInput.placeholder = Number(base).toFixed(2);
+          }
         }
       });
     }
@@ -813,7 +825,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if(mode === 'ABSOLUTE'){
           const pid = variantProductSelectEl.value;
           const base = await fetchBasePrice(pid);
-          if(base !== null){ variantAmountInput.placeholder = Number(base).toFixed(2); }
+          if(base !== null){
+            if(!variantAmountInput.value || Number(variantAmountInput.value) === 0){
+              variantAmountInput.value = Number(base).toFixed(2);
+            }
+            variantAmountInput.placeholder = Number(base).toFixed(2);
+          }
         } else {
           variantAmountInput.placeholder = '0.00';
         }
@@ -821,7 +838,12 @@ document.addEventListener('DOMContentLoaded', function() {
       variantProductSelectEl.addEventListener('change', async function(){
         if((variantModeSelect.value||'').toUpperCase() === 'ABSOLUTE'){
           const base = await fetchBasePrice(this.value);
-          if(base !== null) variantAmountInput.placeholder = Number(base).toFixed(2);
+          if(base !== null){
+            if(!variantAmountInput.value || Number(variantAmountInput.value) === 0){
+              variantAmountInput.value = Number(base).toFixed(2);
+            }
+            variantAmountInput.placeholder = Number(base).toFixed(2);
+          }
         }
       });
     }
@@ -1022,9 +1044,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editSizeCode').value = editBtn.dataset.code;
         document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
         document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
-        // Prefer direct price id
-        // Fill amount directly
-        if(editBtn.dataset.amount){ document.getElementById('editPriceAmount').value = Number(editBtn.dataset.amount).toFixed(2); }
+        // Fill amount directly (if provided), otherwise clear so auto-fill can run
+        const editPriceAmountEl = document.getElementById('editPriceAmount');
+        if(editBtn.dataset.amount){
+          editPriceAmountEl.value = Number(editBtn.dataset.amount).toFixed(2);
+        } else {
+          editPriceAmountEl.value = '';
+        }
         document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editSizeModal')).show();
       }
@@ -1049,6 +1075,57 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to update'}));
     });
+
+    // Edit modals: auto-fill and overwrite when Absolute selected
+    const editSizeModalEl = document.getElementById('editSizeModal');
+    const editSizeModeEl = document.getElementById('editPriceMode');
+    const editSizeAmountEl = document.getElementById('editPriceAmount');
+    const editSizeProductIdEl = document.getElementById('editMappingProductId'); // optional hidden input if exists
+    if(editSizeModalEl){
+      editSizeModalEl.addEventListener('shown.bs.modal', async function(){
+        // If mode is ABS, always overwrite amount with base price
+        try{
+          const pid = (document.getElementById('editMappingProductId') && document.getElementById('editMappingProductId').value) ? document.getElementById('editMappingProductId').value : document.getElementById('sizeProductSelect')?.value;
+          if((editSizeModeEl && editSizeModeEl.value === 'ABS') && pid){
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editSizeAmountEl.value = Number(base).toFixed(2);
+          }
+        } catch(e){}
+      });
+      if(editSizeModeEl){
+        editSizeModeEl.addEventListener('change', async function(){
+          if(this.value === 'ABS'){
+            const pid = document.getElementById('sizeProductSelect')?.value;
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editSizeAmountEl.value = Number(base).toFixed(2);
+          }
+        });
+      }
+    }
+
+    const editVariantModalEl = document.getElementById('editVariantModal');
+    const editVariantModeEl = document.getElementById('editVariantMode');
+    const editVariantAmountEl = document.getElementById('editVariantAmount');
+    if(editVariantModalEl){
+      editVariantModalEl.addEventListener('shown.bs.modal', async function(){
+        try{
+          const pid = document.getElementById('editVariantProductId') ? document.getElementById('editVariantProductId').value : document.getElementById('variantProductSelect')?.value;
+          if((editVariantModeEl && (editVariantModeEl.value||'').toUpperCase() === 'ABSOLUTE') && pid){
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editVariantAmountEl.value = Number(base).toFixed(2);
+          }
+        } catch(e){}
+      });
+      if(editVariantModeEl){
+        editVariantModeEl.addEventListener('change', async function(){
+          if((this.value||'').toUpperCase() === 'ABSOLUTE'){
+            const pid = document.getElementById('variantProductSelect')?.value;
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editVariantAmountEl.value = Number(base).toFixed(2);
+          }
+        });
+      }
+    }
 
     function escapeHtml(str){ return str.replace(/[&<>"]+/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 

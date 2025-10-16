@@ -19,14 +19,22 @@ if(!in_array($priceMode,['ABSOLUTE','DELTA'])){ echo json_encode(['success'=>fal
 try {
     $pdo = $db->opencon();
     $pdo->beginTransaction();
-    // If price mode is DELTA and admin supplied an absolute amount, convert to delta using product base
+    // If price mode is DELTA, enforce that a product base (anchor) exists. If admin supplied an absolute amount, convert to delta using product base
     $baseAmount = null;
     try {
         $baseRow = $db->getCurrentProductPrice($productId);
         if(isset($baseRow['Price_Amount'])) $baseAmount = (float)$baseRow['Price_Amount'];
     } catch(Throwable $ignore){}
-    if($priceMode === 'DELTA' && $priceValue !== null && $baseAmount !== null){
-        $priceValue = round($priceValue - $baseAmount, 2);
+    if($priceMode === 'DELTA'){
+        if($baseAmount === null){
+            // No base price exists -> block DELTA creation to keep behavior consistent with sizes
+            echo json_encode(['success'=>false,'error'=>'Cannot add a DELTA variant: product has no base price (add an Absolute price first)']);
+            exit;
+        }
+        if($priceValue !== null){
+            // If admin typed an absolute price, convert to delta
+            $priceValue = round($priceValue - $baseAmount, 2);
+        }
     }
     if($isPrimary){
         $stmt = $pdo->prepare("UPDATE product_variant SET is_primary=0 WHERE Product_ID=? AND variant_type=?");
