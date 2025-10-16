@@ -525,23 +525,22 @@
 }
 
 @media (max-width: 991px) {
-    /* Apply to the fixed/collapse sidebar only; don't hide the offcanvas variant */
-    .sidebar:not(.offcanvas) {
-        position: fixed;
-        z-index: 1050;
-        left: 0;
-        top: 0;
-        height: 100vh;
-        width: 260px;
-        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-        transition: left 0.3s;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.08);
-        display: none; /* Let Bootstrap's .collapse handle display */
-    }
-    .sidebar:not(.offcanvas).show {
-        display: block !important; /* Show when .show is added by Bootstrap */
-    }
-    .main-content {
-        margin-left: 0 !important;
-    }
+  .sidebar {
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 220px;
+    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+    transition: left 0.3s;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+    display: none; /* Let Bootstrap's .collapse handle display */
+  }
+  .sidebar.show {
+    display: block !important; /* Show when .show is added by Bootstrap */
+  }
+  .main-content {
+    margin-left: 0 !important;
+  }
 }
