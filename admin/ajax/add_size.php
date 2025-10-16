@@ -92,6 +92,15 @@ try {
   } elseif($price_amount !== null){
     $resolvedPrice = (float)$price_amount;
   }
+
+  // Use history-aware helper to find the product base price (if any)
+  try {
+    $baseRow = $db->getCurrentProductPrice($product_id);
+    $baseAmount = isset($baseRow['Price_Amount']) ? (float)$baseRow['Price_Amount'] : null;
+  } catch(Throwable $ignore) {
+    $baseAmount = null;
+  }
+
   // Enforce anchor rules (Approach B): exactly one anchor (ABS) per product; all non-anchor are DELTA.
   $anchorCheck = $con->prepare("SELECT Product_Size_Price_ID FROM product_size_price WHERE Product_ID=? AND Is_Anchor=1 LIMIT 1");
   $anchorCheck->execute([$product_id]);
@@ -102,8 +111,19 @@ try {
   if($hasAnchor && $is_absolute){
     echo json_encode(['success'=>false,'message'=>'Anchor already exists. You cannot add another absolute anchor.']); exit;
   }
+
   $mode = $is_absolute ? 'ABS' : 'DELTA';
   $isAnchor = $is_absolute ? 1 : 0;
+
+  // If admin provided an absolute amount while selecting DELTA mode, convert to delta using the product base price
+  if($mode === 'DELTA'){
+    if($baseAmount !== null && $price_amount !== null){
+      // Convert typed absolute price into delta = typed - base
+      $resolvedPrice = round(((float)$price_amount - $baseAmount), 2);
+    }
+    // If baseAmount is null, earlier anchor check prevents adding deltas unless anchor exists
+  }
+
   $stmt2 = $con->prepare("INSERT INTO product_size_price (Product_ID, Size_ID, Price_Mode, Price_Value, Price_Source_ID, Is_Anchor) VALUES (?,?,?,?,?,?)
               ON DUPLICATE KEY UPDATE Price_Mode=VALUES(Price_Mode), Price_Value=VALUES(Price_Value), Price_Source_ID=VALUES(Price_Source_ID), Is_Anchor=VALUES(Is_Anchor)");
   $ok = $stmt2->execute([$product_id,$sizeId,$mode,$resolvedPrice, $price_id>0 ? $price_id : null, $isAnchor]);

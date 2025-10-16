@@ -490,6 +490,9 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <div class="alert alert-info small mb-3">
               <strong>How pricing works now:</strong> Base product price + (Delta) or overridden by (Absolute) size price. If a product has no size variants, only its base price is used. To add or change pricing, add a size variant here. The old standalone "Add Price" feature was removed for clarity.
             </div>
+            <div class="alert alert-secondary small mb-3">
+              Tip: If you choose <strong>Delta</strong>, the amount shown will be applied relative to the product's base price you entered when creating the product. If you type an absolute price while Delta is selected, the system will automatically convert it to the correct delta (absolute - base price).
+            </div>
             <form id="addSizeForm" class="row g-3 align-items-end mb-3 uniform-fields">
               <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Product</label>
