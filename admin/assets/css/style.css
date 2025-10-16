@@ -142,10 +142,10 @@
         }
 
         /* Small screens: hide sidebar, content takes full width */
-        @media (max-width: 767.98px) {
-            .sidebar { display: none; width: 0; }
-            .main-content { margin-left: 0; }
-        }
+                @media (max-width: 767.98px) {
+                    .sidebar:not(.offcanvas .sidebar) { display: none !important; width: 0 !important; }
+                    .main-content { margin-left: 0; }
+                }
 
         /* Safe fallback to prevent horizontal scroll when offcanvas is open */
         body { overflow-x: hidden; }
