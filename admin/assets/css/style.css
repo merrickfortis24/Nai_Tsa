@@ -133,6 +133,11 @@
             margin-left: 0;
             padding: 20px;
         }
+        /* Defensive: make sure main content sits above any positioned overlays/backdrops */
+        .main-content {
+            position: relative;
+            z-index: 1;
+        }
 
         /* Small screens: hide sidebar, content takes full width */
                 @media (max-width: 767.98px) {
@@ -534,23 +539,23 @@
     max-width: 100%;
 }
 
-@media (max-width: 991px) {
-  .sidebar {
-    position: fixed;
-    z-index: 1050;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    width: 220px;
-    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-    transition: left 0.3s;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
-    display: none; /* Let Bootstrap's .collapse handle display */
-  }
-  .sidebar.show {
-    display: block !important; /* Show when .show is added by Bootstrap */
-  }
-  .main-content {
-    margin-left: 0 !important;
-  }
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        z-index: 1050;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 220px;
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        transition: left 0.3s;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+        display: none; /* Let Bootstrap's .collapse / offcanvas handle display */
+    }
+    .sidebar.show {
+        display: block !important; /* Show when .show is added by Bootstrap */
+    }
+    .main-content {
+        margin-left: 0 !important;
+    }
 }
