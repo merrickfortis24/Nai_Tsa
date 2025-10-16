@@ -178,6 +178,40 @@
             .offcanvas .sidebar { width: 260px !important; }
         }
 
+        /* Stronger enforcement when offcanvas is shown on mobile */
+        @media (max-width: 767.98px) {
+            .offcanvas.show {
+                visibility: visible !important;
+                transform: none !important;
+                left: 0 !important;
+                width: 260px !important;
+                max-width: 260px !important;
+                background: transparent !important;
+                overflow: visible !important;
+            }
+
+            .offcanvas.show .offcanvas-body {
+                padding: 0 !important;
+                background: transparent !important;
+                display: block !important;
+                width: 260px !important;
+            }
+
+            .offcanvas.show .sidebar {
+                display: block !important;
+                width: 260px !important;
+                background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
+                color: #fff !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+
+            .offcanvas.show .sidebar .nav-link i,
+            .offcanvas.show .sidebar .nav-link .bi {
+                color: rgba(255,255,255,0.95) !important;
+            }
+        }
+
 /* Strong mobile overrides to ensure the offcanvas displays the purple sidebar and white icons */
 @media (max-width: 767.98px) {
     /* make sure the offcanvas container is transparent so the sidebar gradient shows */
