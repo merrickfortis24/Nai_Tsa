@@ -38,6 +38,57 @@
             margin-right: 10px;
             font-size: 1.1rem;
         }
+
+        /* Ensure uniform sidebar item layout across all pages */
+        .sidebar .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 10px 16px;
+            color: rgba(255,255,255,0.95);
+            font-weight: 500;
+        }
+
+        /* Make icons a fixed width so text aligns consistently */
+        .sidebar .nav-link i,
+        .sidebar .nav-link .bi {
+            width: 28px;
+            min-width: 28px;
+            text-align: center;
+            font-size: 1.15rem;
+            color: rgba(255,255,255,0.95);
+        }
+
+        /* Keep label text flexible and consistent
+           Use a span wrapper in sidebar links to hold the label */
+        .sidebar .nav-link span {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Align badges to the right consistently */
+        .sidebar .nav-link .badge {
+            margin-left: auto;
+            background: rgba(255,255,255,0.12);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Offcanvas (mobile) should reuse same visual styles */
+        .offcanvas .sidebar {
+            position: relative;
+            height: auto;
+            box-shadow: none;
+            background: transparent;
+            color: inherit;
+        }
+        .offcanvas .sidebar .nav-link {
+            color: var(--dark-text);
+            background: transparent;
+            padding: 10px 8px;
+        }
+        .offcanvas .sidebar .nav-link i { color: var(--primary-color); }
+
         
         .main-content {
             margin-left: 250px;
