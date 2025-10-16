@@ -135,89 +135,123 @@ try {
                 <!-- Stats Cards -->
                 <div class="row">
                     <div class="col-md-3">
-                            <!-- Desktop sidebar (visible on md+) -->
-                            <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
-                                <?php include 'sidebar.php'; ?>
+                        <div class="card stats-card">
+                            <i class="bi bi-people-fill"></i>
+                            <div class="number"><?= $total_admins ?></div>
+                            <div class="label">Total Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-person-check"></i>
+                            <div class="number"><?= $active_admins ?></div>
+                            <div class="label">Active Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-person-x"></i>
+                            <div class="number"><?= $inactive_admins ?></div>
+                            <div class="label">Inactive Admins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-shield-lock"></i>
+                            <div class="number"><?= $super_admins ?></div>
+                            <div class="label">Super Admins</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fraud / Risk Stats Cards -->
+                <?php $blockedCount = isset($blockedUsersCount)? (int)$blockedUsersCount : 0; ?>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="card stats-card border-danger">
+                            <i class="bi bi-shield-exclamation text-danger"></i>
+                            <div class="number" id="dashBlockedUsers"><?= $blockedCount ?></div>
+                            <div class="label">Blocked Users</div>
+                        </div>
+                    </div>
+                    <div class="col-md-9 d-flex align-items-center small text-muted">
+                        <div>
+                            <span class="me-3"><i class="bi bi-info-circle"></i> Users blocked by heuristics (high cancel ratio, bursts, unpaid streaks). </span>
+                            <a href="blocked_users.php" class="btn btn-sm btn-outline-danger"><i class="bi bi-box-arrow-up-right"></i> Manage</a>
+                            <button type="button" id="quickFraudScanBtn" class="btn btn-sm btn-outline-secondary ms-2"><i class="bi bi-play"></i> Quick Scan</button>
+                            <span id="quickScanStatus" class="ms-2 text-secondary"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Export: Date Range + Presets -->
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <form class="row g-2 align-items-end" method="get" action="export_sales_pdf.php" target="_blank">
+                            <div class="col-auto">
+                                <label for="fromDate" class="form-label mb-0 small">From</label>
+                                <input type="date" class="form-control form-control-sm" id="fromDate" name="from">
                             </div>
-                            <!-- Offcanvas sidebar for small screens -->
-                            <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
-                                <div class="offcanvas-body">
-                                    <?php include 'sidebar.php'; ?>
-                                </div>
+                            <div class="col-auto">
+                                <label for="toDate" class="form-label mb-0 small">To</label>
+                                <input type="date" class="form-control form-control-sm" id="toDate" name="to">
                             </div>
-                            <!-- Main Content -->
-                            <div class="col-md-10 col-lg-10 main-content">
-                                <?php
-                                $total_sales = count($sales);
-                                $total_revenue = array_sum(array_column($sales, 'Total_Amount'));
-                                ?>
-                                <div class="row mb-3">
-                                    <div class="col-md-3">
-                                        <div class="card stats-card">
-                                            <i class="bi bi-cash-stack"></i>
-                                            <div class="number"><?= $total_sales ?></div>
-                                            <div class="label">Total Sales</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card stats-card">
-                                            <i class="bi bi-currency-dollar"></i>
-                                            <div class="number">₱<?= number_format($total_revenue, 2) ?></div>
-                                            <div class="label">Total Revenue</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Admin List -->
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <span>Administrators List</span>
-                                        <div>
-                                            <!-- ...existing code... -->
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <!-- ...existing code... -->
-                                        </div>
-                                        <!-- Pagination -->
-                                        <nav>
-                                            <!-- ...existing code... -->
-                                        </nav>
-                                    </div>
-                                </div>
-                                <!-- Add Admin Form -->
-                                <div class="card" id="addAdminFormSection">
-                                    <div class="card-header">
-                                        Add New Administrator
-                                    </div>
-                                    <div class="card-body">
-                                        <?php if ($success): ?>
-                                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                                <?= $success ?>
-                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                            </div>
-                                        <?php endif; ?>
-                                        <?php if ($error): ?>
-                                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                                <?= $error ?>
-                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                            </div>
-                                        <?php endif; ?>
-                                        <form method="POST" action="">
-                                            <div class="row">
-                                                <!-- ...existing code... -->
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                                <!-- Edit Admin Modal -->
-                                <div class="modal fade" id="editAdminModal" tabindex="-1" aria-labelledby="editAdminModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <!-- ...existing code... -->
-                                    </div>
-                                </div>
-                                <!-- End Edit Admin Modal -->
+                            <div class="col-auto">
+                                <label for="preset" class="form-label mb-0 small">Preset</label>
+                                <select id="preset" name="preset" class="form-select form-select-sm">
+                                    <option value="">Custom</option>
+                                    <option value="this_week">This Week</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="this_year">This Year</option>
+                                </select>
                             </div>
+                            <div class="col-auto d-flex gap-2 align-items-end">
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="Export PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </button>
+                                <button type="submit" class="btn btn-outline-success btn-sm" formaction="export_sales_csv.php?format=csv" title="Export CSV">
+                                    <i class="bi bi-filetype-csv"></i> CSV
+                                </button>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="export_sales_csv.php?format=xls" title="Export Excel (.xls)">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Excel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Recent Sales Card -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="bi bi-bar-chart"></i> Recent Sales
+                    </div>
+                    <div class="card-body">
+                        <canvas id="salesChart" height="100"></canvas>
+                    </div>
+                </div>
+
+                                <!-- Sales Stats Cards -->
+                <?php
+$total_sales = count($sales);
+$total_revenue = array_sum(array_column($sales, 'Total_Amount'));
+?>
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <i class="bi bi-cash-stack"></i>
+            <div class="number"><?= $total_sales ?></div>
+            <div class="label">Total Sales</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <i class="bi bi-currency-dollar"></i>
+            <div class="number">₱<?= number_format($total_revenue, 2) ?></div>
+            <div class="label">Total Revenue</div>
+        </div>
+    </div>
+</div>
+                
                 <!-- Admin List -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
