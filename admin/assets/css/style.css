@@ -178,6 +178,55 @@
             .offcanvas .sidebar { width: 260px !important; }
         }
 
+/* Strong mobile overrides to ensure the offcanvas displays the purple sidebar and white icons */
+@media (max-width: 767.98px) {
+    /* make sure the offcanvas container is transparent so the sidebar gradient shows */
+    .offcanvas.offcanvas-start, .offcanvas {
+        background: transparent !important;
+        color: inherit !important;
+    }
+
+    /* ensure the sidebar inside offcanvas uses the gradient and white text/icons */
+    .offcanvas.offcanvas-start .sidebar,
+    .offcanvas .sidebar {
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
+        color: #fff !important;
+    }
+
+    .offcanvas .sidebar .nav-link,
+    .offcanvas .sidebar .nav-link span,
+    .offcanvas .sidebar .nav-link i,
+    .offcanvas .sidebar .nav-link .bi {
+        color: rgba(255,255,255,0.95) !important;
+    }
+
+    /* make the close button visible on the dark background */
+    .offcanvas .btn-close {
+        filter: invert(1) !important;
+        opacity: 0.95 !important;
+    }
+}
+
+/* Ensure bootstrap icons render correctly inside the offcanvas */
+@media (max-width: 767.98px) {
+    .offcanvas .sidebar .bi,
+    .offcanvas .sidebar i {
+        /* bootstrap-icons uses its own font-family; enforce it here as a fallback */
+        font-family: "bootstrap-icons" !important;
+        speak: none !important;
+        font-style: normal !important;
+        font-weight: 400 !important;
+        font-variant: normal !important;
+        text-transform: none !important;
+        line-height: 1 !important;
+        display: inline-block !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        font-size: 1.15rem !important;
+        color: rgba(255,255,255,0.95) !important;
+    }
+}
+
         /* Ensure row columns align to the top so a tall sidebar does not vertically center
            or push the main column lower than expected. */
         .container-fluid > .row {
