@@ -157,32 +157,21 @@
            avoiding layout shifts. */
         @media (min-width: 768px) {
             .sidebar:not(.offcanvas) {
-                position: -webkit-sticky;
-                position: sticky;
+                position: fixed;
+                left: 0;
                 top: 0;
-                height: auto;
+                bottom: 0;
+                width: 260px;
                 min-height: 100vh;
-                z-index: 1020; /* keep sidebar above main content/header */
+                z-index: 1030; /* keep sidebar above main content/header */
+            }
+
+            /* Push main content to the right so it sits next to the fixed sidebar */
+            .main-content {
+                margin-left: 260px;
+                padding: 20px;
             }
         }
-
-        /* Defensive: hide the offcanvas mobile copy on desktop so it cannot overlay
-           or interfere with the desktop fixed sidebar. Keep this rule if you prefer
-           the single fixed sidebar on larger screens; remove when you no longer need it. */
-        @media (min-width: 768px) {
-            .offcanvas { display: none !important; }
-            .offcanvas-backdrop { display: none !important; }
-        }
-
-        /* Debug helpers (comment/uncomment while debugging) */
-    /* Temporary debug outlines — remove when finished debugging */
-    .sidebar { outline: 3px solid rgba(66,133,244,0.35) !important; }
-    .main-content { outline: 3px dashed rgba(76,175,80,0.35) !important; }
-    .container-fluid { outline: 2px dotted rgba(255,165,0,0.3) !important; padding-top: 0 !important; margin-top: 0 !important; }
-    .container-fluid > .row, .row { align-items: flex-start !important; margin-top: 0 !important; padding-top: 0 !important; }
-    body { padding-top: 0 !important; }
-    .main-content { margin-top: 0 !important; padding-top: 0 !important; }
-    .main-content .header { margin-top: 0 !important; }
 
         /* Safe fallback to prevent horizontal scroll when offcanvas is open */
         body { overflow-x: hidden; }
