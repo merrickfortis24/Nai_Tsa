@@ -209,11 +209,10 @@
 
 /* Ensure bootstrap icons render correctly inside the offcanvas */
 @media (max-width: 767.98px) {
-    .offcanvas .sidebar .bi,
+        .offcanvas .sidebar .bi,
     .offcanvas .sidebar i {
         /* bootstrap-icons uses its own font-family; enforce it here as a fallback */
         font-family: "bootstrap-icons" !important;
-        speak: none !important;
         font-style: normal !important;
         font-weight: 400 !important;
         font-variant: normal !important;
