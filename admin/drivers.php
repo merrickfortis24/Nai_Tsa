@@ -1,7 +1,8 @@
 <?php
 session_start();
 if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
-require_once '../admin/classes/database.php';
+$require_path = __DIR__ . '/classes/database.php';
+require_once $require_path;
 $db = new database();
 $con = $db->opencon();
 
@@ -60,20 +61,26 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar -->
-        <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+        <div class="col-md-2 col-lg-2 d-md-block sidebar collapse">
             <?php include 'sidebar.php'; ?>
         </div>
         <!-- Main Content -->
         <div class="col-md-10 col-lg-10 main-content">
             <div class="header d-flex justify-content-between align-items-center mt-3">
+                <!-- Mobile burger: toggles the sidebar collapse on small screens -->
+                <button class="btn btn-sm btn-outline-secondary d-md-none me-2 mobile-burger"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target=".sidebar"
+                        aria-controls="sidebar"
+                        aria-expanded="false"
+                        aria-label="Toggle navigation">
+                    <i class="bi bi-list"></i>
+                </button>
                 <div>
                     <h4 class="mb-0 fw-bold">Drivers</h4>
                     <p class="mb-0 text-muted">Manage delivery drivers</p>
                 </div>
-                <!-- Sidebar toggle for small screens -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <i class="bi bi-list" style="font-size:1.7rem;"></i>
-                </button>
             </div>
             <div class="card mt-3">
                 <div class="card-header">Add Driver</div>
