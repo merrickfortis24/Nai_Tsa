@@ -160,6 +160,24 @@
             }
         }
 
+        /* Mobile offcanvas specifics: force fixed left panel width and z-index ordering */
+        @media (max-width: 767.98px) {
+            .offcanvas.offcanvas-start {
+                left: 0 !important;
+                right: auto !important;
+                width: 260px !important;
+                --bs-offcanvas-width: 260px !important;
+                z-index: 1055 !important; /* above backdrop */
+                background: transparent !important;
+            }
+            .offcanvas-backdrop {
+                z-index: 1040 !important;
+                background-color: rgba(0,0,0,0.35) !important;
+            }
+            .offcanvas .offcanvas-body { padding: 0 !important; background: transparent !important; }
+            .offcanvas .sidebar { width: 260px !important; }
+        }
+
         /* Ensure row columns align to the top so a tall sidebar does not vertically center
            or push the main column lower than expected. */
         .container-fluid > .row {
