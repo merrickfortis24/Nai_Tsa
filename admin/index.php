@@ -106,10 +106,16 @@ try {
             <div class="col-md-10 col-lg-10 main-content">
                 <!-- Header -->
                 <div class="header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-0 fw-bold">Admin Management</h4>
-                        <p class="mb-0 text-muted">Manage administrators and their roles</p>
-                    </div>
+                        <div class="d-flex align-items-center">
+                            <!-- Mobile burger button for offcanvas sidebar -->
+                            <button class="btn btn-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
+                                <i class="bi bi-list"></i>
+                            </button>
+                            <div>
+                                <h4 class="mb-0 fw-bold">Admin Management</h4>
+                                <p class="mb-0 text-muted">Manage administrators and their roles</p>
+                            </div>
+                        </div>
                     <div class="d-flex align-items-center">
                         <div class="search-container me-3">
                             <i class="bi bi-search"></i>
