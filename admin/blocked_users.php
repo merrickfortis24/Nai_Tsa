@@ -57,12 +57,7 @@ try {
   <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
     <?php include 'sidebar.php'; ?>
   </div>
-  <!-- Offcanvas sidebar for small screens -->
-  <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
-    <div class="offcanvas-body p-0">
-      <?php include 'sidebar.php'; ?>
-    </div>
-  </div>
+  <!-- Offcanvas sidebar for small screens (moved to end of page) -->
     <div class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 mb-3 border-bottom">
         <h1 class="h4 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Blocked Users</h1>
@@ -484,3 +479,4 @@ loadRecentBlocks(1);
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>
