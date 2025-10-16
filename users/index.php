@@ -73,6 +73,7 @@ try {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
+  <div class="bg-fixed" aria-hidden="true"></div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg shadow-sm" style="background: rgba(255,255,255,0.68); box-shadow: 0 4px 20px rgba(255, 178, 122, 0.15); border-radius: 0 0 24px 24px; padding: 0.9rem 0;">
     <div class="container px-2">
@@ -145,7 +146,7 @@ try {
   </nav>
 
   <!-- Home Section -->
-  <section class="section" id="home" style="background-image: url('assets/bg7.jpg');">
+  <section class="section" id="home">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
       <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
@@ -161,7 +162,7 @@ try {
 
 
    <!-- Kumakain ako -->
-  <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
+  <section class="section" id="menu">
     <div class="section-overlay"></div>
     <div class="section-content section-content--wide">  <!-- changed: removed inline max-width -->
       <h2 class="section-title text-center w-100">Menu</h2>
@@ -189,7 +190,7 @@ try {
 
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
+  <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
@@ -229,7 +230,7 @@ try {
   </section>
 
   <!-- Contact Section -->
-  <section class="section" id="contact" style="background-image: url('assets/bg10.jpg');">
+  <section class="section" id="contact">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
