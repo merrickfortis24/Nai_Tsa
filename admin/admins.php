@@ -39,6 +39,16 @@ try {
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
                 <div class="header d-flex justify-content-between align-items-center">
+                    <!-- Mobile burger: toggles the sidebar collapse on small screens -->
+                    <button class="btn btn-sm btn-outline-secondary d-md-none me-2 mobile-burger"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target=".sidebar"
+                            aria-controls="sidebar"
+                            aria-expanded="false"
+                            aria-label="Toggle navigation">
+                        <i class="bi bi-list"></i>
+                    </button>
                     <div>
                         <h4 class="mb-0 fw-bold">Admins</h4>
                         <p class="mb-0 text-muted">List of all administrators</p>
