@@ -286,32 +286,35 @@
         }
         
         @media (max-width: 992px) {
-            .sidebar {
+            /* Apply collapsed sidebar rules only to the fixed/desktop sidebar, not the offcanvas */
+            .sidebar:not(.offcanvas) {
                 width: 70px;
                 overflow: hidden;
             }
-            
-            .sidebar .logo-text, .sidebar .nav-link span {
+
+            .sidebar:not(.offcanvas) .logo-text,
+            .sidebar:not(.offcanvas) .nav-link span {
                 display: none;
             }
-            
-            .sidebar .nav-link {
+
+            .sidebar:not(.offcanvas) .nav-link {
                 text-align: center;
                 padding: 15px 5px;
             }
-            
-            .sidebar .nav-link i {
+
+            .sidebar:not(.offcanvas) .nav-link i {
                 margin-right: 0;
                 font-size: 1.3rem;
             }
-            
+
             .main-content {
                 margin-left: 70px;
             }
         }
-        
+
         @media (max-width: 768px) {
-            .sidebar {
+            /* Hide the fixed sidebar on small screens but keep offcanvas visible */
+            .sidebar:not(.offcanvas) {
                 width: 0;
                 display: none;
             }
