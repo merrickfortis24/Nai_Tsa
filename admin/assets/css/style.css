@@ -134,10 +134,10 @@
             margin-left: 0;
             padding: 20px;
         }
-        /* Defensive: make sure main content sits above any positioned overlays/backdrops */
+        /* Defensive: keep main content positioned but don't force stacking above the sidebar.
+           Removing the z-index prevents the main column/header from overlaying the left sidebar. */
         .main-content {
             position: relative;
-            z-index: 1;
         }
 
         /* Small screens: hide sidebar, content takes full width */
@@ -162,6 +162,7 @@
                 top: 0;
                 height: auto;
                 min-height: 100vh;
+                z-index: 1020; /* keep sidebar above main content/header */
             }
         }
 
