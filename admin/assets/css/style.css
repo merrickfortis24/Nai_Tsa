@@ -146,6 +146,20 @@
                     .main-content { margin-left: 0; }
                 }
 
+        /* Ensure Bootstrap offcanvas remains closed by default on mobile unless .show is added */
+        @media (max-width: 767.98px) {
+            .offcanvas {
+                visibility: hidden !important;
+                transform: translateX(-110%) !important;
+                transition: transform .25s ease-in-out, visibility .01s linear .25s !important;
+            }
+            .offcanvas.show {
+                visibility: visible !important;
+                transform: none !important;
+                transition: transform .25s ease-in-out, visibility 0s linear 0s !important;
+            }
+        }
+
         /* Ensure row columns align to the top so a tall sidebar does not vertically center
            or push the main column lower than expected. */
         .container-fluid > .row {
