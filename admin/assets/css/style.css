@@ -74,20 +74,35 @@
             font-weight: 600;
         }
 
-        /* Offcanvas (mobile) should reuse same visual styles */
+        /* Offcanvas (mobile) should reuse same visual styles as the fixed sidebar */
+        .offcanvas.offcanvas-start {
+            /* ensure offcanvas width matches desktop sidebar */
+            --bs-offcanvas-width: 260px;
+        }
         .offcanvas .sidebar {
             position: relative;
-            height: auto;
+            height: 100%;
             box-shadow: none;
-            background: transparent;
-            color: inherit;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding-top: 1rem;
         }
         .offcanvas .sidebar .nav-link {
-            color: var(--dark-text);
+            color: rgba(255,255,255,0.95);
             background: transparent;
-            padding: 10px 8px;
+            padding: 10px 16px;
         }
-        .offcanvas .sidebar .nav-link i { color: var(--primary-color); }
+        .offcanvas .sidebar .nav-link:hover, .offcanvas .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.12);
+            color: white;
+        }
+        .offcanvas .sidebar .nav-link i { color: rgba(255,255,255,0.95); }
+        /* Make the offcanvas close button visible on dark background */
+        .offcanvas .btn-close {
+            filter: invert(1);
+            opacity: 0.95;
+        }
+        .offcanvas .offcanvas-header { border-bottom: none; }
 
         
         .main-content {
