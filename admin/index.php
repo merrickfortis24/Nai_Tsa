@@ -95,12 +95,6 @@ try {
                         <?php include 'sidebar.php'; ?>
                     </div>
                 </div>
-            <!-- Offcanvas sidebar for small screens -->
-                <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
-                    <div class="offcanvas-body">
-                        <?php include 'sidebar.php'; ?>
-                    </div>
-                </div>
             
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">

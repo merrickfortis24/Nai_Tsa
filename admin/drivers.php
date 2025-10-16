@@ -65,7 +65,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
             <?php include 'sidebar.php'; ?>
         </div>
         <!-- Offcanvas sidebar for small screens -->
-        <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
             <div class="offcanvas-body p-0">
                 <?php include 'sidebar.php'; ?>
             </div>

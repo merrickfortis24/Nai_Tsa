@@ -75,8 +75,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
         <?php include 'sidebar.php'; ?>
       </div>
-      <!-- Offcanvas sidebar for small screens: treat the offcanvas itself as the sidebar so styles apply consistently -->
-      <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
+      <!-- Offcanvas sidebar for small screens -->
+      <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel" style="--bs-offcanvas-width:260px;">
         <div class="offcanvas-body p-0">
           <?php include 'sidebar.php'; ?>
         </div>
