@@ -8,6 +8,8 @@
 
     html {
       scroll-behavior: smooth;
+      /* allow the fixed background element to be visible behind content */
+      background: transparent;
     }
 
     body {
@@ -16,8 +18,26 @@
       min-height: 100vh;
       margin: 0;
       padding: 0;
-      background: var(--beige);
+      /* keep body transparent so the fixed background element is visible */
+      background: transparent;
     }
+
+/* Fixed full-viewport background element: single shared background for all sections
+   Using a separate element provides consistent 'fixed' behavior across mobile browsers */
+.bg-fixed {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  /* put the background behind content but above the document root background */
+  z-index: 0;
+  pointer-events: none;
+  /* Use absolute path to the shared assets folder so image loads regardless of CSS file location */
+  background-image: url('/assets/bg10.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  /* Provide a subtle fallback color while image loads */
+  background-color: var(--beige);
+}
 
     .section {
       min-height: 100vh;
