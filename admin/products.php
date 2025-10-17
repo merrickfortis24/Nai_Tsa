@@ -1149,7 +1149,23 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('product_name').value = this.dataset.productName;
             document.getElementById('product_desc').value = this.dataset.productDesc;
             document.getElementById('category_id').value = this.dataset.categoryId;
-            document.getElementById('base_price').value = '';
+            // Auto-fill base price when editing: fetch from server if product id present
+            const basePriceEl = document.getElementById('base_price');
+            if (basePriceEl) {
+              basePriceEl.value = ''; // clear immediately while we fetch
+              const editPid = this.dataset.productId;
+              if (editPid) {
+                // fetchBasePrice is defined above and returns null on failure
+                fetchBasePrice(editPid).then(base => {
+                  if (base !== null) {
+                    basePriceEl.value = Number(base).toFixed(2);
+                    basePriceEl.placeholder = Number(base).toFixed(2);
+                  } else {
+                    basePriceEl.value = '';
+                  }
+                }).catch(() => { basePriceEl.value = ''; });
+              }
+            }
             document.getElementById('effective_from').value = '<?= date('Y-m-d'); ?>';
             document.getElementById('effective_to').value = '';
             document.getElementById('product_id').value = this.dataset.productId;
