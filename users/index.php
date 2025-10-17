@@ -159,7 +159,7 @@ try {
   <section class="section" id="home">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
-      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
+      <h1 class="section-title greeting" style="font-size:3.6rem; text-align:left;">
         Welcome, <?php echo htmlspecialchars($first_name); ?>
       </h1>
       <p class="section-desc" style="text-align:left;">Welcome to Nai Tsa - Take a pause. You deserve this moment of calm and your favorite drink!</p>

@@ -123,6 +123,21 @@
   font-weight: 500;
 }
 
+/* Greeting: make the welcome greeting slightly darker and a bit larger for better legibility */
+#home .greeting, #home .section-title.greeting {
+  color: #3b2818; /* deeper brown */
+  font-weight: 700;
+  font-size: 2.2rem; /* slightly larger than default section-title on small screens */
+  line-height: 1.05;
+  text-shadow: 0 3px 24px rgba(0,0,0,0.06);
+}
+
+@media(min-width: 768px){
+  #home .greeting, #home .section-title.greeting {
+    font-size: 3.4rem; /* keep it prominent on tablets/desktop */
+  }
+}
+
 .btn-section {
   font-size: 1.15rem;
   padding: 0.78rem 2.1rem;
