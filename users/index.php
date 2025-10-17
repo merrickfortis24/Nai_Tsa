@@ -72,7 +72,7 @@ try {
   <!-- Inline fallback / ensure steady fixed background like landing page -->
   <style>
     body {
-      background-image: url('../assets/bg7.jpg');
+      background-image: url('../assets/bg10.jpg');
       background-size: cover;
       background-position: center center;
       background-repeat: no-repeat;
@@ -679,8 +679,44 @@ try {
       });
     });
 
-    // Rotating background behavior removed — using a single fixed background on <body>
-    // Sections are intentionally left transparent so the page-wide background shows through.
+    // Rotating background images for all main sections
+    function setupRotatingBg(sectionId, images) {
+      const section = document.getElementById(sectionId);
+      let idx = 0;
+      function changeBg() {
+        section.style.backgroundImage = `url('${images[idx]}')`;
+        idx = (idx + 1) % images.length;
+      }
+      changeBg();
+      setInterval(changeBg, 3000);
+    }
+
+    // Use your downloaded images from assets folder
+    const homeImages = [
+      "assets/bg1.jpg",
+      "assets/bg7.jpg",
+      "assets/bg3.jpg"
+    ];
+    const menuImages = [
+      "assets/bg4.jpg",
+       "assets/bg2.jpg",
+      "assets/bg5.jpg"
+    ];
+    const aboutImages = [
+      "assets/bg8.jpg",
+       "assets/bg11.jpg",
+      "assets/bg9.jpg"
+    ];
+    const contactImages = [
+      "assets/bg12.jpg",
+       "assets/bg10.jpg",
+      "assets/bg13.jpg"
+    ];
+
+    setupRotatingBg("home", homeImages);
+    setupRotatingBg("menu", menuImages);
+    setupRotatingBg("about", aboutImages);
+    setupRotatingBg("contact", contactImages);
 
     // Cart logic
 let cart = [];
