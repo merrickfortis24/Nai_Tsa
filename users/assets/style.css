@@ -138,6 +138,30 @@
   }
 }
 
+/* About & Contact: increase contrast and size slightly for titles and descriptions */
+#about .section-title, #contact .section-title {
+  color: #4a2f1f; /* slightly brown shade */
+  font-weight: 700;
+  font-size: 2.2rem; /* slightly larger */
+  letter-spacing: -0.02em;
+}
+
+#about .section-desc, #contact .section-desc {
+  color: #5b3e2a; /* medium brown for descriptions */
+  font-size: 1.25rem; /* slightly larger than default */
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+@media (max-width: 575px) {
+  #about .section-title, #contact .section-title {
+    font-size: 1.9rem;
+  }
+  #about .section-desc, #contact .section-desc {
+    font-size: 1.12rem;
+  }
+}
+
 .btn-section {
   font-size: 1.15rem;
   padding: 0.78rem 2.1rem;
