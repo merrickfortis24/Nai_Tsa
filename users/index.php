@@ -711,10 +711,8 @@ try {
       "assets/bg13.jpg"
     ];
 
-    setupRotatingBg("home", homeImages);
-    setupRotatingBg("menu", menuImages);
-    setupRotatingBg("about", aboutImages);
-    setupRotatingBg("contact", contactImages);
+  // Do not set per-section background images here. The shared full-viewport
+  // background is controlled by the .bg-fixed element (consistent with landing page).
 
     // Cart logic
 let cart = [];
