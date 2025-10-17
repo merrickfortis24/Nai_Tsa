@@ -679,16 +679,14 @@ try {
       });
     });
 
-    // Rotating background images for all main sections
+    // Background images for main sections
+    // NOTE: Rotation disabled so a single fixed background element controls the page background.
+    // This sets the initial image only and avoids periodically changing section backgrounds.
     function setupRotatingBg(sectionId, images) {
       const section = document.getElementById(sectionId);
-      let idx = 0;
-      function changeBg() {
-        section.style.backgroundImage = `url('${images[idx]}')`;
-        idx = (idx + 1) % images.length;
-      }
-      changeBg();
-      setInterval(changeBg, 3000);
+      if (!section || !Array.isArray(images) || images.length === 0) return;
+      // Set the initial/background image only (no interval)
+      section.style.backgroundImage = `url('${images[0]}')`;
     }
 
     // Use your downloaded images from assets folder
