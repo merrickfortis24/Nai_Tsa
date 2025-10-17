@@ -116,6 +116,13 @@
   text-shadow: 0 2px 10px rgba(255,255,255,0.12);
 }
 
+/* Darker, slightly bolder intro specifically for the Home section so it
+   reads more clearly over the shared background image. */
+#home .section-desc {
+  color: var(--text-dark); /* #61391D */
+  font-weight: 500;
+}
+
 .btn-section {
   font-size: 1.15rem;
   padding: 0.78rem 2.1rem;
