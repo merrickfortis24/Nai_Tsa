@@ -17,6 +17,8 @@
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
             color: white;
             height: 100vh;
+            /* Ensure a stable desktop width to match .main-content margin-left */
+            width: 250px;
             position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
         }
