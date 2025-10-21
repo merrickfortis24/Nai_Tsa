@@ -114,16 +114,12 @@ class Order {
     }
 
     private function getProductPrice($product_id) {
-        $stmt = $this->con->prepare("SELECT Price_ID FROM product WHERE Product_ID=?");
-        $stmt->execute([$product_id]);
-        $product = $stmt->fetch();
-        if ($product) {
-            $stmt2 = $this->con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID=?");
-            $stmt2->execute([$product['Price_ID']]);
-            $price = $stmt2->fetchColumn();
-            return $price ? $price : 0;
+        // Use database helper to resolve current product price (history-aware)
+        try {
+            return (float)$this->db->getCurrentProductPrice((int)$product_id);
+        } catch (Throwable $e) {
+            return 0;
         }
-        return 0;
     }
 
     private function insertOrder($data) {

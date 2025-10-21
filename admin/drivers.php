@@ -1,7 +1,8 @@
 <?php
 session_start();
 if (!isset($_SESSION['admin_id'])) { header('Location: login.php'); exit; }
-require_once '../admin/classes/database.php';
+$require_path = __DIR__ . '/classes/database.php';
+require_once $require_path;
 $db = new database();
 $con = $db->opencon();
 
@@ -52,17 +53,18 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
 <head>
     <meta charset="UTF-8">
     <title>Drivers - Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="dashboard-page">
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+        <!-- Desktop sidebar (visible on md+) -->
+        <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
             <?php include 'sidebar.php'; ?>
         </div>
+        <!-- Offcanvas sidebar for small screens (moved to end of page) -->
         <!-- Main Content -->
         <div class="col-md-10 col-lg-10 main-content">
             <div class="header d-flex justify-content-between align-items-center mt-3">
@@ -70,8 +72,8 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
                     <h4 class="mb-0 fw-bold">Drivers</h4>
                     <p class="mb-0 text-muted">Manage delivery drivers</p>
                 </div>
-                <!-- Sidebar toggle for small screens -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+                <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size:1.7rem;"></i>
                 </button>
             </div>
@@ -164,7 +166,7 @@ $drivers = $con->query("SELECT * FROM drivers ORDER BY Driver_ID DESC")->fetchAl
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function showEdit(form) {
     document.getElementById('edit_id').value = form.driver_id.value;
@@ -176,3 +178,4 @@ function showEdit(form) {
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>

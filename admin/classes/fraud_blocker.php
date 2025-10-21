@@ -26,8 +26,9 @@ class FraudBlocker extends database {
         'burst_minutes'               => 20,
         'burst_count_block'           => 4,
         'simulate'                    => false, // set true for dry-run
-        // Respect manual admin decisions: do not auto-reblock within this grace window (hours)
-        'manual_unblock_grace_hours'  => 48,
+    // Respect manual admin decisions: do not auto-reblock within this grace window (hours)
+    // Set to 0 to disable grace; admin manual unblocks will not prevent immediate re-blocking.
+    'manual_unblock_grace_hours'  => 0,
     ];
 
     public function __construct(array $overrides = []) {
@@ -155,7 +156,10 @@ class FraudBlocker extends database {
             $stmt->execute([$customerId]);
             $ts = $stmt->fetchColumn();
             if (!$ts) return false;
-            $graceSeconds = max(0, (int)$this->config['manual_unblock_grace_hours']) * 3600;
+            // If grace window is disabled (<=0), never treat a recent unblock as protected
+            $graceHours = (int)$this->config['manual_unblock_grace_hours'];
+            if ($graceHours <= 0) return false;
+            $graceSeconds = $graceHours * 3600;
             return (strtotime($ts) >= (time() - $graceSeconds));
         } catch(Throwable $e) { return false; }
     }

@@ -76,42 +76,29 @@ class database {
                 $pid = $r['Product_ID'];
                 $sizes = $sizesByProduct[$pid] ?? [];
                 if ($sizes) {
-                    // Find anchor
+                    // Find anchor: prefer explicit Is_Anchor with ABS, else any ABS, else fallback
                     $anchor = null;
-                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor'])) { $anchor = $sz; break; } }
+                    foreach ($sizes as $sz) { if (!empty($sz['Is_Anchor']) && $sz['Price_Mode']==='ABS') { $anchor = $sz; break; } }
                     if (!$anchor) {
                         foreach ($sizes as $sz) { if ($sz['Price_Mode'] === 'ABS') { $anchor = $sz; break; } }
                     }
-                    if (!$anchor) { $anchor = $sizes[0]; }
-                    // Choose primary size for display
-                    $chosen = null;
-                    if (!empty($r['Primary_Size_ID'])) {
-                        foreach ($sizes as $sz) { if ($sz['Size_ID'] == $r['Primary_Size_ID']) { $chosen = $sz; break; } }
+                    // Base display price = ABS anchor if available; otherwise fall back to product base price
+                    if ($anchor && $anchor['Price_Mode']==='ABS') {
+                        $r['Price_Amount'] = (float)$anchor['Price_Value'];
+                    } else {
+                        // Resolve historical/active base price via helper so scheduled prices are applied
+                        try {
+                            $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$pid);
+                        } catch (Throwable $e) {
+                            $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
+                        }
                     }
-                    if (!$chosen) {
-                        $sorted = $sizes;
-                        usort($sorted, function($a,$b){
-                            if ($a['Sort_Order'] != $b['Sort_Order']) return $a['Sort_Order'] <=> $b['Sort_Order'];
-                            if ($a['Is_Anchor'] != $b['Is_Anchor']) return $b['Is_Anchor'] <=> $a['Is_Anchor'];
-                            if ($a['Price_Mode'] != $b['Price_Mode']) return ($a['Price_Mode']==='ABS') ? -1 : 1;
-                            return $b['Price_Value'] <=> $a['Price_Value'];
-                        });
-                        $chosen = $sorted[0];
-                    }
-                    // Compute display price under anchor model
-                    $anchorPrice = (float)$anchor['Price_Value'];
-                    if (!empty($chosen['Is_Anchor']) && $chosen['Price_Mode']==='ABS') {
-                        $display = $anchorPrice;
-                    } elseif ($chosen['Price_Mode'] === 'DELTA') {
-                        $display = $anchorPrice + (float)$chosen['Price_Value'];
-                    } else { // non-anchor ABS
-                        $display = (float)$chosen['Price_Value'];
-                    }
-                    $r['Price_Amount'] = $display; // maintain expected key for frontend
                 } else {
-                    // No sizes -> use base price amount
-                    if (!array_key_exists('Price_Amount', $r) || $r['Price_Amount'] === null) {
-                        $r['Price_Amount'] = $r['Base_Price_Amount'] ?? 0;
+                    // No sizes -> use resolved product base price
+                    try {
+                        $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$pid);
+                    } catch (Throwable $e) {
+                        $r['Price_Amount'] = isset($r['Base_Price_Amount']) ? (float)$r['Base_Price_Amount'] : 0.0;
                     }
                 }
             }
@@ -255,11 +242,28 @@ class database {
 
     // Fetch product price by product_id
     function fetchProductPrice($product_id) {
+        return $this->getCurrentProductPrice((int)$product_id);
+    }
+
+    /**
+     * Resolve current product price using product_price_history (preferred) and fallback to legacy.
+     */
+    public function getCurrentProductPrice(int $product_id, ?string $date = null) {
         $con = $this->opencon();
-        $stmt = $con->prepare("SELECT Price_Amount FROM product_price WHERE Price_ID = (SELECT Price_ID FROM product WHERE Product_ID = ?)");
-        $stmt->execute([$product_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['Price_Amount'] : 0;
+        $d = $date ?? date('Y-m-d');
+        try {
+            $stmt = $con->prepare("SELECT Price FROM product_price_history WHERE Prod_ID = :pid AND Effective_From <= :d AND (Effective_To IS NULL OR Effective_To >= :d) ORDER BY Effective_From DESC LIMIT 1");
+            $stmt->execute([':pid' => $product_id, ':d' => $d]);
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null) return (float)$val;
+        } catch (Throwable $e) { /* ignore */ }
+        // fallback to legacy
+        try {
+            $stmt2 = $con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID = pp.Price_ID WHERE p.Product_ID = ? LIMIT 1");
+            $stmt2->execute([$product_id]);
+            $v2 = $stmt2->fetchColumn();
+            return $v2 !== false && $v2 !== null ? (float)$v2 : 0.0;
+        } catch (Throwable $e) { return 0.0; }
     }
 
   
@@ -724,6 +728,12 @@ public function getRecommendedProducts($customer_id, $limit = 4) {
             $stmt2->execute();
             $products = $stmt2->fetchAll(PDO::FETCH_ASSOC);
         }
+        // Ensure returned products include history-aware Price_Amount
+        foreach ($products as &$p) {
+            try {
+                $p['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$p['Product_ID']);
+            } catch (Throwable $e) { /* leave as-is */ }
+        }
         return $products;
 }
 
@@ -751,7 +761,11 @@ public function getBestsellerProducts($limit = 4) {
         $stmt = $con->prepare($sql);
         $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            try { $r['Price_Amount'] = (float)$this->getCurrentProductPrice((int)$r['Product_ID']); } catch (Throwable $e) {}
+        }
+        return $rows;
 }
 
 public function fetchAllCategories() {

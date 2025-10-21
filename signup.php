@@ -110,9 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
   <script>
     // Rotating background images for signup page using local assets
     const signupImages = [
-      "assets/bg10.jpg",
-      "assets/b6.jpg",
-      "assets/bg11.jpg"
+      "assets/bg7.jpg"
       // Add more local images if you want
     ];
     const section = document.querySelector('.signup-section');

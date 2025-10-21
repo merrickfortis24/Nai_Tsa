@@ -15,7 +15,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['payment_id'], $_POST['payment_status'])) {
     try {
       $pid = (int)$_POST['payment_id'];
-      if ($db->updatePaymentStatus($pid, $_POST['payment_status'])) {
+      $newStatus = trim((string)$_POST['payment_status']);
+      // Gating: if setting Paid for GCash, require verified receipt
+      if (strcasecmp($newStatus,'Paid')===0) {
+        try {
+          $con = $db->opencon();
+          $st = $con->prepare("SELECT Order_ID, Payment_Method FROM payment WHERE Payment_ID=? LIMIT 1");
+          $st->execute([$pid]);
+          $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
+          $oid = (int)($row['Order_ID'] ?? 0);
+          $isGCash = isset($row['Payment_Method']) && strcasecmp($row['Payment_Method'],'GCash')===0;
+          if ($oid && $isGCash) {
+            $rc = $con->prepare("SELECT Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+            $rc->execute([$oid]);
+            $rcs = (string)$rc->fetchColumn();
+            if (!($rcs && strcasecmp($rcs,'verified')===0)) {
+              // Block update by skipping and redirecting back with message (optional: flash)
+              $qs = $_GET; unset($qs['page']);
+              header('Location: orders_payments.php' . ($qs ? ('?' . http_build_query($qs)) : ''));
+              exit;
+            }
+          }
+        } catch (Throwable $e) { /* if gating check fails, proceed */ }
+      }
+      if ($db->updatePaymentStatus($pid, $newStatus)) {
         $oid = $db->getOrderIdByPaymentId($pid);
         if ($oid) {
           $adminId = (int)($_SESSION['admin_id'] ?? 0);
@@ -93,24 +116,37 @@ ksort($methods);
 @media (max-width: 768px){
   .filter-row .short-select { width: 100%; }
 }
+/* Uniform field heights for the top filter row */
+.uniform-fields .form-label{ margin-bottom:4px }
+.uniform-fields .form-control.form-control-sm,
+.uniform-fields .form-select.form-select-sm{ height:36px }
+.uniform-fields input[type="date"].form-control-sm{ height:36px }
+.filter-row .btn-sm{ height:36px; display:inline-flex; align-items:center; }
+/* Consistent stat tiles */
+.stats-row .tile{ min-height:76px; display:flex; flex-direction:column; justify-content:center; align-items:center; }
 </style>
 </head>
 <body class="dashboard-page">
 <div class="container-fluid">
   <div class="row">
-    <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+    <!-- Desktop sidebar (visible on md+) -->
+    <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
       <?php include 'sidebar.php'; ?>
     </div>
+    <!-- Offcanvas sidebar for small screens (moved to end of page) -->
     <div class="col-md-10 col-lg-10 main-content">
       <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-  <h4 class="fw-bold mb-0">Orders & Payments</h4>
-        <button class="btn btn-outline-primary d-lg-none" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse"><i class="bi bi-list"></i></button>
+        <h4 class="fw-bold mb-0">Orders & Payments</h4>
+        <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+  <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+          <i class="bi bi-list" style="font-size:1.7rem;"></i>
+        </button>
       </div>
       <div class="card shadow-sm">
         <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
         <div class="card-body">
           <!-- debug output removed -->
-          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row">
+          <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row uniform-fields">
             <input type="hidden" name="page" value="<?= (int)$page ?>" />
             <div class="col-12 col-md flex-grow-1">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
@@ -151,21 +187,21 @@ ksort($methods);
           </form>
 
           <!-- Stats -->
-          <div class="row g-3 mb-3 small">
+          <div class="row g-3 mb-3 small stats-row">
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Total Records</div>
                 <div class="fw-semibold" id="statTotal"><?=number_format($total)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Unpaid Payments</div>
                 <div class="fw-semibold text-danger" id="statUnpaid"><?=number_format($unpaidPayments)?></div>
               </div>
             </div>
             <div class="col-6 col-md-3">
-              <div class="p-2 border rounded bg-light text-center">
+              <div class="p-2 border rounded bg-light text-center tile">
                 <div class="text-muted">Pending / Processing Orders</div>
                 <div class="fw-semibold text-warning" id="statPendingProc"><?=number_format($pendingProcessingCount)?></div>
               </div>
@@ -234,7 +270,45 @@ ksort($methods);
                         <span class="badge bg-warning text-dark">Unpaid</span>
                       <?php endif; ?>
                     </td>
-                    <td><?= $r['Payment_Method']? h($r['Payment_Method']) : '<span class="text-muted">-</span>' ?></td>
+                    <td>
+                      <?php if (!empty($r['Payment_Method']) && strcasecmp($r['Payment_Method'],'GCash')===0): ?>
+                        <div class="d-flex flex-column gap-1">
+                          <span class="badge bg-info text-dark align-self-start">GCash</span>
+                          <?php
+                            // Fetch latest receipt if any
+                            try {
+                              $con = $db->opencon();
+                              $rs = $con->prepare("SELECT Payment_Receipt_ID, Proof_Photo, Reference_Number, Submitted_Amount, Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+                              $rs->execute([$r['Order_ID']]);
+                              $gc = $rs->fetch(PDO::FETCH_ASSOC) ?: null;
+                            } catch (Throwable $e) { $gc = null; }
+                          ?>
+                          <?php if ($gc): ?>
+                            <div class="small">Ref: <strong><?=h($gc['Reference_Number']?:'-')?></strong></div>
+                            <div class="small">Amount: ₱<?= number_format((float)($gc['Submitted_Amount']?:0),2) ?></div>
+                            <div class="small">Status: <span class="badge <?= $gc['Status']==='verified'?'bg-success':($gc['Status']==='rejected'?'bg-danger':'bg-secondary') ?>"><?=h(ucfirst($gc['Status']))?></span></div>
+                            <?php if (!empty($gc['Proof_Photo'])): ?>
+                              <button type="button"
+                                      class="btn btn-link p-0 small view-receipt-btn"
+                                      data-src="<?= h($gc['Proof_Photo']) ?>"
+                                      data-ref="<?= h($gc['Reference_Number'] ?: '') ?>"
+                                      data-amount="<?= h($gc['Submitted_Amount'] ?: '') ?>"
+                                      data-order="<?= (int)$r['Order_ID'] ?>">
+                                View receipt
+                              </button>
+                            <?php endif; ?>
+                            <div class="d-flex gap-1 mt-1">
+                              <button type="button" class="btn btn-sm btn-outline-success" data-action="verify" data-rid="<?= (int)$gc['Payment_Receipt_ID'] ?>" data-oid="<?= (int)$r['Order_ID'] ?>">Verify</button>
+                              <button type="button" class="btn btn-sm btn-outline-danger" data-action="reject" data-rid="<?= (int)$gc['Payment_Receipt_ID'] ?>" data-oid="<?= (int)$r['Order_ID'] ?>">Reject</button>
+                            </div>
+                          <?php else: ?>
+                            <span class="small text-muted">No receipt uploaded</span>
+                          <?php endif; ?>
+                        </div>
+                      <?php else: ?>
+                        <?= $r['Payment_Method']? h($r['Payment_Method']) : '<span class="text-muted">-</span>' ?>
+                      <?php endif; ?>
+                    </td>
                     <td>
                       <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#itemsModal<?=h($r['Order_ID'])?>"><i class="bi bi-eye"></i></button>
                     </td>
@@ -443,8 +517,101 @@ ksort($methods);
     </div>
   </div>
 </div>
+
+<!-- Receipt Preview Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">GCash Receipt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="min-height:200px;">
+        <div id="receiptMeta" class="small text-muted mb-2"></div>
+        <div class="d-flex justify-content-center align-items-center" style="min-height:200px;">
+          <img id="receiptImg" src="" alt="Receipt" class="img-fluid rounded border" style="max-height:70vh; display:none;" />
+          <div id="receiptError" class="text-muted" style="display:none;">Unable to load receipt image.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="receiptOpenNew" href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary">Open in new tab</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// View Receipt: open modal and load image
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('.view-receipt-btn');
+  if(!btn) return;
+  const raw = btn.getAttribute('data-src') || '';
+  // Normalize relative path; stored path is typically 'uploads/gcash/...'
+  let src = raw.trim();
+  // If it starts with '/', trim to relative so it works from /admin/
+  if (src.startsWith('/')) src = src.replace(/^\/+/, '');
+  const orderId = btn.getAttribute('data-order') || '';
+  const ref = btn.getAttribute('data-ref') || '';
+  const amt = btn.getAttribute('data-amount') || '';
+  const meta = [];
+  if (orderId) meta.push('Order #' + orderId);
+  if (ref) meta.push('Ref: ' + ref);
+  if (amt) meta.push('Amount: ₱' + (Number(amt)||0).toFixed(2));
+  const metaEl = document.getElementById('receiptMeta');
+  const imgEl = document.getElementById('receiptImg');
+  const errEl = document.getElementById('receiptError');
+  const openNew = document.getElementById('receiptOpenNew');
+  if (metaEl) metaEl.textContent = meta.join(' • ');
+  if (imgEl && errEl) {
+    imgEl.style.display = 'none';
+    errEl.style.display = 'none';
+    imgEl.onload = function(){ imgEl.style.display = 'block'; };
+    imgEl.onerror = function(){ imgEl.style.display = 'none'; errEl.style.display = 'block'; };
+    imgEl.src = src;
+  }
+  if (openNew) {
+    // If not absolute URL, keep as relative to /admin/
+    openNew.href = src;
+  }
+  const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+  modal.show();
+});
+
+// Handle GCash verify/reject buttons (admin actions)
+document.addEventListener('click', async function(e){
+  const btn = e.target.closest('button[data-action][data-rid]');
+  if(!btn) return;
+  const action = btn.getAttribute('data-action');
+  const rid = btn.getAttribute('data-rid');
+  const oid = btn.getAttribute('data-oid');
+  let body = { action, receipt_id: rid, order_id: oid };
+  if (action === 'reject') {
+    const reason = prompt('Reason for rejection? (optional)') || '';
+    body.reason = reason;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch('ajax/gcash_verify.php', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if(!j.success){
+      alert(j.message||'Action failed');
+      return;
+    }
+    // Reload just this page to reflect changes quickly (keeps filters)
+    window.location.reload();
+  } catch(err){
+    console.warn(err);
+    alert('Network error');
+  } finally {
+    btn.disabled = false;
+  }
+});
 // Detect if any filters are currently active (non-empty)
 function filtersActive(){
   const form = document.getElementById('filtersForm');
@@ -796,3 +963,4 @@ document.querySelectorAll('select.order-status-select').forEach(s=>{
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>

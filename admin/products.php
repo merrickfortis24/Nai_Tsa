@@ -24,11 +24,7 @@ try {
     $categories_list = [];
 }
 
-try {
-    $prices_list = $db->getAllPrices();
-} catch (PDOException $e) {
-    $prices_list = [];
-}
+// Prices dropdown removed: admins will type price amounts manually now
 
 // Pagination logic
 $currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -54,18 +50,32 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
     <!-- Custom Admin CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
-      /* Clamp long descriptions to avoid tall rows / overflow */
-      .prod-desc-clamp{max-width:260px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25rem;font-size:.875rem;}
-      @media (min-width:1400px){.prod-desc-clamp{max-width:340px;}}
+      /* Compact multi-line truncation for long descriptions in the table */
+      .table .desc-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;word-break:break-word;}
+      .table .desc-expanded{display:block;-webkit-line-clamp:unset;max-height:none;}
+      .desc-toggle{cursor:pointer;}
+      /* Uniform modal header fields */
+      .uniform-fields .form-label{margin-bottom:4px}
+      .uniform-fields .form-control.form-control-sm,
+      .uniform-fields .form-select.form-select-sm,
+      .uniform-fields .input-group.input-group-sm>.form-control,
+      .uniform-fields .input-group.input-group-sm>.input-group-text{height:36px}
+      .uniform-fields .input-group-text{min-width:38px;justify-content:center}
+      @media (min-width: 992px){ /* lg */
+        .uniform-fields .col-md-3{max-width:25%}
+        .uniform-fields .col-md-2{max-width:20%}
+      }
     </style>
 </head>
 <body class="dashboard-page">
   <div class="container-fluid">
     <div class="row">
       <!-- Sidebar -->
-      <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+      <!-- Desktop sidebar (visible on md+) -->
+      <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
         <?php include 'sidebar.php'; ?>
       </div>
+      <!-- Offcanvas sidebar for small screens (moved to end of page to avoid layout interference) -->
       <!-- Main Content -->
       <div class="col-md-10 col-lg-10 main-content">
         <!-- Header -->
@@ -74,8 +84,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <h4 class="mb-0 fw-bold">Products</h4>
             <p class="mb-0 text-muted">Manage your products</p>
           </div>
-          <!-- Sidebar toggle button for small screens -->
-          <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+          <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="#sidebarOffcanvas" aria-label="Toggle navigation">
             <i class="bi bi-list" style="font-size:1.7rem;"></i>
           </button>
         </div>
@@ -104,12 +114,10 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#manageSizesModal">
                   <i class="bi bi-arrows-expand me-1"></i> Manage Sizes
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#manageVariantsModal">
-                  <i class="bi bi-sliders me-1"></i> Manage Variants (New)
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addPriceModal">
-                  <i class="bi bi-cash-coin me-1"></i> Add Price
-                </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageVariantsModal">
+                      <i class="bi bi-ui-checks-grid me-1"></i> Manage Flavors
+                    </button>
+                <!-- Global Add Price modal/button removed per new pricing flow -->
               </div>
           </div>
           <div class="card-body">
@@ -146,14 +154,12 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                     </td>
                     <td><?= htmlspecialchars($product['Product_Name']) ?></td>
                     <td>
-                      <?php 
-                        $descRaw = trim($product['Product_desc'] ?? '');
-                        if($descRaw===''){ echo '<span class="text-muted">—</span>'; }
-                        else {
-                          $safeFull = htmlspecialchars($descRaw, ENT_QUOTES, 'UTF-8');
-                          echo '<div class="prod-desc-clamp" data-bs-toggle="tooltip" data-bs-title="'.$safeFull.'">'.$safeFull.'</div>';
-                        }
-                      ?>
+                      <div class="desc-clamp" id="desc-<?= (int)$product['Product_ID'] ?>">
+                        <?= htmlspecialchars($product['Product_desc']) ?>
+                      </div>
+                      <?php if (!empty($product['Product_desc']) && strlen($product['Product_desc']) > 120): ?>
+                        <a href="#" class="desc-toggle small text-primary" data-target="desc-<?= (int)$product['Product_ID'] ?>" aria-expanded="false">Show more</a>
+                      <?php endif; ?>
                     </td>
                     <!-- Allergens data removed -->
                     <td><?= date('F d, Y h:i A', strtotime($product['Created_at'])) ?></td>
@@ -255,6 +261,15 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               <label for="product_image" class="form-label">Product Image</label>
               <input type="file" class="form-control" id="product_image" name="product_image" accept="image/*">
             </div>
+            <!-- Current image preview (shown only when editing) -->
+            <div class="mb-3" id="currentImageGroup" style="display:none;">
+              <label class="form-label">Current Image</label>
+              <div class="d-flex align-items-center gap-2">
+                <img id="currentImagePreview" src="" alt="Current image" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6;">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="removeCurrentImageBtn">Remove</button>
+              </div>
+            </div>
+            <input type="hidden" id="product_image_existing" name="product_image_existing" value="">
             <div class="mb-3">
               <label for="category_id" class="form-label">Category</label>
               <select class="form-select" id="category_id" name="category_id" required>
@@ -267,23 +282,19 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
               </select>
             </div>
             <div class="mb-3">
-              <label for="price_id" class="form-label">Price</label>
-              <select class="form-select" id="price_id" name="price_id" required>
-                <option value="">Select Price</option>
-                <?php foreach ($prices_list as $price): ?>
-                  <option value="<?= htmlspecialchars($price['Price_ID']) ?>">
-                    <?= htmlspecialchars($price['Price_Amount']) ?>
-                    (
-                      <?= date('F d, Y', strtotime($price['Effective_From'])) ?>
-                      <?php if ($price['Effective_To']): ?>
-                        to <?= date('F d, Y', strtotime($price['Effective_To'])) ?>
-                      <?php else: ?>
-                        and onwards
-                      <?php endif; ?>
-                    )
-                  </option>
-                <?php endforeach; ?>
-              </select>
+              <label for="base_price" class="form-label">Base Price (₱)</label>
+              <input type="number" step="0.01" min="0.01" class="form-control" id="base_price" name="base_price" placeholder="e.g. 70.00" required>
+              <div class="form-text">Type the product's base price. This will be logged in price history.</div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label for="effective_from" class="form-label">Effective From</label>
+                <input type="date" class="form-control" id="effective_from" name="effective_from" value="<?= date('Y-m-d'); ?>" required>
+              </div>
+              <div class="col-md-6">
+                <label for="effective_to" class="form-label">Effective To (optional)</label>
+                <input type="date" class="form-control" id="effective_to" name="effective_to">
+              </div>
             </div>
             <!-- Allergens input removed -->
 
@@ -297,65 +308,151 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
       </div>
     </div>
 
-    <!-- Add Price Modal (restored) -->
-    <div class="modal fade" id="addPriceModal" tabindex="-1" aria-labelledby="addPriceModalLabel" aria-hidden="true">
+    <!-- Manage Flavors (Variants) Modal -->
+    <div class="modal fade" id="manageVariantsModal" tabindex="-1" aria-labelledby="manageVariantsModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
-        <form class="modal-content" id="addPriceForm">
-          <div class="modal-header py-2">
-            <h6 class="modal-title" id="addPriceModalLabel">Add Price</h6>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="manageVariantsModalLabel">Product Flavor Variants</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Amount (₱)</label>
-                  <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="price_amount" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Effective From</label>
-                  <input type="date" class="form-control form-control-sm" name="effective_from" required>
-                </div>
-                <div class="mb-2">
-                  <label class="form-label small mb-1">Effective To (optional)</label>
-                  <input type="date" class="form-control form-control-sm" name="effective_to">
-                  <div class="form-text small">Leave blank for open-ended pricing.</div>
-                </div>
-                <div class="alert alert-info p-2 small mb-0">New prices appear in dropdowns instantly.</div>
+            <div class="alert alert-info small mb-3">
+              Add and manage flavor variants per product. Flavor prices support Absolute (full price) or Delta (added to the product's base price).
+            </div>
+            <form id="addVariantForm" class="row g-3 align-items-end mb-3 uniform-fields">
+              <div class="col-md-3 col-sm-6">
+                <label class="form-label small">Product</label>
+                <select class="form-select form-select-sm" name="product_id" required id="variantProductSelect">
+                  <option value="">Select...</option>
+                  <?php foreach($products as $p): ?>
+                    <option value="<?= (int)$p['Product_ID'] ?>" data-category="<?= htmlspecialchars($p['Category_ID']) ?>">
+                      <?= htmlspecialchars($p['Product_Name']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
               </div>
-              <div class="col-md-8">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <strong class="small mb-0">Existing Prices</strong>
-                  <div class="btn-group btn-group-sm" role="group" aria-label="Pagination" id="pricePager" data-page="1">
-                    <button type="button" class="btn btn-outline-secondary" id="pricePrev" disabled>&laquo;</button>
-                    <button type="button" class="btn btn-outline-secondary" id="priceNext" disabled>&raquo;</button>
-                  </div>
+              <div class="col-md-2 col-sm-6">
+                <label class="form-label small">Code</label>
+                <input type="text" maxlength="32" placeholder="e.g. CHOCO" class="form-control form-control-sm" name="code" required>
+              </div>
+              <div class="col-md-3 col-sm-6">
+                <label class="form-label small">Label</label>
+                <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="label" required>
+              </div>
+              <div class="col-md-2 col-sm-6">
+                <label class="form-label small">Mode</label>
+                <select class="form-select form-select-sm" name="price_mode" required>
+                  <option value="ABSOLUTE" selected>Absolute</option>
+                  <option value="DELTA">Delta (+)</option>
+                </select>
+              </div>
+              <div class="col-md-2 col-sm-6">
+                <label class="form-label small">Amount</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" class="form-control form-control-sm text-end bg-white text-dark" name="price_value" required>
                 </div>
-                <div class="table-responsive border rounded" style="max-height:300px; overflow:auto;">
-                  <table class="table table-sm mb-0 align-middle" id="priceListTable">
-                    <thead class="table-light sticky-top">
-                      <tr>
-                        <th style="width:70px;">ID</th>
-                        <th>Amount</th>
-                        <th>Effective Range</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>
-                    </tbody>
-                  </table>
+              </div>
+              <div class="col-12 d-flex align-items-center gap-3 flex-wrap">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="1" id="variantPrimaryCheck" name="is_primary">
+                  <label class="form-check-label small" for="variantPrimaryCheck">Set as Primary</label>
                 </div>
-                <div class="small text-muted mt-1" id="priceMeta"></div>
+                <div class="d-flex align-items-center gap-2">
+                  <label class="form-label small mb-0" for="variantSort">Sort</label>
+                  <input id="variantSort" type="number" class="form-control form-control-sm" style="width:90px;" name="sort_order" min="0" value="0">
+                </div>
+                <div class="ms-auto">
+                  <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
+                </div>
+              </div>
+            </form>
+            <div class="table-responsive border rounded" style="max-height:360px; overflow:auto;">
+              <table class="table table-sm table-hover align-middle mb-0" id="variantsTable">
+                <thead class="table-light position-sticky top-0">
+                  <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Product</th>
+                    <th>Code</th>
+                    <th>Label</th>
+                    <th>Mode</th>
+                    <th>Amount</th>
+                    <th>Primary</th>
+                    <th>Sort</th>
+                    <th style="width:70px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="9" class="text-center text-muted small">Select a product to view flavors.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Flavor Variant Modal -->
+    <div class="modal fade" id="editVariantModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form class="modal-content" id="editVariantForm">
+          <div class="modal-header py-2">
+            <h6 class="modal-title">Edit Flavor Variant</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="variant_id" id="editVariantId">
+            <div class="mb-2"><small class="text-muted">Product</small><div id="editVariantProductName" class="fw-semibold"></div></div>
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label small mb-1">Code</label>
+                <input type="text" class="form-control form-control-sm" id="editVariantCode" disabled>
+              </div>
+              <div class="col-8">
+                <label class="form-label small mb-1">Label</label>
+                <input type="text" class="form-control form-control-sm" name="label" id="editVariantLabel" required maxlength="64">
+              </div>
+            </div>
+            <div class="row g-2 mt-1">
+              <div class="col-6">
+                <label class="form-label small mb-1">Mode</label>
+                <select class="form-select form-select-sm" name="price_mode" id="editVariantMode" required>
+                  <option value="ABSOLUTE">Absolute</option>
+                  <option value="DELTA">Delta (+)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small mb-1">Amount</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" name="price_value" id="editVariantAmount" required>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 mt-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="editVariantPrimary" name="is_primary">
+                <label class="form-check-label small" for="editVariantPrimary">Set as Primary</label>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <label class="form-label small mb-0" for="editVariantSort">Sort</label>
+                <input id="editVariantSort" type="number" class="form-control form-control-sm" style="width:90px;" name="sort_order" min="0" value="0">
               </div>
             </div>
           </div>
           <div class="modal-footer py-2">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary btn-sm">Save</button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- Global Add Price modal removed -->
 
     <!-- Set Primary Size Modal -->
     <div class="modal fade" id="primarySizeModal" tabindex="-1" aria-hidden="true">
@@ -395,8 +492,11 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
             <div class="alert alert-info small mb-3">
               <strong>How pricing works now:</strong> Base product price + (Delta) or overridden by (Absolute) size price. If a product has no size variants, only its base price is used. To add or change pricing, add a size variant here. The old standalone "Add Price" feature was removed for clarity.
             </div>
-            <form id="addSizeForm" class="row g-3 align-items-end mb-3">
-              <div class="col-md-4">
+            <div class="alert alert-secondary small mb-3">
+              Tip: If you choose <strong>Delta</strong>, the amount shown will be applied relative to the product's base price you entered when creating the product. If you type an absolute price while Delta is selected, the system will automatically convert it to the correct delta (absolute - base price).
+            </div>
+            <form id="addSizeForm" class="row g-3 align-items-end mb-3 uniform-fields">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Product</label>
                 <select class="form-select form-select-sm" name="product_id" required id="sizeProductSelect">
                   <option value="">Select...</option>
@@ -407,31 +507,29 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                   <?php endforeach; ?>
                 </select>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Size Code</label>
                 <input type="text" maxlength="32" placeholder="e.g. 16oz or small" class="form-control form-control-sm" name="size_code" required>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-3 col-sm-6">
                 <label class="form-label small">Display Name</label>
                 <input type="text" maxlength="64" placeholder="Shown to users" class="form-control form-control-sm" name="display_name">
               </div>
-              <div class="col-md-2">
-                <label class="form-label small">Price</label>
-                <select class="form-select form-select-sm" name="price_id" id="addSizePriceId" required>
-                  <option value="">Select Price</option>
-                  <?php foreach ($prices_list as $pr): ?>
-                    <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
-                  <?php endforeach; ?>
-                </select>
+              <div class="col-md-2 col-sm-6">
+                <label class="form-label small">Amount</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text">₱</span>
+                  <input type="number" step="0.01" min="0" placeholder="0.00" class="form-control form-control-sm text-end bg-white text-dark" name="price_amount" id="addSizePriceAmount" required>
+                </div>
               </div>
-              <div class="col-md-2">
+              <div class="col-md-2 col-sm-6">
                 <label class="form-label small">Mode</label>
                 <select class="form-select form-select-sm" name="is_absolute" required>
                   <option value="1">Absolute</option>
                   <option value="0" selected>Delta (+)</option>
                 </select>
               </div>
-              <div class="col-md-1 d-grid">
+              <div class="col-12 col-md-1 d-grid">
                 <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus-circle"></i></button>
               </div>
             </form>
@@ -481,13 +579,8 @@ $products = $db->getAllProducts($itemsPerPage, $offset, $categoryFilter);
                         </select>
                       </div>
                       <div class="col-6">
-                        <label class="form-label small mb-1">Price</label>
-                        <select class="form-select form-select-sm" name="price_id" id="editPriceId" required>
-                          <option value="">Select Price</option>
-                          <?php foreach ($prices_list as $pr): ?>
-                            <option value="<?= htmlspecialchars($pr['Price_ID']) ?>">₱<?= number_format($pr['Price_Amount'],2) ?> (<?= date('F d, Y', strtotime($pr['Effective_From'])) ?><?= $pr['Effective_To'] ? ' to '.date('F d, Y', strtotime($pr['Effective_To'])) : ' and onwards' ?>)</option>
-                          <?php endforeach; ?>
-                        </select>
+                        <label class="form-label small mb-1">Amount (₱)</label>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm" name="price_amount" id="editPriceAmount" required>
                       </div>
                     </div>
                     <div class="mt-2">
@@ -536,27 +629,31 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Product Added',
-                    text: data.message
-                }).then(() => {
-                    // Hide modal and reload page to show new product
-                    var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
-                    modal.hide();
-                    location.reload();
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.message
-                });
-            }
-        })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Determine if this was an update (product_id present) or an add
+        var isUpdate = !!document.getElementById('product_id').value;
+        var title = isUpdate ? 'Product Updated' : 'Product Added';
+        var defaultText = isUpdate ? 'Product successfully updated' : 'Product successfully added';
+        Swal.fire({
+          icon: 'success',
+          title: title,
+          text: data.message || defaultText
+        }).then(() => {
+          // Hide modal and reload page to show new product
+          var modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+          modal.hide();
+          location.reload();
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.message
+        });
+      }
+    })
         .catch(error => {
             Swal.fire({
                 icon: 'error',
@@ -566,109 +663,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-  // Add Price form handler (restored)
-  document.getElementById('addPriceForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    const fd = new FormData(this);
-    fetch('ajax/add_price.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
-      if(data.success){
-        Swal.fire({icon:'success',title:'Added',text:data.message, timer:1500, showConfirmButton:false});
-        // Refresh all price dropdowns if server returned updated list
-        if(Array.isArray(data.prices)){
-          refreshPriceDropdowns(data.prices);
-        }
-        bootstrap.Modal.getInstance(document.getElementById('addPriceModal')).hide();
-        this.reset();
-      } else {
-        Swal.fire({icon:'error',title:'Failed',text:data.message||'Could not add price'});
-      }
-    }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
-  });
+  // Pricing dropdowns and global Add Price modal removed
 
-  function refreshPriceDropdowns(prices){
-    const productPriceSel = document.getElementById('price_id');
-    const addSizePriceSel = document.getElementById('addSizePriceId');
-    const editSizePriceSel = document.getElementById('editPriceId');
-    [productPriceSel, addSizePriceSel, editSizePriceSel].forEach(sel=>{
-      if(!sel) return;
-      const currentVal = sel.value;
-      // Preserve first placeholder option
-      const placeholder = sel.querySelector('option[value=""]');
-      sel.innerHTML = '';
-      if(placeholder){ sel.appendChild(placeholder); } else {
-        const opt = document.createElement('option'); opt.value=''; opt.textContent='Select Price'; sel.appendChild(opt);
-      }
-      prices.forEach(p=>{
-        const opt = document.createElement('option');
-        opt.value = p.Price_ID;
-        const fromTxt = formatDate(p.Effective_From);
-        const toTxt = p.Effective_To ? ' to '+formatDate(p.Effective_To) : ' and onwards';
-        opt.textContent = `${p.Price_Amount} (${fromTxt}${toTxt})`;
-        sel.appendChild(opt);
-      });
-      // Attempt to restore selection
-      if(currentVal){ sel.value = currentVal; }
-    });
-  }
-
-  function formatDate(str){
-  // Load price list when Add Price modal opens
-  document.getElementById('addPriceModal').addEventListener('shown.bs.modal', function(){
-    loadPricePage(1);
-  });
-
-  document.getElementById('pricePrev').addEventListener('click', function(){
-    const pager = document.getElementById('pricePager');
-    const cur = parseInt(pager.getAttribute('data-page'))||1;
-    if(cur>1) loadPricePage(cur-1);
-  });
-  document.getElementById('priceNext').addEventListener('click', function(){
-    const pager = document.getElementById('pricePager');
-    const cur = parseInt(pager.getAttribute('data-page'))||1;
-    loadPricePage(cur+1);
-  });
-
-  function loadPricePage(page){
-    const tbody = document.querySelector('#priceListTable tbody');
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">Loading...</td></tr>';
-    fetch(`ajax/list_prices.php?page=${page}`)
-      .then(r=>r.json())
-      .then(data=>{
-        if(!data.success){ tbody.innerHTML = `<tr><td colspan=3 class='text-danger small text-center'>${data.message||'Error'}</td></tr>`; return; }
-        const rows = data.rows;
-        if(!rows.length){ tbody.innerHTML = '<tr><td colspan="3" class="text-center small text-muted">No prices found.</td></tr>'; }
-        else {
-          tbody.innerHTML = '';
-          rows.forEach(rw=>{
-            const tr = document.createElement('tr');
-            const effFrom = formatDate(rw.Effective_From);
-            const effTo = rw.Effective_To ? formatDate(rw.Effective_To) : 'Open';
-            tr.innerHTML = `<td>${rw.Price_ID}</td><td>₱${Number(rw.Price_Amount).toFixed(2)}</td><td>${effFrom} - ${effTo}</td>`;
-            tbody.appendChild(tr);
-          });
-        }
-        // Update pager state
-        const pager = document.getElementById('pricePager');
-        pager.setAttribute('data-page', data.current_page);
-        document.getElementById('pricePrev').disabled = (data.current_page <= 1);
-        document.getElementById('priceNext').disabled = (data.current_page >= data.total_pages);
-        document.getElementById('priceMeta').textContent = `Page ${data.current_page} of ${data.total_pages} • Total Prices: ${data.total}`;
-      })
-      .catch(()=>{
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger small">Load failed.</td></tr>';
-      });
-  }
-    if(!str) return '';
-    // Expecting YYYY-MM-DD or datetime
-    const d = new Date(str);
-    if(isNaN(d.getTime())) return str;
-    const mo = d.toLocaleString('en-US',{month:'long'});
-    const day = String(d.getDate()).padStart(2,'0');
-    const yr = d.getFullYear();
-    return `${mo} ${day}, ${yr}`;
-  }
-
-    // Load sizes when modal opens (with category filtering)
+  // Load sizes when modal opens (with category filtering)
     const manageSizesModal = document.getElementById('manageSizesModal');
     manageSizesModal.addEventListener('shown.bs.modal', function(){
       // Filter product dropdown options by category if selected
@@ -687,6 +684,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const sel = select.options[select.selectedIndex];
         if(sel && sel.hidden){ select.value = ''; }
       }
+      // Trigger mode change to auto-fill when modal opens (default Absolute expected)
+      try{
+        const sizeMode = document.querySelector('#manageSizesModal select[name="is_absolute"]');
+        if(sizeMode){
+          sizeMode.dispatchEvent(new Event('change'));
+        }
+      }catch(e){}
       loadSizes();
     });
 
@@ -699,51 +703,56 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML='';
   if(!data.success){ tbody.innerHTML = `<tr><td colspan="8" class="text-danger small text-center">${data.message||'Failed to load'}</td></tr>`; return; }
   if(!data.rows.length){ tbody.innerHTML = '<tr><td colspan="8" class="text-muted small text-center">No size variants yet.</td></tr>'; return; }
-        // Group rows by product so product name appears once with rowspan
+        // Group by Product_ID so Product is shown once using rowspan
         const groups = new Map();
-        data.rows.forEach(row => {
-          const pid = row.Product_ID || row.product_id || row.PID || (row.Product_Name||'__NOPROD');
-          if(!groups.has(pid)) groups.set(pid, { productName: row.Product_Name||row.product_name||'Unknown', variants: [] });
-          groups.get(pid).variants.push(row);
+        data.rows.forEach(r=>{
+          const pid = (r.Product_ID!==undefined && r.Product_ID!==null) ? String(r.Product_ID) : 'unknown';
+          if(!groups.has(pid)) groups.set(pid, { name: r.Product_Name || '', items: [] });
+          groups.get(pid).items.push(r);
         });
-
-        let displayIndex = 1;
-        groups.forEach(group => {
-          // Sort variants by Sort_Order then Size_Code for consistency
-            group.variants.sort((a,b)=>{
-              const soA = a.Sort_Order!==undefined?Number(a.Sort_Order):9999;
-              const soB = b.Sort_Order!==undefined?Number(b.Sort_Order):9999;
-              if(soA!==soB) return soA-soB;
-              const scA = (a.Size_Code||a.size_code||'').toString();
-              const scB = (b.Size_Code||b.size_code||'').toString();
-              return scA.localeCompare(scB, undefined, {numeric:true});
-            });
-            const rowSpan = group.variants.length;
-            group.variants.forEach((row, idx) => {
-              const isLegacy = !!row.LEGACY;
-              const mappingId = row.Product_Size_Price_ID || null;
-              const modeRaw = row.Price_Mode || (row.Is_Absolute==1?'ABS':'DELTA');
-              const modeLabel = (modeRaw==='ABS'?'Absolute':'Delta');
-              const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
-              const sizeCode = row.Size_Code || row.size_code || '';
-              const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
-              const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
-              const editBtnHtml = (!isLegacy && mappingId) ? `<button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn" title="Edit" data-map="${mappingId}" data-code="${escapeHtml(sizeCode)}" data-display="${escapeHtml(row.Display_Name||row.display_name||sizeCode)}" data-mode="${modeRaw}" data-price-id="${row.Price_Source_ID||row.Price_ID||''}" data-amount="${amountVal}" data-sort="${sortOrder}"><i class='bi bi-pencil'></i></button>` : '';
-              const delBtnHtml = `<button class="btn btn-sm btn-outline-danger p-0 px-1" data-id="${mappingId||row.ID||''}" title="Delete"><i class="bi bi-x"></i></button>`;
-              const tr = document.createElement('tr');
-              const productCell = (idx===0) ? `<td rowspan="${rowSpan}" class="align-middle fw-semibold">${escapeHtml(group.productName)}</td>` : '';
+        let rowCounter = 0;
+        for(const [pid, group] of groups.entries()){
+          const count = group.items.length;
+          group.items.forEach((row, idx)=>{
+            rowCounter++;
+            const isLegacy = !!row.LEGACY;
+            const mappingId = row.Product_Size_Price_ID || null; // null for legacy rows
+            const modeLabel = row.Price_Mode ? (row.Price_Mode==='ABS'?'Absolute':'Delta') : (row.Is_Absolute==1?'Absolute':'Delta');
+            const amountVal = (row.Price_Value!==undefined)? row.Price_Value : row.Price_Amount;
+            const sizeCode = row.Size_Code || row.size_code;
+            const legacyBadge = isLegacy ? '<span class="badge bg-warning text-dark ms-1">LEGACY</span>' : '';
+            const sortOrder = row.Sort_Order !== undefined ? row.Sort_Order : '';
+            const updatedAt = row.Updated_At?escapeHtml(row.Updated_At):'';
+            const actionsHtml = `
+              ${!isLegacy && mappingId ? `<button class=\"btn btn-sm btn-outline-secondary p-0 px-1 edit-size-btn\" data-map=\"${mappingId}\" data-code=\"${escapeHtml(sizeCode)}\" data-mode=\"${row.Price_Mode}\" data-amount=\"${amountVal}\" data-sort=\"${sortOrder}\" data-display=\"${escapeHtml(row.Display_Name||sizeCode)}\" data-price-id=\"${row.Price_Source_ID || ''}\" title=\"Edit\"><i class='bi bi-pencil'></i></button>` : ''}
+              <button class=\"btn btn-sm btn-outline-danger p-0 px-1\" data-id=\"${mappingId||row.ID}\" title=\"Delete\"><i class=\"bi bi-x\"></i></button>
+            `;
+            const tr = document.createElement('tr');
+            if(idx === 0){
               tr.innerHTML = `
-                <td>${displayIndex++}</td>
-                ${productCell}
+                <td>${rowCounter}</td>
+                <td rowspan="${count}">${escapeHtml(group.name||'')}</td>
                 <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
                 <td>${modeLabel}</td>
                 <td>₱${Number(amountVal).toFixed(2)}</td>
                 <td>${sortOrder}</td>
-                <td>${row.Updated_At?escapeHtml(row.Updated_At):''}</td>
-                <td class="d-flex gap-1">${editBtnHtml}${delBtnHtml}</td>`;
-              tbody.appendChild(tr);
-            });
-        });
+                <td>${updatedAt}</td>
+                <td class="d-flex gap-1">${actionsHtml}</td>
+              `;
+            } else {
+              tr.innerHTML = `
+                <td>${rowCounter}</td>
+                <td><span class="badge bg-info text-dark">${escapeHtml(sizeCode)}${legacyBadge}</span></td>
+                <td>${modeLabel}</td>
+                <td>₱${Number(amountVal).toFixed(2)}</td>
+                <td>${sortOrder}</td>
+                <td>${updatedAt}</td>
+                <td class="d-flex gap-1">${actionsHtml}</td>
+              `;
+            }
+            tbody.appendChild(tr);
+          });
+        }
       }).catch(()=>{
         const tbody = document.querySelector('#sizesTable tbody');
         tbody.innerHTML = '<tr><td colspan="8" class="text-danger small text-center">Error loading.</td></tr>';
@@ -757,7 +766,7 @@ document.addEventListener('DOMContentLoaded', function() {
       fd.append('product_id', form.product_id.value);
       fd.append('size_code', form.size_code.value);
       fd.append('display_name', form.display_name.value);
-      fd.append('price_id', form.price_id ? form.price_id.value : '');
+  if(form.price_amount) fd.append('price_amount', form.price_amount.value);
       fd.append('is_absolute', form.is_absolute.value);
       fetch('ajax/add_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
@@ -766,6 +775,278 @@ document.addEventListener('DOMContentLoaded', function() {
           Swal.fire({icon:'error',title:'Size not added',text:data.message||'Failed'});
         }
       }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to add size.'}));
+    });
+
+    // Auto-fill Amount when Absolute is selected: fetch product base price
+    async function fetchBasePrice(productId){
+      if(!productId) return null;
+      try{
+        const res = await fetch('ajax/get_product_base_price.php?product_id='+encodeURIComponent(productId));
+        const j = await res.json();
+        if(j.success) return j.price; else return null;
+      } catch(e){ return null; }
+    }
+
+    // When product selection changes in add size form, update placeholder
+    document.querySelector('select[name="is_absolute"][name]')?.addEventListener?.('change', ()=>{}); // noop to keep consistent
+    const sizeProductSelectEl = document.getElementById('sizeProductSelect');
+    const sizeModeSelect = document.querySelector('#manageSizesModal select[name="is_absolute"]');
+    const sizeAmountInput = document.querySelector('#manageSizesModal input[name="price_amount"]');
+    if(sizeModeSelect && sizeProductSelectEl && sizeAmountInput){
+      sizeModeSelect.addEventListener('change', async function(){
+        const mode = this.value; // '1' = Absolute, '0' = Delta
+        if(mode === '1'){
+          const pid = sizeProductSelectEl.value;
+          const base = await fetchBasePrice(pid);
+          if(base !== null){
+            // Auto-populate value only if empty to avoid overwriting admin input
+            if(!sizeAmountInput.value || Number(sizeAmountInput.value) === 0){
+              sizeAmountInput.value = Number(base).toFixed(2);
+            }
+            sizeAmountInput.placeholder = Number(base).toFixed(2);
+          }
+        } else {
+          // For delta mode, clear only placeholder but keep value if admin set
+          sizeAmountInput.placeholder = '0.00';
+        }
+      });
+      // Also update when product select changes while Absolute active
+      sizeProductSelectEl.addEventListener('change', async function(){
+        if(sizeModeSelect.value === '1'){
+          const base = await fetchBasePrice(this.value);
+          if(base !== null){
+            if(!sizeAmountInput.value || Number(sizeAmountInput.value) === 0){
+              sizeAmountInput.value = Number(base).toFixed(2);
+            }
+            sizeAmountInput.placeholder = Number(base).toFixed(2);
+          }
+        }
+      });
+    }
+
+    // Variants: similar behavior
+    const variantProductSelectEl = document.getElementById('variantProductSelect');
+    const variantModeSelect = document.querySelector('#manageVariantsModal select[name="price_mode"]');
+    const variantAmountInput = document.querySelector('#manageVariantsModal input[name="price_value"]');
+    if(variantModeSelect && variantProductSelectEl && variantAmountInput){
+      variantModeSelect.addEventListener('change', async function(){
+        const mode = (this.value||'').toUpperCase();
+        if(mode === 'ABSOLUTE'){
+          const pid = variantProductSelectEl.value;
+          const base = await fetchBasePrice(pid);
+          if(base !== null){
+            if(!variantAmountInput.value || Number(variantAmountInput.value) === 0){
+              variantAmountInput.value = Number(base).toFixed(2);
+            }
+            variantAmountInput.placeholder = Number(base).toFixed(2);
+          }
+        } else {
+          variantAmountInput.placeholder = '0.00';
+        }
+      });
+      variantProductSelectEl.addEventListener('change', async function(){
+        if((variantModeSelect.value||'').toUpperCase() === 'ABSOLUTE'){
+          const base = await fetchBasePrice(this.value);
+          if(base !== null){
+            if(!variantAmountInput.value || Number(variantAmountInput.value) === 0){
+              variantAmountInput.value = Number(base).toFixed(2);
+            }
+            variantAmountInput.placeholder = Number(base).toFixed(2);
+          }
+        }
+      });
+    }
+
+    // Manage Flavor Variants
+    const manageVariantsModal = document.getElementById('manageVariantsModal');
+    const variantsTableBody = document.querySelector('#variantsTable tbody');
+    const variantProductSelect = document.getElementById('variantProductSelect');
+    manageVariantsModal.addEventListener('shown.bs.modal', function(){
+      // Filter product dropdown options by category if selected
+      Array.from(variantProductSelect.options).forEach(opt=>{
+        if(!opt.value) return;
+        const cat = opt.getAttribute('data-category');
+        if(currentCategoryFilter){ opt.hidden = (cat !== currentCategoryFilter); } else { opt.hidden = false; }
+      });
+      // Clear selection if current selection is now hidden due to filter
+      if(currentCategoryFilter){
+        const sel = variantProductSelect.options[variantProductSelect.selectedIndex];
+        if(sel && sel.hidden){ variantProductSelect.value = ''; }
+      }
+      // Trigger the variant mode handler so Amount auto-fills (default Absolute)
+      try{
+        const vMode = document.querySelector('#manageVariantsModal select[name="price_mode"]');
+        if(vMode) vMode.dispatchEvent(new Event('change'));
+      }catch(e){}
+      // Like Manage Sizes: load all flavors without requiring a product selection
+      variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+      loadVariants(null);
+    });
+
+    variantProductSelect.addEventListener('change', function(){
+      const pid = this.value;
+      if(!pid){
+        // No specific product selected: show all flavors again
+        variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+        loadVariants(null);
+        return;
+      }
+      loadVariants(pid);
+    });
+
+    function loadVariants(productId){
+      variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">Loading...</td></tr>';
+      const params = new URLSearchParams();
+      params.append('type','flavor');
+      if(productId){ params.append('product_id', productId); }
+      if(currentCategoryFilter){ params.append('category_id', currentCategoryFilter); }
+      fetch('ajax/list_variants.php?' + params.toString())
+        .then(r=>r.json())
+        .then(data=>{
+          if(!data.success){ variantsTableBody.innerHTML = `<tr><td colspan="9" class="text-danger small text-center">${data.error||'Failed to load'}</td></tr>`; return; }
+          let rows = data.data||[];
+          // If no specific product and a category is active, try client-side filter using visible product IDs
+          if(!productId && currentCategoryFilter){
+            const allowedIds = new Set(Array.from(variantProductSelect.options).filter(o=>o.value && !o.hidden).map(o=>String(o.value)));
+            rows = rows.filter(r => r.Product_ID !== undefined ? allowedIds.has(String(r.Product_ID)) : true);
+          }
+          if(!rows.length){ variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted small">No flavors yet.</td></tr>'; return; }
+          // Group flavors by product so Product appears once with rowspan
+          const groups = new Map();
+          rows.forEach(r => {
+            const pid = (r.Product_ID!==undefined && r.Product_ID!==null) ? String(r.Product_ID) : 'unknown';
+            if(!groups.has(pid)) groups.set(pid, { name: r.Product_Name || '', items: [] });
+            groups.get(pid).items.push(r);
+          });
+          variantsTableBody.innerHTML = '';
+          let rowIndex = 0;
+          for(const [pid, group] of groups.entries()){
+            const count = group.items.length;
+            group.items.forEach((row, idx) => {
+              rowIndex++;
+              const tr = document.createElement('tr');
+              if(idx === 0){
+                tr.innerHTML = `
+                  <td>${rowIndex}</td>
+                  <td rowspan="${count}">${escapeHtml(group.name||'')}</td>
+                  <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
+                  <td>${escapeHtml(row.label||'')}</td>
+                  <td>${row.price_mode||''}</td>
+                  <td>₱${Number(row.price_value||0).toFixed(2)}</td>
+                  <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
+                  <td>${row.sort_order||0}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-variant-btn"
+                      data-variant-id="${row.Variant_ID}"
+                      data-product-id="${row.Product_ID||''}"
+                      data-product-name="${escapeHtml(group.name||'')}"
+                      data-code="${escapeHtml(row.code||'')}"
+                      data-label="${escapeHtml(row.label||'')}"
+                      data-mode="${row.price_mode||''}"
+                      data-amount="${row.price_value||0}"
+                      data-primary="${row.is_primary==1?1:0}"
+                      data-sort="${row.sort_order||0}"
+                      title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}" title="Delete"><i class="bi bi-x"></i></button>
+                  </td>
+                `;
+              } else {
+                tr.innerHTML = `
+                  <td>${rowIndex}</td>
+                  <td><span class="badge bg-secondary">${escapeHtml(row.code||'')}</span></td>
+                  <td>${escapeHtml(row.label||'')}</td>
+                  <td>${row.price_mode||''}</td>
+                  <td>₱${Number(row.price_value||0).toFixed(2)}</td>
+                  <td>${row.is_primary==1?'<i class="bi bi-star-fill text-warning"></i>':'-'}</td>
+                  <td>${row.sort_order||0}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 edit-variant-btn"
+                      data-variant-id="${row.Variant_ID}"
+                      data-product-id="${row.Product_ID||''}"
+                      data-product-name="${escapeHtml(group.name||'')}"
+                      data-code="${escapeHtml(row.code||'')}"
+                      data-label="${escapeHtml(row.label||'')}"
+                      data-mode="${row.price_mode||''}"
+                      data-amount="${row.price_value||0}"
+                      data-primary="${row.is_primary==1?1:0}"
+                      data-sort="${row.sort_order||0}"
+                      title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger p-0 px-1" data-variant-id="${row.Variant_ID}" title="Delete"><i class="bi bi-x"></i></button>
+                  </td>
+                `;
+              }
+              variantsTableBody.appendChild(tr);
+            });
+          }
+        })
+        .catch(()=> variantsTableBody.innerHTML = '<tr><td colspan="9" class="text-danger small text-center">Error loading.</td></tr>');
+    }
+
+    document.getElementById('addVariantForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const form = this;
+      const pid = form.product_id.value;
+      const fd = new FormData(form);
+      fd.append('variant_type','flavor');
+      fetch('ajax/add_variant.php',{method:'POST',body:fd})
+        .then(r=>r.json()).then(data=>{
+          if(data.success){
+            form.reset();
+            if(pid){ loadVariants(pid); } else { loadVariants(null); }
+          } else {
+            Swal.fire({icon:'error',title:'Flavor not added',text:data.error||'Failed'});
+          }
+        }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to add flavor'}));
+    });
+
+    document.querySelector('#variantsTable').addEventListener('click', function(e){
+      // Edit handler
+      const editBtn = e.target.closest('button.edit-variant-btn');
+      if(editBtn){
+        const id = editBtn.getAttribute('data-variant-id');
+        document.getElementById('editVariantId').value = id;
+        document.getElementById('editVariantProductName').textContent = editBtn.getAttribute('data-product-name') || '';
+        document.getElementById('editVariantCode').value = editBtn.getAttribute('data-code') || '';
+        document.getElementById('editVariantLabel').value = editBtn.getAttribute('data-label') || '';
+        const mode = (editBtn.getAttribute('data-mode')||'').toUpperCase();
+        document.getElementById('editVariantMode').value = (mode==='ABSOLUTE' || mode==='DELTA') ? mode : 'DELTA';
+        const amt = parseFloat(editBtn.getAttribute('data-amount')||'0');
+        document.getElementById('editVariantAmount').value = amt.toFixed(2);
+        document.getElementById('editVariantPrimary').checked = editBtn.getAttribute('data-primary')==='1';
+        document.getElementById('editVariantSort').value = editBtn.getAttribute('data-sort')||'0';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('editVariantModal')).show();
+        return;
+      }
+      // Delete handler
+      const delBtn = e.target.closest('button[data-variant-id]:not(.edit-variant-btn)');
+      if(!delBtn) return;
+      const id = delBtn.getAttribute('data-variant-id');
+      Swal.fire({title:'Delete flavor?',icon:'warning',showCancelButton:true}).then(res=>{
+        if(!res.isConfirmed) return;
+        const fd = new FormData(); fd.append('variant_id', id);
+        fetch('ajax/delete_variant.php',{method:'POST', body:fd}).then(r=>r.json()).then(data=>{
+          if(data.success){
+            const pid = variantProductSelect.value; if(pid){ loadVariants(pid); } else { loadVariants(null); }
+          } else {
+            Swal.fire({icon:'error',title:'Delete failed',text:data.error||'Error'});
+          }
+        }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to delete'}));
+      });
+    });
+
+    // Submit Edit Flavor form
+    document.getElementById('editVariantForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const form = this;
+      const fd = new FormData(form);
+      fetch('ajax/update_variant.php',{method:'POST', body:fd}).then(r=>r.json()).then(data=>{
+        if(data.success){
+          bootstrap.Modal.getInstance(document.getElementById('editVariantModal')).hide();
+          const pid = variantProductSelect.value; if(pid){ loadVariants(pid); } else { loadVariants(null); }
+        } else {
+          Swal.fire({icon:'error',title:'Update failed',text:data.error||'Error'});
+        }
+      }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Failed to update'}));
     });
 
     document.querySelector('#sizesTable').addEventListener('click', function(e){
@@ -777,41 +1058,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editSizeCode').value = editBtn.dataset.code;
         document.getElementById('editDisplayName').value = editBtn.dataset.display || editBtn.dataset.code;
         document.getElementById('editPriceMode').value = editBtn.dataset.mode || 'ABS';
-        // Prefer direct price id
-        if(editBtn.dataset.priceId){
-          document.getElementById('editPriceId').value = editBtn.dataset.priceId;
-        } else if(editBtn.dataset.amount){
-          const amount = Number(editBtn.dataset.amount).toFixed(2);
-          const sel = document.getElementById('editPriceId');
-          for(const opt of sel.options){ if(opt.value && opt.text.includes('₱'+amount)){ sel.value = opt.value; break; } }
+        // Fill amount directly (if provided), otherwise clear so auto-fill can run
+        const editPriceAmountEl = document.getElementById('editPriceAmount');
+        if(editBtn.dataset.amount){
+          editPriceAmountEl.value = Number(editBtn.dataset.amount).toFixed(2);
+        } else {
+          editPriceAmountEl.value = '';
         }
         document.getElementById('editSortOrder').value = editBtn.dataset.sort || '';
         bootstrap.Modal.getOrCreateInstance(document.getElementById('editSizeModal')).show();
-      }
-      if(delBtn){
-        const id = delBtn.getAttribute('data-id');
-        if(!id) return;
-        Swal.fire({
-          title:'Delete size variant?',
-          text:'This cannot be undone.',
-          icon:'warning',
-          showCancelButton:true,
-          confirmButtonText:'Delete',
-          confirmButtonColor:'#d33'
-        }).then(res=>{
-          if(!res.isConfirmed) return;
-          fetch('ajax/delete_size.php',{method:'POST',body:new URLSearchParams({id})})
-            .then(r=>r.json())
-            .then(data=>{
-              if(data.success){
-                Swal.fire({icon:'success',title:'Deleted',timer:1200,showConfirmButton:false});
-                loadSizes();
-              } else {
-                Swal.fire({icon:'error',title:'Delete failed',text:data.message||'Unable to delete'});
-              }
-            })
-            .catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
-        });
       }
     });
 
@@ -823,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', function() {
       fd.append('size_code', form.size_code.value);
       fd.append('display_name', form.display_name.value);
       fd.append('price_mode', form.price_mode.value);
-      if(form.price_id) fd.append('price_id', form.price_id.value);
+  if(form.price_amount) fd.append('price_amount', form.price_amount.value);
       fd.append('sort_order', form.sort_order.value||'');
       fetch('ajax/update_size.php',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
         if(data.success){
@@ -835,6 +1090,57 @@ document.addEventListener('DOMContentLoaded', function() {
       }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Failed to update'}));
     });
 
+    // Edit modals: auto-fill and overwrite when Absolute selected
+    const editSizeModalEl = document.getElementById('editSizeModal');
+    const editSizeModeEl = document.getElementById('editPriceMode');
+    const editSizeAmountEl = document.getElementById('editPriceAmount');
+    const editSizeProductIdEl = document.getElementById('editMappingProductId'); // optional hidden input if exists
+    if(editSizeModalEl){
+      editSizeModalEl.addEventListener('shown.bs.modal', async function(){
+        // If mode is ABS, always overwrite amount with base price
+        try{
+          const pid = (document.getElementById('editMappingProductId') && document.getElementById('editMappingProductId').value) ? document.getElementById('editMappingProductId').value : document.getElementById('sizeProductSelect')?.value;
+          if((editSizeModeEl && editSizeModeEl.value === 'ABS') && pid){
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editSizeAmountEl.value = Number(base).toFixed(2);
+          }
+        } catch(e){}
+      });
+      if(editSizeModeEl){
+        editSizeModeEl.addEventListener('change', async function(){
+          if(this.value === 'ABS'){
+            const pid = document.getElementById('sizeProductSelect')?.value;
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editSizeAmountEl.value = Number(base).toFixed(2);
+          }
+        });
+      }
+    }
+
+    const editVariantModalEl = document.getElementById('editVariantModal');
+    const editVariantModeEl = document.getElementById('editVariantMode');
+    const editVariantAmountEl = document.getElementById('editVariantAmount');
+    if(editVariantModalEl){
+      editVariantModalEl.addEventListener('shown.bs.modal', async function(){
+        try{
+          const pid = document.getElementById('editVariantProductId') ? document.getElementById('editVariantProductId').value : document.getElementById('variantProductSelect')?.value;
+          if((editVariantModeEl && (editVariantModeEl.value||'').toUpperCase() === 'ABSOLUTE') && pid){
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editVariantAmountEl.value = Number(base).toFixed(2);
+          }
+        } catch(e){}
+      });
+      if(editVariantModeEl){
+        editVariantModeEl.addEventListener('change', async function(){
+          if((this.value||'').toUpperCase() === 'ABSOLUTE'){
+            const pid = document.getElementById('variantProductSelect')?.value;
+            const base = await fetchBasePrice(pid);
+            if(base !== null) editVariantAmountEl.value = Number(base).toFixed(2);
+          }
+        });
+      }
+    }
+
     function escapeHtml(str){ return str.replace(/[&<>"]+/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 
     document.querySelectorAll('.edit-product-btn').forEach(function(btn) {
@@ -843,8 +1149,42 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('product_name').value = this.dataset.productName;
             document.getElementById('product_desc').value = this.dataset.productDesc;
             document.getElementById('category_id').value = this.dataset.categoryId;
-            document.getElementById('price_id').value = this.dataset.priceId;
+            // Auto-fill base price when editing: fetch from server if product id present
+            const basePriceEl = document.getElementById('base_price');
+            if (basePriceEl) {
+              basePriceEl.value = ''; // clear immediately while we fetch
+              const editPid = this.dataset.productId;
+              if (editPid) {
+                // fetchBasePrice is defined above and returns null on failure
+                fetchBasePrice(editPid).then(base => {
+                  if (base !== null) {
+                    basePriceEl.value = Number(base).toFixed(2);
+                    basePriceEl.placeholder = Number(base).toFixed(2);
+                  } else {
+                    basePriceEl.value = '';
+                  }
+                }).catch(() => { basePriceEl.value = ''; });
+              }
+            }
+            document.getElementById('effective_from').value = '<?= date('Y-m-d'); ?>';
+            document.getElementById('effective_to').value = '';
             document.getElementById('product_id').value = this.dataset.productId;
+            // Set current image preview and hidden existing field
+            const imgName = this.dataset.image || '';
+            const imgGroup = document.getElementById('currentImageGroup');
+            const imgPrev = document.getElementById('currentImagePreview');
+            const existingInput = document.getElementById('product_image_existing');
+            existingInput.value = imgName;
+            if(imgName){
+              imgPrev.src = 'uploads/products/' + imgName;
+              imgGroup.style.display = '';
+            } else {
+              imgPrev.src = '';
+              imgGroup.style.display = 'none';
+            }
+            // Ensure file input cleared for fresh selection
+            const fileInput = document.getElementById('product_image');
+            if(fileInput){ fileInput.value = ''; }
             document.getElementById('addProductModalLabel').innerText = 'Edit Product';
             document.querySelector('#addProductForm button[type="submit"]').innerText = 'Update Product';
             var modalEl = document.getElementById('addProductModal');
@@ -858,6 +1198,23 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('#addProductForm button[type="submit"]').innerText = 'Add Product';
         document.getElementById('addProductForm').reset();
         document.getElementById('product_id').value = '';
+        document.getElementById('product_image_existing').value = '';
+        const imgGroup = document.getElementById('currentImageGroup');
+        const imgPrev = document.getElementById('currentImagePreview');
+        if(imgPrev){ imgPrev.src = ''; }
+        if(imgGroup){ imgGroup.style.display = 'none'; }
+    });
+
+    // Allow removing current image when editing
+    document.getElementById('removeCurrentImageBtn').addEventListener('click', function(){
+      // Clear the preview and hidden existing value to signal removal on save
+      const imgPrev = document.getElementById('currentImagePreview');
+      const existingInput = document.getElementById('product_image_existing');
+      if(imgPrev){ imgPrev.src = ''; }
+      if(existingInput){ existingInput.value = ''; }
+      const fileInput = document.getElementById('product_image');
+      if(fileInput){ fileInput.value = ''; }
+      document.getElementById('currentImageGroup').style.display = 'none';
     });
 
     document.querySelectorAll('.delete-product-btn').forEach(function(btn) {
@@ -943,310 +1300,30 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }).catch(()=>Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
     });
+
+    // Toggle long description show more/less
+    document.querySelectorAll('.desc-toggle').forEach(link => {
+      link.addEventListener('click', function(e){
+        e.preventDefault();
+        const targetId = this.getAttribute('data-target');
+        const target = document.getElementById(targetId);
+        if(!target) return;
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        if(expanded){
+          target.classList.remove('desc-expanded');
+          target.classList.add('desc-clamp');
+          this.setAttribute('aria-expanded','false');
+          this.textContent = 'Show more';
+        } else {
+          target.classList.remove('desc-clamp');
+          target.classList.add('desc-expanded');
+          this.setAttribute('aria-expanded','true');
+          this.textContent = 'Show less';
+        }
+      });
+    });
 });
     </script>
-        <!-- Unified Manage Variants Modal (Sizes & Flavors) -->
-        <div class="modal fade" id="manageVariantsModal" tabindex="-1" aria-labelledby="manageVariantsModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-              <div class="modal-header py-2">
-                <h5 class="modal-title" id="manageVariantsModalLabel">Manage Variants (Sizes & Flavors)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body p-2">
-                <div class="alert alert-info small mb-2">This new interface stores both size and flavor variants in <code>product_variant</code>. Mark one primary per type. Absolute replaces prior price; Delta adds on top.</div>
-                <ul class="nav nav-tabs" id="variantTabs" role="tablist">
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="sizes-tab" data-bs-toggle="tab" data-bs-target="#sizesPane" type="button" role="tab">Sizes</button>
-                  </li>
-                  <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="flavors-tab" data-bs-toggle="tab" data-bs-target="#flavorsPane" type="button" role="tab">Flavors</button>
-                  </li>
-                </ul>
-                <div class="tab-content border border-top-0 p-2 bg-light-subtle" id="variantTabsContent">
-                  <!-- Sizes Pane -->
-                  <div class="tab-pane fade show active" id="sizesPane" role="tabpanel" aria-labelledby="sizes-tab">
-                    <form id="addSizeVariantForm" class="row g-2 align-items-end mb-2">
-                      <div class="col-md-3">
-                        <label class="form-label small mb-1">Product</label>
-                        <select class="form-select form-select-sm" name="product_id" required id="sizeVarProduct">
-                          <option value="">Select...</option>
-                          <?php foreach($products as $p): ?>
-                            <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Code</label>
-                        <input type="text" name="code" class="form-control form-control-sm" maxlength="50" required placeholder="e.g. 16OZ">
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Label</label>
-                        <input type="text" name="label" class="form-control form-control-sm" maxlength="100" required placeholder="Display name">
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Mode</label>
-                        <select name="price_mode" class="form-select form-select-sm" required>
-                          <option value="ABSOLUTE">ABSOLUTE</option>
-                          <option value="DELTA" selected>DELTA (+)</option>
-                        </select>
-                      </div>
-                      <div class="col-md-1">
-                        <label class="form-label small mb-1">Value</label>
-                        <input type="number" step="0.01" name="price_value" value="0" class="form-control form-control-sm" required>
-                      </div>
-                      <div class="col-md-1">
-                        <label class="form-label small mb-1">Sort</label>
-                        <input type="number" name="sort_order" class="form-control form-control-sm" value="0">
-                      </div>
-                      <div class="col-md-1 text-center">
-                        <div class="form-check mt-4">
-                          <input class="form-check-input" type="checkbox" name="is_primary" id="sizePrimaryChk">
-                          <label class="form-check-label small" for="sizePrimaryChk">Primary</label>
-                        </div>
-                      </div>
-                      <div class="col-md-12 d-flex gap-2">
-                        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-plus"></i> Add Size Variant</button>
-                        <div id="sizeVarMsg" class="small text-muted"></div>
-                      </div>
-                    </form>
-                    <div class="table-responsive border rounded" style="max-height:320px;overflow:auto;">
-                      <table class="table table-sm table-hover align-middle mb-0" id="sizeVariantsTable">
-                        <thead class="table-light sticky-top"><tr>
-                          <th style="width:40px;">#</th><th>Product</th><th>Code</th><th>Label</th><th>Mode</th><th>Value</th><th>P</th><th>Sort</th><th>Updated</th><th style="width:95px;">Actions</th>
-                        </tr></thead>
-                        <tbody><tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr></tbody>
-                      </table>
-                    </div>
-                  </div>
-                  <!-- Flavors Pane -->
-                  <div class="tab-pane fade" id="flavorsPane" role="tabpanel" aria-labelledby="flavors-tab">
-                    <form id="addFlavorVariantForm" class="row g-2 align-items-end mb-2">
-                      <div class="col-md-3">
-                        <label class="form-label small mb-1">Product</label>
-                        <select class="form-select form-select-sm" name="product_id" required id="flavorVarProduct">
-                          <option value="">Select...</option>
-                          <?php foreach($products as $p): ?>
-                            <option value="<?= (int)$p['Product_ID'] ?>"><?= htmlspecialchars($p['Product_Name']) ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Code</label>
-                        <input type="text" name="code" class="form-control form-control-sm" maxlength="50" required placeholder="e.g. PORK">
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Label</label>
-                        <input type="text" name="label" class="form-control form-control-sm" maxlength="100" required placeholder="Display name">
-                      </div>
-                      <div class="col-md-2">
-                        <label class="form-label small mb-1">Mode</label>
-                        <select name="price_mode" class="form-select form-select-sm" required>
-                          <option value="DELTA" selected>DELTA (+)</option>
-                          <option value="ABSOLUTE">ABSOLUTE</option>
-                        </select>
-                      </div>
-                      <div class="col-md-1">
-                        <label class="form-label small mb-1">Value</label>
-                        <input type="number" step="0.01" name="price_value" value="0" class="form-control form-control-sm" required>
-                      </div>
-                      <div class="col-md-1">
-                        <label class="form-label small mb-1">Sort</label>
-                        <input type="number" name="sort_order" class="form-control form-control-sm" value="0">
-                      </div>
-                      <div class="col-md-1 text-center">
-                        <div class="form-check mt-4">
-                          <input class="form-check-input" type="checkbox" name="is_primary" id="flavorPrimaryChk">
-                          <label class="form-check-label small" for="flavorPrimaryChk">Primary</label>
-                        </div>
-                      </div>
-                      <div class="col-md-12 d-flex gap-2">
-                        <button class="btn btn-sm btn-warning" type="submit"><i class="bi bi-plus"></i> Add Flavor Variant</button>
-                        <div id="flavorVarMsg" class="small text-muted"></div>
-                      </div>
-                    </form>
-                    <div class="table-responsive border rounded" style="max-height:320px;overflow:auto;">
-                      <table class="table table-sm table-hover align-middle mb-0" id="flavorVariantsTable">
-                        <thead class="table-light sticky-top"><tr>
-                          <th style="width:40px;">#</th><th>Product</th><th>Code</th><th>Label</th><th>Mode</th><th>Value</th><th>P</th><th>Sort</th><th>Updated</th><th style="width:95px;">Actions</th>
-                        </tr></thead>
-                        <tbody><tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr></tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-    <script>
-    // Variant Management JS (Unified)
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const manageVariantsModal = document.getElementById('manageVariantsModal');
-      if(!manageVariantsModal) return;
-
-      const sizeTblBody = document.querySelector('#sizeVariantsTable tbody');
-      const flavorTblBody = document.querySelector('#flavorVariantsTable tbody');
-
-      manageVariantsModal.addEventListener('shown.bs.modal', ()=>{
-        loadVariantType('size');
-        loadVariantType('flavor');
-      });
-
-      function loadVariantType(type){
-        const targetBody = type==='size'? sizeTblBody : flavorTblBody;
-        targetBody.innerHTML = `<tr><td colspan="10" class="text-center small text-muted">Loading...</td></tr>`;
-        fetch(`ajax/list_variants.php?type=${type}`)
-          .then(r=>r.json())
-          .then(data=>{
-            if(!data.success){ targetBody.innerHTML = `<tr><td colspan="10" class="text-danger small text-center">${data.error||'Load failed'}</td></tr>`; return; }
-            const rows = data.data||[];
-            if(!rows.length){ targetBody.innerHTML = `<tr><td colspan="10" class="text-muted small text-center">No ${type} variants found.</td></tr>`; return; }
-            // Group by product
-            const groups = new Map();
-            rows.forEach(v=>{ if(!groups.has(v.Product_ID)) groups.set(v.Product_ID, { product: v.Product_Name, list: []}); groups.get(v.Product_ID).list.push(v); });
-            let idx=1; targetBody.innerHTML='';
-            groups.forEach(g=>{
-              g.list.sort((a,b)=>{ if(a.sort_order!=b.sort_order) return a.sort_order-b.sort_order; return a.label.localeCompare(b.label); });
-              const span = g.list.length;
-              g.list.forEach((v,i)=>{
-                const tr = document.createElement('tr');
-                const modeBadge = v.price_mode==='ABSOLUTE'? '<span class="badge bg-danger-subtle text-danger">ABS</span>' : '<span class="badge bg-success-subtle text-success">Δ</span>';
-                const primaryStar = v.is_primary==1? '<span class="text-warning" title="Primary">★</span>' : '';
-                const productCell = i===0? `<td rowspan="${span}" class="align-middle fw-semibold">${escapeHtml(g.product)}</td>`:'';
-                tr.innerHTML = `
-                  <td>${idx++}</td>
-                  ${productCell}
-                  <td><code>${escapeHtml(v.code)}</code></td>
-                  <td>${escapeHtml(v.label)}</td>
-                  <td>${modeBadge}</td>
-                  <td>₱${Number(v.price_value).toFixed(2)}</td>
-                  <td>${primaryStar}</td>
-                  <td>${v.sort_order}</td>
-                  <td>${v.updated_at?escapeHtml(v.updated_at):''}</td>
-                  <td class="d-flex gap-1 flex-wrap">
-                    <button class="btn btn-sm btn-outline-secondary px-1 py-0 edit-variant-btn" title="Edit" data-vid="${v.Variant_ID}" data-type="${v.variant_type}" data-pid="${v.Product_ID}" data-code="${escapeHtml(v.code)}" data-label="${escapeHtml(v.label)}" data-mode="${v.price_mode}" data-value="${v.price_value}" data-sort="${v.sort_order}" data-primary="${v.is_primary}"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-sm btn-outline-primary px-1 py-0 make-primary-btn" title="Set Primary" data-vid="${v.Variant_ID}" ${v.is_primary==1?'disabled':''}><i class="bi bi-star"></i></button>
-                    <button class="btn btn-sm btn-outline-danger px-1 py-0 delete-variant-btn" title="Delete" data-vid="${v.Variant_ID}"><i class="bi bi-x"></i></button>
-                  </td>`;
-                targetBody.appendChild(tr);
-              });
-            });
-          })
-          .catch(()=> targetBody.innerHTML = `<tr><td colspan="10" class="text-danger small text-center">Error</td></tr>`);
-      }
-
-      function submitVariant(formEl, type){
-        const msgEl = type==='size'? document.getElementById('sizeVarMsg'): document.getElementById('flavorVarMsg');
-        const fd = new FormData(formEl);
-        fd.append('variant_type', type);
-        fetch('ajax/add_variant.php',{method:'POST',body:fd})
-          .then(r=>r.json())
-          .then(data=>{
-            if(data.success){
-              msgEl.textContent = 'Added'; msgEl.classList.remove('text-danger'); msgEl.classList.add('text-success');
-              formEl.reset();
-              loadVariantType(type);
-            } else {
-              msgEl.textContent = data.error||'Failed'; msgEl.classList.add('text-danger');
-            }
-            setTimeout(()=> msgEl.textContent='',1600);
-          })
-          .catch(()=>{ msgEl.textContent='Error'; msgEl.classList.add('text-danger'); setTimeout(()=> msgEl.textContent='',1600); });
-      }
-
-      document.getElementById('addSizeVariantForm')?.addEventListener('submit', e=>{ e.preventDefault(); submitVariant(e.target,'size'); });
-      document.getElementById('addFlavorVariantForm')?.addEventListener('submit', e=>{ e.preventDefault(); submitVariant(e.target,'flavor'); });
-
-      // Delegated actions (edit, primary, delete)
-      manageVariantsModal.addEventListener('click', e=>{
-        const editBtn = e.target.closest('.edit-variant-btn');
-        const primaryBtn = e.target.closest('.make-primary-btn');
-        const delBtn = e.target.closest('.delete-variant-btn');
-        if(editBtn){ openVariantEdit(editBtn); }
-        if(primaryBtn){ setPrimaryVariant(primaryBtn.dataset.vid); }
-        if(delBtn){ deleteVariant(delBtn.dataset.vid); }
-      });
-
-      function setPrimaryVariant(id){
-        fetch('ajax/set_primary_variant.php',{method:'POST',body:new URLSearchParams({variant_id:id})})
-          .then(r=>r.json()).then(data=>{
-            if(data.success){ loadVariantType('size'); loadVariantType('flavor'); } else { Swal.fire({icon:'error',title:'Primary failed',text:data.error||'Error'}); }
-          }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Request failed'}));
-      }
-
-      function deleteVariant(id){
-        Swal.fire({title:'Delete variant?',text:'This cannot be undone.',icon:'warning',showCancelButton:true,confirmButtonText:'Delete'}).then(res=>{
-          if(!res.isConfirmed) return;
-          fetch('ajax/delete_variant.php',{method:'POST',body:new URLSearchParams({variant_id:id})})
-            .then(r=>r.json()).then(data=>{
-              if(data.success){ loadVariantType('size'); loadVariantType('flavor'); } else { Swal.fire({icon:'error',title:'Failed',text:data.error||'Delete failed'}); }
-            }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Delete failed'}));
-        });
-      }
-
-      // Inline edit via SweetAlert for speed (lightweight instead of extra modal)
-      function openVariantEdit(btn){
-        const vid = btn.dataset.vid;
-        const cur = {
-          code: btn.dataset.code,
-          label: btn.dataset.label,
-          mode: btn.dataset.mode,
-          value: btn.dataset.value,
-          sort: btn.dataset.sort,
-          primary: btn.dataset.primary
-        };
-        const html = `<div class='text-start'>
-          <label class='form-label small mt-1'>Code</label>
-          <input id='vCode' class='form-control form-control-sm' value='${cur.code}' disabled>
-          <label class='form-label small mt-1'>Label</label>
-          <input id='vLabel' class='form-control form-control-sm' value='${cur.label}'>
-          <label class='form-label small mt-1'>Mode</label>
-          <select id='vMode' class='form-select form-select-sm'>
-            <option value='ABSOLUTE' ${cur.mode==='ABSOLUTE'?'selected':''}>ABSOLUTE</option>
-            <option value='DELTA' ${cur.mode==='DELTA'?'selected':''}>DELTA</option>
-          </select>
-          <label class='form-label small mt-1'>Value</label>
-          <input id='vValue' type='number' step='0.01' class='form-control form-control-sm' value='${Number(cur.value).toFixed(2)}'>
-          <label class='form-label small mt-1'>Sort</label>
-          <input id='vSort' type='number' class='form-control form-control-sm' value='${cur.sort}'>
-          <div class='form-check mt-2'>
-            <input id='vPrimary' type='checkbox' class='form-check-input' ${cur.primary==1?'checked':''}>
-            <label for='vPrimary' class='form-check-label small'>Primary</label>
-          </div>
-        </div>`;
-        Swal.fire({title:'Edit Variant', html, showCancelButton:true, confirmButtonText:'Save', focusConfirm:false,
-          preConfirm:()=>{
-            return {
-              label: document.getElementById('vLabel').value.trim(),
-              mode: document.getElementById('vMode').value,
-              value: document.getElementById('vValue').value,
-              sort: document.getElementById('vSort').value,
-              primary: document.getElementById('vPrimary').checked
-            };
-          }
-        }).then(res=>{
-          if(!res.isConfirmed) return;
-          const payload = new URLSearchParams();
-          payload.append('variant_id', vid);
-          payload.append('label', res.value.label);
-          payload.append('price_mode', res.value.mode);
-          payload.append('price_value', res.value.value);
-          payload.append('sort_order', res.value.sort);
-          if(res.value.primary) payload.append('is_primary','1');
-          fetch('ajax/update_variant.php',{method:'POST',body:payload})
-            .then(r=>r.json()).then(data=>{
-              if(data.success){ loadVariantType('size'); loadVariantType('flavor'); Swal.fire({icon:'success',title:'Saved',timer:1200,showConfirmButton:false}); }
-              else Swal.fire({icon:'error',title:'Save failed',text:data.error||'Error'});
-            }).catch(()=> Swal.fire({icon:'error',title:'Network',text:'Update failed'}));
-        });
-      }
-
-      function escapeHtml(str=''){ return str.replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
-    });
-    </script>
 </body>
+    <?php include 'offcanvas_sidebar.php'; ?>
 </html>

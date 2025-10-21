@@ -69,10 +69,21 @@ try {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <!-- Inline fallback / ensure steady fixed background like landing page -->
+  <style>
+    body {
+      background-image: url('../assets/bg10.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+  </style>
   <!-- Leaflet CSS for interactive map picker -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
+  <div class="bg-fixed" aria-hidden="true"></div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg shadow-sm" style="background: rgba(255,255,255,0.68); box-shadow: 0 4px 20px rgba(255, 178, 122, 0.15); border-radius: 0 0 24px 24px; padding: 0.9rem 0;">
     <div class="container px-2">
@@ -109,13 +120,46 @@ try {
 </div>
       </div>
     </div>
+
+<!-- Retry GCash Modal (used when Try Again clicked) -->
+<div class="modal fade" id="retryGcashModal" tabindex="-1" aria-labelledby="retryGcashModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:12px;">
+      <div class="modal-header" style="background:var(--soft-orange);color:#fff;">
+        <h5 class="modal-title" id="retryGcashModalLabel">Resend GCash Payment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="retryGcashModalForm" enctype="multipart/form-data">
+        <div class="modal-body">
+          <div class="text-center mb-3">
+            <div class="fw-semibold mb-1">Send payment to:</div>
+            <div class="mb-2"><span class="badge bg-soft-orange text-dark">09940780881</span></div>
+            <img id="retryGcashQr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
+            <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
+          </div>
+          <div class="mb-2"><label class="form-label">GCash Reference Number</label>
+            <input type="text" class="form-control" name="ref_number" id="retry_ref_number" required /></div>
+          <div class="mb-2"><label class="form-label">Amount</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="retry_amount" required /></div>
+          <div class="mb-2"><label class="form-label">Receipt Image</label>
+            <input type="file" accept="image/*" class="form-control" name="receipt" id="retry_receipt" /></div>
+          <input type="hidden" name="order_id" id="retry_order_id" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-soft-orange" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-soft-orange" id="retrySubmitBtn">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
   </nav>
 
   <!-- Home Section -->
-  <section class="section" id="home" style="background-image: url('assets/bg7.jpg');">
+  <section class="section" id="home">
     <div class="section-overlay"></div>
     <div class="section-content align-items-start">
-      <h1 class="section-title" style="font-size:3.4rem; text-align:left;">
+      <h1 class="section-title greeting" style="font-size:3.6rem; text-align:left;">
         Welcome, <?php echo htmlspecialchars($first_name); ?>
       </h1>
       <p class="section-desc" style="text-align:left;">Welcome to Nai Tsa - Take a pause. You deserve this moment of calm and your favorite drink!</p>
@@ -128,7 +172,7 @@ try {
 
 
    <!-- Kumakain ako -->
-  <section class="section" id="menu" style="background-image: url('assets/bg4.jpg');">
+  <section class="section" id="menu">
     <div class="section-overlay"></div>
     <div class="section-content section-content--wide">  <!-- changed: removed inline max-width -->
       <h2 class="section-title text-center w-100">Menu</h2>
@@ -156,7 +200,7 @@ try {
 
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
+  <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
@@ -196,7 +240,7 @@ try {
   </section>
 
   <!-- Contact Section -->
-  <section class="section" id="contact" style="background-image: url('assets/bg10.jpg');">
+  <section class="section" id="contact">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">Contact Us</h2>
@@ -402,10 +446,25 @@ try {
               <input class="form-check-input" type="radio" name="paymentMethod" id="cod" value="COD" checked>
               <label class="form-check-label" for="cod">Cash on Delivery</label>
             </div>
-            <div class="mt-2">
-              <div class="alert alert-info mb-0" role="status" aria-live="polite" style="font-size:0.95rem;">
-                <strong>Note:</strong> We accept GCash as a payment method, but we do not accept online transactions processed through our website.
-                Please pay via GCash in-person to the number <strong>09940780881</strong> or present proof of transfer to the rider or at pickup.
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="paymentMethod" id="gcash" value="GCash">
+              <label class="form-check-label" for="gcash">GCash (upload receipt)</label>
+            </div>
+            <div id="gcashFields" class="mt-2" style="display:none;">
+              <div class="alert alert-info mb-2" role="status" aria-live="polite" style="font-size:0.95rem;">
+                Transfer payment to <strong>09940780881</strong>, then upload your receipt image and enter the GCash Reference Number. Your order will be processed after admin verification.
+              </div>
+              <div class="mb-2">
+                <label class="form-label">GCash Reference Number</label>
+                <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234 5678 9012">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Amount Paid (₱)</label>
+                <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Upload Receipt Image</label>
+                <input type="file" accept="image/*" class="form-control" id="gcashFile">
               </div>
             </div>
           </div>
@@ -620,16 +679,14 @@ try {
       });
     });
 
-    // Rotating background images for all main sections
+    // Background images for main sections
+    // NOTE: Rotation disabled so a single fixed background element controls the page background.
+    // This sets the initial image only and avoids periodically changing section backgrounds.
     function setupRotatingBg(sectionId, images) {
       const section = document.getElementById(sectionId);
-      let idx = 0;
-      function changeBg() {
-        section.style.backgroundImage = `url('${images[idx]}')`;
-        idx = (idx + 1) % images.length;
-      }
-      changeBg();
-      setInterval(changeBg, 3000);
+      if (!section || !Array.isArray(images) || images.length === 0) return;
+      // Set the initial/background image only (no interval)
+      section.style.backgroundImage = `url('${images[0]}')`;
     }
 
     // Use your downloaded images from assets folder
@@ -654,10 +711,8 @@ try {
       "assets/bg13.jpg"
     ];
 
-    setupRotatingBg("home", homeImages);
-    setupRotatingBg("menu", menuImages);
-    setupRotatingBg("about", aboutImages);
-    setupRotatingBg("contact", contactImages);
+  // Do not set per-section background images here. The shared full-viewport
+  // background is controlled by the .bg-fixed element (consistent with landing page).
 
     // Cart logic
 let cart = [];
@@ -924,12 +979,27 @@ document.querySelectorAll('input[name="orderType"]').forEach(function(radio) {
 // Show/hide payment fields based on payment method
 document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
   radio.addEventListener('change', function() {
-    document.getElementById('gcashFields').style.display = this.value === 'GCash' ? 'block' : 'none';
-    document.getElementById('creditFields').style.display = this.value === 'Credit Card' ? 'block' : 'none';
-    if (this.value === 'Credit Card') {
-      document.getElementById('generatedCardNumber').textContent = generateCreditCardNumber();
+    const gf = document.getElementById('gcashFields');
+    if (gf) gf.style.display = this.value === 'GCash' ? 'block' : 'none';
+    // If user selected GCash, prefill the GCash amount with the computed total
+    if (this.value === 'GCash'){
+      try{
+        const totalText = document.getElementById('summaryTotal')?.textContent || '';
+        // strip non-numeric characters (e.g., currency symbol) and parse
+        const numeric = parseFloat((totalText||'').replace(/[^0-9\.\-]/g,'')) || 0;
+        const ga = document.getElementById('gcashAmt');
+        if(ga) ga.value = numeric.toFixed(2);
+      }catch(e){}
     }
-  updateOrderSummary();
+    const cf = document.getElementById('creditFields');
+    if (cf) {
+      cf.style.display = this.value === 'Credit Card' ? 'block' : 'none';
+      if (this.value === 'Credit Card') {
+        const gen = document.getElementById('generatedCardNumber');
+        if (gen) gen.textContent = generateCreditCardNumber();
+      }
+    }
+    updateOrderSummary();
   });
 });
 
@@ -1358,38 +1428,19 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       size: it.size || '16oz'
     }))
   };
-  // If GCash via PayMongo: create source first, then submit order only after returning success (simplified: we create order immediately as pending then redirect)
+  // If GCash selected, ensure local fields are provided (reference, amount, file)
   if (paymentMethod === 'GCash') {
-    // Calculate total locally (reuse summary) to send to PayMongo
-    try {
-      const subtotal = cart.reduce((sum,i)=>{
-        const prod = (<?php echo json_encode($all_products); ?>||[]).find(p=>p.Product_Name===i.name);
-        if(!prod) return sum;
-        let base = Number(prod.Price_Amount||0) * (i.qty||1);
-        if (Array.isArray(i.addons)) {
-          i.addons.forEach(ad=>{ base += (Number(ad.price)||0) * (i.qty||1); });
-        }
-        return sum + base;
-      },0);
-      // Rough delivery fee (already computed when modal opened & summary updated) - parse from DOM
-      let deliveryFee = 0; const dfEl = document.getElementById('summaryDelivery');
-      if (dfEl) { const m = dfEl.textContent.match(/([0-9]+(?:\.[0-9]+)?)/); if (m) deliveryFee = parseFloat(m[1])||0; }
-      const grand = subtotal + deliveryFee;
-      // Create PayMongo source
-      const pmRes = await fetch('paymongo_create_source.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:grand})});
-      const pmJson = await pmRes.json();
-      if(!pmJson.success){ throw new Error(pmJson.message||'GCash source error'); }
-      // Redirect user to GCash checkout
-      window.location.href = pmJson.redirect;
-      return; // stop normal order creation until success callback
-    } catch(err){
-      Swal.fire({icon:'error', title:'GCash Error', text: err.message||'Unable to start GCash payment', confirmButtonColor:'#FFB27A'});
+    const ref = document.getElementById('gcashRef')?.value?.trim();
+    const amt = parseFloat(document.getElementById('gcashAmt')?.value || '0');
+    const file = document.getElementById('gcashFile')?.files?.[0];
+    if (!ref || !(amt > 0) || !file) {
+      Swal.fire({icon:'warning', title:'GCash details required', text:'Enter the reference number, amount, and upload the receipt image.', confirmButtonColor:'#FFB27A'});
       return;
     }
   }
 
   // Send data to PHP (non-GCash flows)
-  fetch('ajax/checkout_process.php', {
+  const orderRes = await fetch('ajax/checkout_process.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -1403,18 +1454,34 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       lng,
       cart
     })
-  })
-  .then(async res => {
-    const text = await res.text();
-    console.log('Raw response:', text); // <-- Add this line
+  });
+  const rawResp = await orderRes.text();
+  let data;
+  try { data = JSON.parse(rawResp); } catch(e) {
+    Swal.fire({icon:'error', title:'Order Failed', text:'Invalid server response: ' + rawResp, confirmButtonColor:'#FFB27A'});
+    return;
+  }
+  // If GCash, immediately upload the receipt linked to new order
+  if (data && data.success && paymentMethod === 'GCash') {
     try {
-      return JSON.parse(text);
+      const fd = new FormData();
+      fd.append('order_id', String(data.order_id||''));
+      fd.append('ref_number', document.getElementById('gcashRef').value.trim());
+      fd.append('amount', document.getElementById('gcashAmt').value.trim());
+      fd.append('receipt', document.getElementById('gcashFile').files[0]);
+      const up = await fetch('ajax/upload_gcash_receipt.php', { method:'POST', body: fd });
+      const j = await up.json();
+      if (!j.success) {
+        // Soft warning; order is created but receipt missing
+        console.warn('Receipt upload failed', j);
+        Swal.fire({icon:'warning', title:'Receipt upload failed', text:j.message||'Please retry uploading from My Orders.', confirmButtonColor:'#FFB27A'});
+      }
     } catch (e) {
-      throw new Error('Invalid JSON: ' + text);
+      console.warn('Receipt upload exception', e);
     }
-  })
-  .then(data => {
-    if (data.success) {
+  }
+  // Continue normal success flow
+  if (data.success) {
       const feeLine = (typeof data.delivery_fee !== 'undefined') ? `\nDelivery Fee: ${moneyPhp(data.delivery_fee)}${data.distance_km?` (Distance: ${Number(data.distance_km).toFixed(2)} km)`:''}` : '';
       Swal.fire({
         icon: 'success',
@@ -1447,23 +1514,15 @@ document.getElementById('paymentForm').addEventListener('submit', async function
           }})
           .catch(()=>{});
       });
-    } else {
+  } else {
       Swal.fire({
         icon: 'error',
         title: 'Order Failed',
         text: data.message || 'There was a problem processing your order.',
         confirmButtonColor: '#FFB27A'
       });
-    }
-  })
-  .catch(err => {
-    Swal.fire({
-      icon: 'error',
-      title: 'Order Failed',
-      text: err.message || 'A network or server error occurred.',
-      confirmButtonColor: '#FFB27A'
-    });
-  });
+  }
+  return;
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1496,7 +1555,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+            <img src="${product.Product_Image ? ('../admin/uploads/products/' + encodeURIComponent(product.Product_Image)) : 'assets/naitsalogo.jpg'}" alt="${product.Product_Name}" onerror="this.onerror=null;this.src='assets/naitsalogo.jpg';">
           </div>
           <div class="menu-card-content">
             <div class="menu-card-header">
@@ -1565,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <div class="menu-card" data-product-id="${pid}">
           <div class="menu-card-image">
-            <img src="../admin/uploads/products/${product.Product_Image}" alt="${product.Product_Name}">
+            <img src="${product.Product_Image ? ('../admin/uploads/products/' + encodeURIComponent(product.Product_Image)) : 'assets/naitsalogo.jpg'}" alt="${product.Product_Name}" onerror="this.onerror=null;this.src='assets/naitsalogo.jpg';">
           </div>
           <div class="menu-card-content">
             <div class="menu-card-header">
@@ -1908,9 +1967,9 @@ function renderOrders(){
              uiStatus==="Processing"?"bg-info text-dark":
              uiStatus==="Pending"?"bg-secondary":
              uiStatus==="Cancelled"?"bg-dark":"bg-secondary");
-    const itemsPreview = o.items.slice(0,3).map(it=>`
+      const itemsPreview = o.items.slice(0,3).map(it=>`
       <div class="d-inline-flex align-items-center me-2 mb-1" style="font-size:.75rem;">
-        <img src="../admin/uploads/products/${it.Product_Image}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;">
+        <img src="${it.Product_Image ? ('../admin/uploads/products/' + encodeURIComponent(it.Product_Image)) : 'assets/naitsalogo.jpg'}" style="width:34px;height:34px;object-fit:cover;border-radius:8px;margin-right:4px;" onerror="this.onerror=null;this.src='assets/naitsalogo.jpg';">
         <span>${it.Product_Name} x ${it.Quantity}</span>
       </div>`).join('') + (o.items.length>3? `<span class="text-muted small">+${o.items.length-3} more</span>`:'');
     /*const isDelivery = (o.order_type||'').toLowerCase().includes('deliver') || (!!o.Street || !!o.City || !!o.Contact_Number);
@@ -1926,16 +1985,46 @@ function renderOrders(){
     // Delivery tracking temporarily disabled
     const trackingHtml = '';
 
+    // If GCash method and latest receipt was rejected, surface a warning with retry action
+    const isGCash = String(o.Payment_Method||'').toLowerCase()==='gcash';
+    const rejected = isGCash && String(o.latest_receipt_status||'').toLowerCase()==='rejected';
+    const rejectReason = o.latest_receipt_reason || '';
+    const rejectedBanner = rejected ? `
+      <div class="alert alert-warning d-flex justify-content-between align-items-center py-2 px-3 mt-2" role="alert" style="border-radius:10px;">
+        <div>
+          <div class="fw-semibold">GCash payment rejected</div>
+          ${rejectReason ? `<div class="small">Reason: ${escapeHtml(rejectReason)}</div>` : ''}
+          ${o.latest_receipt_ref || o.latest_receipt_amount ? `
+            <div class="small mt-1">Ref: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${escapeHtml(o.latest_receipt_ref || '—')}</span>
+            &nbsp;•&nbsp;Amount: <span class="text-decoration-underline" data-action="retry-payment" data-id="${o.Order_ID}" style="cursor:pointer">${o.latest_receipt_amount ? Number(o.latest_receipt_amount).toFixed(2) : '—'}</span></div>
+          ` : ''}
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-secondary" data-action="view-last-receipt" data-id="${o.Order_ID}">View receipt</button>
+          <button class="btn btn-sm btn-soft-orange" data-action="retry-payment" data-id="${o.Order_ID}">Try Again</button>
+        </div>
+      </div>` : '';
+
+    // Format order date as full readable string (avoid aliasing like Today/Yesterday)
+    const parsedDate = new Date(String(o.Order_Date || '').replace(' ', 'T'));
+    let displayOrderDate = String(o.Order_Date || '');
+    if (!isNaN(parsedDate.getTime())){
+      try{
+        displayOrderDate = parsedDate.toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }catch(e){ /* fall back to raw string */ }
+    }
+
     return `
-      <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
-        <div class="card-body">
-          <div class="d-flex justify-content-between flex-wrap gap-2">
-            <div>
-              <strong>Order #${o.Order_ID}</strong> • ${o.Order_Date}
-              <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
-            </div>
+        <div class="card mb-2" data-order-id="${o.Order_ID}" style="border-radius:16px;">
+          <div class="card-body">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+              <div>
+                <strong>Order #${o.Order_ID}</strong> • ${displayOrderDate}
+                <div class="mt-1">${renderProgress(uiStatus, o.order_type)}</div>
+              </div>
             <span class="badge ${badgeClass} order-status-badge" data-status="${uiStatus}" style="height:fit-content;">${uiStatus}</span>
           </div>
+          ${rejectedBanner}
           <div class="mt-2">${itemsPreview}</div>
           <div class="mt-3 d-flex flex-wrap gap-2">
             ${actionButtons(uiStatus,o.Order_ID)}
@@ -1994,6 +2083,8 @@ function actionButtons(status,id){
   const type = (order?.order_type||'').toLowerCase();
   const isPickup = type.includes('pick');
   const isDelivery = type.includes('deliver') || (!isPickup && (order?.Street || order?.City || order?.Contact_Number));
+  const isGCash = String(order?.Payment_Method||'').toLowerCase()==='gcash';
+  const wasRejected = isGCash && String(order?.latest_receipt_status||'').toLowerCase()==='rejected';
 
   // Decide if confirm button should show
   // Backend allows: (Pickup) Pending, Processing, Ready to pick up -> Received
@@ -2013,6 +2104,7 @@ function actionButtons(status,id){
       // Offer cancel; optionally confirm (if user wants to prematurely mark). We'll keep only cancel to reduce mistakes.
       return `<div class="d-flex gap-1">`+
         `<button class="btn btn-outline-soft-orange btn-sm" data-action="cancel" data-id="${id}">Cancel</button>`+
+        (wasRejected ? `<button class="btn btn-soft-orange btn-sm" data-action="retry-payment" data-id="${id}">Try Again</button>` : '')+
         (showConfirm && status!=='Pending' ? `<button class="btn btn-soft-orange btn-sm" data-action="confirm" data-id="${id}">Confirm</button>`:'')+
         `</div>`;
     case 'Ready to deliver':
@@ -2030,6 +2122,101 @@ function actionButtons(status,id){
     default:
       return '';
   }
+}
+
+// Basic HTML escape helper
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
+}
+
+// Handle Try Again (re-upload GCash receipt) and View receipt
+document.addEventListener('click', async (e)=>{
+  const retryBtn = e.target.closest('[data-action="retry-payment"][data-id]');
+  const viewBtn = e.target.closest('[data-action="view-last-receipt"][data-id]');
+  if(!retryBtn && !viewBtn) return;
+  const orderId = (retryBtn||viewBtn).getAttribute('data-id');
+  const order = ORDERS_CACHE.find(o => String(o.Order_ID) === String(orderId));
+  if(!order) return;
+  if(viewBtn){
+    const path = order.latest_receipt_file ? '../admin/' + String(order.latest_receipt_file).replace(/^\/+/, '') : '';
+    if(path){ window.open(path, '_blank'); }
+    return;
+  }
+  // Open Bootstrap modal to edit reference, amount and re-upload receipt
+  openRetryGcashModal(order);
+});
+
+// Populate and show the retry modal
+function openRetryGcashModal(order){
+  try{
+    const modalEl = document.getElementById('retryGcashModal');
+    if(!modalEl) return;
+    const refEl = document.getElementById('retry_ref_number');
+    const amtEl = document.getElementById('retry_amount');
+    const orderIdEl = document.getElementById('retry_order_id');
+    if(refEl) refEl.value = order.latest_receipt_ref || '';
+    if(amtEl) amtEl.value = order.latest_receipt_amount ? Number(order.latest_receipt_amount).toFixed(2) : (order.Order_Amount?Number(order.Order_Amount).toFixed(2):'');
+    if(orderIdEl) orderIdEl.value = order.Order_ID;
+    // Move modal to document.body so it isn't constrained by the My Orders modal stacking context
+    try{ document.body.appendChild(modalEl); }catch(e){}
+
+    // Ensure the retry modal's backdrop and modal sit above any existing modal
+    if (!modalEl.__retryModalZHandled) {
+      modalEl.__retryModalZHandled = true;
+      modalEl.addEventListener('show.bs.modal', function(){
+        // After Bootstrap inserts the backdrop, bump z-indexes
+        setTimeout(()=>{
+          try{
+            // Highest existing modal z-index in Bootstrap is often 1055; we raise ours a bit higher
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            const lastBackdrop = backdrops[backdrops.length-1];
+            if(lastBackdrop) lastBackdrop.style.zIndex = '1070';
+            modalEl.style.zIndex = '1075';
+          }catch(e){/* ignore */}
+        }, 0);
+      });
+      // Also ensure it gets focus when shown
+      modalEl.addEventListener('shown.bs.modal', function(){ try{ modalEl.focus(); }catch(e){} });
+    }
+
+    const bm = new bootstrap.Modal(modalEl);
+    bm.show();
+  }catch(e){ console.warn('openRetryGcashModal', e); }
+}
+
+// Handle modal form submission
+const retryForm = document.getElementById('retryGcashModalForm');
+if(retryForm){
+  retryForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    const submitBtn = document.getElementById('retrySubmitBtn');
+    const orig = submitBtn ? submitBtn.textContent : '';
+    if(submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Uploading...'; }
+    try{
+      const fd = new FormData(retryForm);
+      const orderId = fd.get('order_id');
+      if(!orderId) throw new Error('Missing order id');
+      const res = await fetch('ajax/upload_gcash_receipt.php', { method: 'POST', body: fd });
+      const j = await res.json().catch(()=>({success:false,message:'Invalid response'}));
+      if(!res.ok || !j.success) throw new Error(j.message || 'Upload failed');
+      // update cache
+      const idx = ORDERS_CACHE.findIndex(o => String(o.Order_ID) === String(orderId));
+      if(idx!==-1){
+        ORDERS_CACHE[idx].latest_receipt_status = 'pending';
+        ORDERS_CACHE[idx].latest_receipt_reason = null;
+        ORDERS_CACHE[idx].latest_receipt_ref = fd.get('ref_number');
+        ORDERS_CACHE[idx].latest_receipt_amount = parseFloat(fd.get('amount')) || 0;
+      }
+      renderOrders();
+      bootstrap.Modal.getInstance(document.getElementById('retryGcashModal'))?.hide();
+      Swal.fire({icon:'success', title:'Receipt uploaded. Awaiting verification.', timer:1400, showConfirmButton:false});
+    }catch(err){
+      console.error('retry upload error', err);
+      Swal.fire({icon:'error', title:'Upload failed', text: String(err).slice(0,180)});
+    } finally {
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = orig; }
+    }
+  });
 }
 
 // Confirm order helper (calls ajax/confirm_order.php)
@@ -2226,6 +2413,53 @@ pollOrderStatuses();
 document.getElementById('ordersSearch').addEventListener('input', ()=>renderOrders());
 document.getElementById('ordersFilter').addEventListener('change', ()=>renderOrders());
 
+// --- Global notice: surface rejected GCash payments on page load ---
+(async function checkRejectedReceipts(){
+  try {
+    const res = await fetch('ajax/fetch_orders.php?t=' + Date.now(), {headers:{'Accept':'application/json'}});
+    if(!res.ok) return;
+    const payload = await res.json();
+    if(!payload.success) return;
+    const flat = Array.isArray(payload.flat) ? payload.flat : [];
+    const rejected = flat.filter(o => String(o.Payment_Method||'').toLowerCase()==='gcash' && String(o.latest_receipt_status||'').toLowerCase()==='rejected');
+    if(!rejected.length) return;
+    const first = rejected[0];
+    const count = rejected.length;
+    const note = document.createElement('div');
+    note.id = 'rejectedNotice';
+    note.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+    note.style.zIndex = 1090;
+    note.innerHTML = `
+      <div class="alert alert-warning shadow-sm d-flex align-items-center gap-3 mb-0" role="alert" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+          <div class="fw-semibold">Your GCash payment was rejected</div>
+          <div class="small">${count>1? `${count} orders have rejected payments.` : `Order #${first.Order_ID} has a rejected payment.`} Please review and resend.</div>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="rejectedReviewBtn">Review</button>
+          <button type="button" class="btn-close" aria-label="Close" id="rejectedCloseBtn"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(note);
+    document.getElementById('rejectedCloseBtn')?.addEventListener('click', ()=> note.remove());
+    document.getElementById('rejectedReviewBtn')?.addEventListener('click', ()=>{
+      note.remove();
+      // Open My Orders and scroll to first rejected order if present
+      const modalEl = document.getElementById('myOrdersModal');
+      if(modalEl){
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        // Load and then scroll
+        setTimeout(()=>{
+          const card = document.querySelector(`#ordersList .card[data-order-id='${first.Order_ID}']`);
+          if(card){ card.scrollIntoView({behavior:'smooth', block:'center'}); card.classList.add('border','border-warning'); setTimeout(()=>card.classList.remove('border','border-warning'), 2500); }
+        }, 1000);
+      }
+    });
+  } catch(e) { /* ignore */ }
+})();
+
 // ---------- Review Items (My Orders) ----------
 let CURRENT_REVIEW_ORDER_ID = null;
 
@@ -2263,8 +2497,8 @@ function openReviewModalByOrderId(orderId){
       <div class="card product-review-card mb-3" data-product-id="${pid}" data-rating="0" data-locked="0"
            style="border-radius:16px; overflow:hidden;">
         <div class="card-body d-flex align-items-start">
-          <img src="../admin/uploads/products/${it.Product_Image}" alt="${it.Product_Name}"
-               style="width:64px;height:64px;object-fit:cover;border-radius:10px;">
+    <img src="${it.Product_Image ? ('../admin/uploads/products/' + encodeURIComponent(it.Product_Image)) : 'assets/naitsalogo.jpg'}" alt="${it.Product_Name}"
+      style="width:64px;height:64px;object-fit:cover;border-radius:10px;" onerror="this.onerror=null;this.src='assets/naitsalogo.jpg';">
           <div class="ms-3 flex-grow-1">
             <div class="d-flex justify-content-between align-items-start">
               <div>

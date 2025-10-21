@@ -72,7 +72,7 @@ class database {
         $limit = (int)$limit;
         $offset = (int)$offset;
         // Base products with their base price & category/admin and optional primary size id
-        $sql = "SELECT p.*, pp.Price_Amount AS Base_Price_Amount, c.Category_Name, a.Admin_Name, p.Primary_Size_ID
+    $sql = "SELECT p.*, pp.Price_Amount AS Base_Price_Amount, pp.Effective_From, pp.Effective_To, c.Category_Name, a.Admin_Name, p.Primary_Size_ID
                 FROM product p
                 LEFT JOIN product_price pp ON p.Price_ID = pp.Price_ID
                 LEFT JOIN category c ON p.Category_ID = c.Category_ID
@@ -100,6 +100,15 @@ class database {
             $pid = $r['Product_ID'];
             $sizesByProduct[$pid][] = $r;
         }
+        // Resolve current base price from history/runtime (preferred) so scheduled prices apply automatically
+        foreach ($rows as &$__rowForPriceResolve) {
+            try {
+                $__rowForPriceResolve['Base_Price_Amount'] = (float)$this->getCurrentProductPrice((int)$__rowForPriceResolve['Product_ID']);
+            } catch (Throwable $e) {
+                // leave existing Base_Price_Amount if helper fails
+            }
+        }
+
         // Attach effective display price and size info
         foreach($rows as &$r){
             $pid = $r['Product_ID'];
@@ -190,6 +199,32 @@ class database {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Return the current resolved price for a product using product_price_history (preferred)
+     * Falls back to legacy product_price row referenced by product.Price_ID
+     */
+    public function getCurrentProductPrice(int $product_id, ?string $date = null) {
+        $con = $this->opencon();
+        $d = $date ?? date('Y-m-d');
+        try {
+            // Look for an active history row first
+            $stmt = $con->prepare("SELECT Price FROM product_price_history WHERE Prod_ID = :pid AND Effective_From <= :d AND (Effective_To IS NULL OR Effective_To >= :d) ORDER BY Effective_From DESC LIMIT 1");
+            $stmt->execute([':pid' => $product_id, ':d' => $d]);
+            $val = $stmt->fetchColumn();
+            if ($val !== false && $val !== null) return (float)$val;
+        } catch (Throwable $e) { /* ignore and fallback */ }
+
+        // Fallback: legacy product_price via product.Price_ID
+        try {
+            $stmt2 = $con->prepare("SELECT pp.Price_Amount FROM product p JOIN product_price pp ON p.Price_ID = pp.Price_ID WHERE p.Product_ID = ? LIMIT 1");
+            $stmt2->execute([$product_id]);
+            $v2 = $stmt2->fetchColumn();
+            return $v2 !== false && $v2 !== null ? (float)$v2 : 0.0;
+        } catch (Throwable $e) {
+            return 0.0;
+        }
+    }
+
     function saveProduct($product_name, $product_desc, $category_id, $price_id, $admin_id, $image_name, $product_id = null, $product_allergens = '')
 {
     $con = $this->opencon();
@@ -198,13 +233,15 @@ class database {
         $sql = "UPDATE product SET Product_Name=?, Product_desc=?, Product_allergens=?, Category_ID=?, Price_ID=?, Admin_ID=?, Product_Image=? WHERE Product_ID=?";
         $stmt = $con->prepare($sql);
         $stmt->execute([$product_name, $product_desc, $product_allergens, $category_id, $price_id, $admin_id, $image_name, $product_id]);
+        return ['success' => true, 'message' => 'Product updated successfully', 'product_id' => (int)$product_id];
     } else {
         // Insert
         $sql = "INSERT INTO product (Product_Name, Product_desc, Product_allergens, Category_ID, Price_ID, Admin_ID, Product_Image) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $con->prepare($sql);
         $stmt->execute([$product_name, $product_desc, $product_allergens, $category_id, $price_id, $admin_id, $image_name]);
+        $newId = (int)$con->lastInsertId();
+        return ['success' => true, 'message' => 'Product added successfully', 'product_id' => $newId];
     }
-    return ['success' => true, 'message' => 'Product saved successfully'];
 }
 
     // Helper function to validate foreign keys
@@ -952,6 +989,56 @@ public function getProductsCount($category_id = null) {
     }
     return $stmt->fetchColumn();
 }
+
+    /**
+     * Insert a new row into legacy product_price table and return Price_ID.
+     * Keeps old code paths working while we move to per-product price logs.
+     */
+    public function insertLegacyPriceAndReturnId(float $amount, string $effective_from, ?string $effective_to = null): int {
+        $con = $this->opencon();
+        $stmt = $con->prepare("INSERT INTO product_price (Price_Amount, Effective_From, Effective_To) VALUES (:amount, :from, :to)");
+        $stmt->execute([
+            ':amount' => number_format($amount, 2, '.', ''),
+            ':from' => $effective_from,
+            ':to' => $effective_to
+        ]);
+        return (int)$con->lastInsertId();
+    }
+
+    /**
+     * Ensure per-product price log table exists.
+     */
+    private function ensureProductPricesLogTable(PDO $con): void {
+        $con->exec("CREATE TABLE IF NOT EXISTS product_price_history (
+            Price_Log_ID INT AUTO_INCREMENT PRIMARY KEY,
+            Prod_ID INT NOT NULL,
+            Price DECIMAL(10,2) NOT NULL,
+            Effective_From DATE NOT NULL,
+            Effective_To DATE NULL DEFAULT NULL,
+            Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX (Prod_ID),
+            CONSTRAINT fk_pp_prod FOREIGN KEY (Prod_ID) REFERENCES product(Product_ID) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+    }
+
+    /**
+     * Close previous price log (set Effective_To) and insert a new current price row for a product.
+     */
+    public function logProductPrice(int $product_id, float $amount, string $effective_from, ?string $effective_to = null): void {
+        $con = $this->opencon();
+        $this->ensureProductPricesLogTable($con);
+        // Close existing open-ended row, if any
+        $close = $con->prepare("UPDATE product_price_history SET Effective_To = :to WHERE Prod_ID = :pid AND Effective_To IS NULL");
+        $close->execute([':to' => $effective_from, ':pid' => $product_id]);
+        // Insert new row
+        $ins = $con->prepare("INSERT INTO product_price_history (Prod_ID, Price, Effective_From, Effective_To) VALUES (:pid, :price, :from, :to)");
+        $ins->execute([
+            ':pid' => $product_id,
+            ':price' => number_format($amount, 2, '.', ''),
+            ':from' => $effective_from,
+            ':to' => $effective_to
+        ]);
+    }
 }
 
 // ===================== Add-ons (Admin) =====================

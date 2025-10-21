@@ -86,6 +86,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($current === $target) {
           $payload['message'] = 'No change';
         } else {
+          // Gating: If payment method is GCash and there's a pending/rejected receipt, block advancing beyond 'Pending'.
+          try {
+            $mth = $con->prepare("SELECT p.Payment_Method, p.payment_status FROM payment p WHERE p.Order_ID=? LIMIT 1");
+            $mth->execute([$orderId]);
+            $pm = $mth->fetch(PDO::FETCH_ASSOC) ?: [];
+            $isGCash = isset($pm['Payment_Method']) && strcasecmp($pm['Payment_Method'], 'GCash') === 0;
+            if ($isGCash) {
+              // Check receipt status
+              $rc = $con->prepare("SELECT Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+              $rc->execute([$orderId]);
+              $rcs = (string)$rc->fetchColumn();
+              $hasReceipt = $rcs !== '' && $rcs !== null;
+              $verified = strcasecmp($rcs,'verified')===0;
+              // Define statuses that require verification to proceed
+              $needsVerified = in_array($target, ['Preparing','Ready to deliver','On the way','Delivered','Ready to pick up','Received'], true);
+              if ($needsVerified && (!$hasReceipt || !$verified)) {
+                $payload['message'] = $hasReceipt ? 'Cannot proceed: GCash receipt not verified yet.' : 'Cannot proceed: GCash receipt not uploaded.';
+                echo json_encode($payload); exit;
+              }
+            }
+          } catch (Throwable $e) { /* ignore gating failure */ }
           $upd = $con->prepare("UPDATE orders SET order_status = ? WHERE Order_ID = ?");
           $upd->execute([$target, $orderId]);
           $changed = $upd->rowCount() > 0;
@@ -121,6 +142,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if ($pstatus === '') {
         $payload['message'] = 'Empty payment status';
       } else {
+        // Gating: For GCash payments, only allow setting to Paid if a receipt exists and is verified
+        if (strcasecmp($pstatus,'Paid')===0) {
+          try {
+            $oidStmt = $con->prepare("SELECT Order_ID, Payment_Method FROM payment WHERE Payment_ID=? LIMIT 1");
+            $oidStmt->execute([$paymentId]);
+            $row = $oidStmt->fetch(PDO::FETCH_ASSOC);
+            $orderId = (int)($row['Order_ID'] ?? 0);
+            $isGCash = isset($row['Payment_Method']) && strcasecmp($row['Payment_Method'],'GCash')===0;
+            if ($orderId && $isGCash) {
+              $rc = $con->prepare("SELECT Status FROM order_payment_receipt WHERE Order_ID=? ORDER BY Payment_Receipt_ID DESC LIMIT 1");
+              $rc->execute([$orderId]);
+              $rcs = (string)$rc->fetchColumn();
+              if (!($rcs && strcasecmp($rcs,'verified')===0)) {
+                $payload['message'] = 'Cannot mark Paid: GCash receipt not verified';
+                echo json_encode($payload); exit;
+              }
+            }
+          } catch (Throwable $e) { /* ignore */ }
+        }
         $upd = $con->prepare("UPDATE payment SET payment_status = ? WHERE Payment_ID = ?");
         $ok  = $upd->execute([$pstatus, $paymentId]);
         if ($ok && $upd->rowCount() > 0) {

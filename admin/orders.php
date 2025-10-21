@@ -40,13 +40,18 @@ $totalPages = max(1, ceil($totalOrders / $perPage));
 <body class="dashboard-page">
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+        <!-- Desktop sidebar (visible on md+) -->
+        <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
             <?php include 'sidebar.php'; ?>
         </div>
+        <!-- Offcanvas sidebar for small screens (moved to end of page) -->
         <div class="col-md-10 col-lg-10 main-content">
             <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
                 <h4 class="fw-bold mb-0">Orders</h4>
-                <button class="btn btn-outline-primary d-lg-none" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse"><i class="bi bi-list"></i></button>
+                <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+                <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+                    <i class="bi bi-list" style="font-size:1.7rem;"></i>
+                </button>
             </div>
 
             <div class="card shadow-sm">
@@ -218,3 +223,4 @@ document.querySelectorAll('select.order-status-select').forEach(s=>s.setAttribut
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>

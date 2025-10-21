@@ -12,15 +12,16 @@
             background-color: #f5f7fb;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+         
+        /* Sidebar: fixed on larger screens with explicit width to avoid layout overflow */
         .sidebar {
-            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
             color: white;
             height: 100vh;
-            /* Ensure a stable desktop width to match .main-content margin-left */
-            width: 250px;
             position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 260px; /* matches --bs-offcanvas-width used for mobile */
+            /* overflow: hidden;  Remove this so icons/nav are visible in offcanvas */
         }
         
         .sidebar .nav-link {
@@ -40,11 +41,254 @@
             margin-right: 10px;
             font-size: 1.1rem;
         }
+
+        /* Ensure uniform sidebar item layout across all pages */
+        .sidebar .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 10px 16px;
+            color: rgba(255,255,255,0.95);
+            font-weight: 500;
+        }
+
+        /* Make icons a fixed width so text aligns consistently */
+        .sidebar .nav-link i,
+        .sidebar .nav-link .bi {
+            width: 28px;
+            min-width: 28px;
+            text-align: center;
+            font-size: 1.15rem;
+            color: rgba(255,255,255,0.95);
+        }
+
+        /* Keep label text flexible and consistent
+           Use a span wrapper in sidebar links to hold the label */
+        .sidebar .nav-link span {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Align badges to the right consistently */
+        .sidebar .nav-link .badge {
+            margin-left: auto;
+            background: rgba(255,255,255,0.12);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Offcanvas (mobile) should reuse same visual styles as the fixed sidebar */
+        .offcanvas.offcanvas-start {
+            /* ensure offcanvas width matches desktop sidebar */
+            --bs-offcanvas-width: 260px;
+        }
+        .offcanvas .offcanvas-body {
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .offcanvas .sidebar {
+            position: relative;
+            min-height: 100vh;
+            height: 100%;
+            box-shadow: none;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
+            color: white;
+            padding: 2rem 1rem 2rem 1rem;
+            overflow: visible;
+            width: 100% !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .offcanvas .sidebar > * {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .offcanvas .sidebar .nav-link {
+            color: rgba(255,255,255,0.95);
+            background: transparent;
+            padding: 10px 16px;
+        }
+        .offcanvas .sidebar .nav-link:hover, .offcanvas .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.12);
+            color: white;
+        }
+        .offcanvas .sidebar .nav-link i { color: rgba(255,255,255,0.95); }
+        /* Make the offcanvas close button visible on dark background */
+        .offcanvas .btn-close {
+            filter: invert(1);
+            opacity: 0.95;
+        }
+        .offcanvas .offcanvas-header { border-bottom: none; }
+
         
+        /* Main content: let the Bootstrap grid control placement (avoid double-offsets)
+           Previously .main-content was manually offset to account for a fixed sidebar width.
+           Because the layout uses Bootstrap columns (col-*) alongside a fixed-width .sidebar,
+           the manual margins were pushing content off-screen. Keep margin-left:0 so the
+           grid places content correctly. */
         .main-content {
-            margin-left: 250px;
+            margin-left: 0;
             padding: 20px;
         }
+        /* Defensive: keep main content positioned but don't force stacking above the sidebar.
+           Removing the z-index prevents the main column/header from overlaying the left sidebar. */
+        .main-content {
+            position: relative;
+        }
+
+        /* Small screens: hide sidebar, content takes full width */
+                @media (max-width: 767.98px) {
+                    .sidebar:not(.offcanvas .sidebar) { display: none !important; width: 0 !important; }
+                    .main-content { margin-left: 0; }
+                }
+
+        /* Ensure Bootstrap offcanvas remains closed by default on mobile unless .show is added */
+        @media (max-width: 767.98px) {
+            .offcanvas {
+                visibility: hidden !important;
+                transform: translateX(-110%) !important;
+                transition: transform .25s ease-in-out, visibility .01s linear .25s !important;
+            }
+            .offcanvas.show {
+                visibility: visible !important;
+                transform: none !important;
+                transition: transform .25s ease-in-out, visibility 0s linear 0s !important;
+            }
+        }
+
+        /* Mobile offcanvas specifics: force fixed left panel width and z-index ordering */
+        @media (max-width: 767.98px) {
+            .offcanvas.offcanvas-start {
+                left: 0 !important;
+                right: auto !important;
+                width: 260px !important;
+                --bs-offcanvas-width: 260px !important;
+                z-index: 1055 !important; /* above backdrop */
+                background: transparent !important;
+            }
+            .offcanvas-backdrop {
+                z-index: 1040 !important;
+                background-color: rgba(0,0,0,0.35) !important;
+            }
+            .offcanvas .offcanvas-body { padding: 0 !important; background: transparent !important; }
+            .offcanvas .sidebar { width: 260px !important; }
+        }
+
+        /* Stronger enforcement when offcanvas is shown on mobile */
+        @media (max-width: 767.98px) {
+            .offcanvas.show {
+                visibility: visible !important;
+                transform: none !important;
+                left: 0 !important;
+                width: 260px !important;
+                max-width: 260px !important;
+                background: transparent !important;
+                overflow: visible !important;
+            }
+
+            .offcanvas.show .offcanvas-body {
+                padding: 0 !important;
+                background: transparent !important;
+                display: block !important;
+                width: 260px !important;
+            }
+
+            .offcanvas.show .sidebar {
+                display: block !important;
+                width: 260px !important;
+                background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
+                color: #fff !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+
+            .offcanvas.show .sidebar .nav-link i,
+            .offcanvas.show .sidebar .nav-link .bi {
+                color: rgba(255,255,255,0.95) !important;
+            }
+        }
+
+/* Strong mobile overrides to ensure the offcanvas displays the purple sidebar and white icons */
+@media (max-width: 767.98px) {
+    /* make sure the offcanvas container is transparent so the sidebar gradient shows */
+    .offcanvas.offcanvas-start, .offcanvas {
+        background: transparent !important;
+        color: inherit !important;
+    }
+
+    /* ensure the sidebar inside offcanvas uses the gradient and white text/icons */
+    .offcanvas.offcanvas-start .sidebar,
+    .offcanvas .sidebar {
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
+        color: #fff !important;
+    }
+
+    .offcanvas .sidebar .nav-link,
+    .offcanvas .sidebar .nav-link span,
+    .offcanvas .sidebar .nav-link i,
+    .offcanvas .sidebar .nav-link .bi {
+        color: rgba(255,255,255,0.95) !important;
+    }
+
+    /* make the close button visible on the dark background */
+    .offcanvas .btn-close {
+        filter: invert(1) !important;
+        opacity: 0.95 !important;
+    }
+}
+
+/* Ensure bootstrap icons render correctly inside the offcanvas */
+@media (max-width: 767.98px) {
+        .offcanvas .sidebar .bi,
+    .offcanvas .sidebar i {
+        /* bootstrap-icons uses its own font-family; enforce it here as a fallback */
+        font-family: "bootstrap-icons" !important;
+        font-style: normal !important;
+        font-weight: 400 !important;
+        font-variant: normal !important;
+        text-transform: none !important;
+        line-height: 1 !important;
+        display: inline-block !important;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-osx-font-smoothing: grayscale !important;
+        font-size: 1.15rem !important;
+        color: rgba(255,255,255,0.95) !important;
+    }
+}
+
+        /* Ensure row columns align to the top so a tall sidebar does not vertically center
+           or push the main column lower than expected. */
+        .container-fluid > .row {
+            align-items: flex-start;
+        }
+
+        /* On desktop, make the sidebar sticky instead of relying on a hard 100vh height
+           which can interact poorly with row stretching. Sticky keeps it visible while
+           avoiding layout shifts. */
+        @media (min-width: 768px) {
+            .sidebar:not(.offcanvas) {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 260px;
+                min-height: 100vh;
+                z-index: 1030; /* keep sidebar above main content/header */
+            }
+
+            /* Push main content to the right so it sits next to the fixed sidebar */
+            .main-content {
+                margin-left: 260px;
+                padding: 20px;
+            }
+        }
+
+        /* Safe fallback to prevent horizontal scroll when offcanvas is open */
+        body { overflow-x: hidden; }
         
         .header {
             background: white;
@@ -198,32 +442,36 @@
         }
         
         @media (max-width: 992px) {
-            .sidebar {
+            /* Apply collapsed sidebar rules only to the fixed/desktop sidebar, not the offcanvas */
+            .sidebar:not(.offcanvas) {
                 width: 70px;
                 overflow: hidden;
             }
-            
-            .sidebar .logo-text, .sidebar .nav-link span {
+
+            .sidebar:not(.offcanvas) .logo-text,
+            .sidebar:not(.offcanvas) .nav-link span {
                 display: none;
             }
-            
-            .sidebar .nav-link {
+
+            .sidebar:not(.offcanvas) .nav-link {
                 text-align: center;
                 padding: 15px 5px;
             }
-            
-            .sidebar .nav-link i {
+
+            .sidebar:not(.offcanvas) .nav-link i {
                 margin-right: 0;
                 font-size: 1.3rem;
             }
-            
+
+            /* Use the grid columns to position content; don't force extra left margin */
             .main-content {
-                margin-left: 70px;
+                margin-left: 0;
             }
         }
-        
+
         @media (max-width: 768px) {
-            .sidebar {
+            /* Hide the fixed sidebar on small screens but keep offcanvas visible */
+            .sidebar:not(.offcanvas) {
                 width: 0;
                 display: none;
             }
@@ -433,23 +681,35 @@
     max-width: 100%;
 }
 
-@media (max-width: 991px) {
-  .sidebar {
-    position: fixed;
-    z-index: 1050;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    width: 220px;
-    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
-    transition: left 0.3s;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
-    display: none; /* Let Bootstrap's .collapse handle display */
-  }
-  .sidebar.show {
-    display: block !important; /* Show when .show is added by Bootstrap */
-  }
-  .main-content {
-    margin-left: 0 !important;
-  }
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        z-index: 1050;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 220px;
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        transition: left 0.3s;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+        display: none; /* Let Bootstrap's .collapse / offcanvas handle display */
+    }
+    .sidebar.show {
+        display: block !important; /* Show when .show is added by Bootstrap */
+    }
+    .main-content {
+        margin-left: 0 !important;
+    }
 }
+
+    /* Desktop/tablet: ensure offcanvas containers don't interfere with the grid/layout.
+         Some pages include an offcanvas element (for mobile) in the DOM before the main
+         content. If an offcanvas is accidentally visible or not hidden correctly it
+         can push the page content down. Hide offcanvas on >=768px to guarantee the
+         desktop grid controls layout. */
+    @media (min-width: 768px) {
+        .offcanvas {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    }

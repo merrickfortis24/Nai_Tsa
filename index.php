@@ -20,7 +20,7 @@ try {
   }
 } catch (Throwable $e) {
   // leave arrays empty; UI will degrade gracefully
-  //testing only: echo "Error loading data: " . $e->getMessage();
+  //testing only: echo "Error loading data: " . $e->getMessage();HELLOOOO
 }
 ?>
 <!DOCTYPE html>
@@ -47,6 +47,16 @@ try {
   <link href="https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap" rel="stylesheet">
   <!-- Your custom CSS -->
   <link rel="stylesheet" href="assets/style.css">
+  <!-- Inline fallback: ensure background displays even if .bg-fixed isn't applied by some browsers -->
+  <style>
+    body {
+      background-image: url('assets/bg10.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+  </style>
   <style>
     /* === Menu Card Layout Enhancements === */
     #menuCards.menu-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:32px; align-items:stretch; }
@@ -61,9 +71,15 @@ try {
     .menu-card-rating { font-size:.8rem; display:flex; align-items:center; gap:.35rem; margin-top:auto; color:#a0673f; }
     .menu-card-footer { padding:0 1.1rem 1.1rem; margin-top:auto; }
     @media (max-width: 576px){ #menuCards.menu-cards { gap:18px; } .menu-card-image { height:190px; } }
+  /* === Steady single backgrounds for main sections === */
+  .section { background-size: cover; background-repeat: no-repeat; background-position: center center; /* allow normal scrolling on background images */ background-color: transparent; }
+    /* Assign single static images per section (no rotation) */
+    /* === Sections are transparent so the shared fixed background shows through === */
+    .section { background-size: cover; background-repeat: no-repeat; background-position: center center; background-color: transparent; }
   </style>
 </head>
 <body>
+  <div class="bg-fixed" aria-hidden="true"></div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg shadow-sm" style="background: rgba(255,255,255,0.68); box-shadow: 0 4px 20px rgba(255, 178, 122, 0.15); border-radius: 0 0 24px 24px; padding: 0.9rem 0;">
     <div class="container px-2">
@@ -109,7 +125,7 @@ Open daily from 10AM to midnight..</p>
   </section>
 
   <!-- About Section -->
-  <section class="section" id="about" style="background-image: url('assets/bg11.jpg');">
+  <section class="section" id="about">
     <div class="section-overlay"></div>
     <div class="section-content">
       <h2 class="section-title">About Nai Tsa</h2>
@@ -358,45 +374,7 @@ Open daily from 10AM to midnight..</p>
       });
     });
 
-    // Rotating background images for all main sections using local assets
-    function setupRotatingBg(sectionId, images) {
-      const section = document.getElementById(sectionId);
-      let idx = 0;
-      function changeBg() {
-        section.style.backgroundImage = `url('${images[idx]}')`;
-        idx = (idx + 1) % images.length;
-      }
-      changeBg();
-      setInterval(changeBg, 3000);
-    }
-
-    // Use your downloaded images from assets folder
-    const homeImages = [
-      "assets/bg7.jpg",
-      "assets/b6.jpg",
-      "assets/bg1.jpg"
-    ];
-    const aboutImages = [
-      "assets/bg11.jpg",
-      "assets/bg7.jpg",
-      "assets/bg12.jpg"
-    ];
-    const menuImages = [
-      "assets/bg3.jpg",
-      "assets/bg9.jpg",
-      "assets/bg5.jpg"
-    ];
-    const contactImages = [
-      "assets/bg14.jpg",
-      "assets/bg8.jpg",
-      "assets/bg10.jpg"
-    ];
-
-    // Setup rotating backgrounds
-    setupRotatingBg("home", homeImages);
-    setupRotatingBg("about", aboutImages);
-    setupRotatingBg("menu", menuImages);
-    setupRotatingBg("contact", contactImages);
+    // Rotating background JavaScript removed — sections use single static background images via CSS
 
     // Category filtering with Bestsellers default
     (function(){

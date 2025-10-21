@@ -35,10 +35,11 @@ try {
 <body class="dashboard-page">
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+            <!-- Desktop sidebar (visible on md+) -->
+            <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
                 <?php include 'sidebar.php'; ?>
             </div>
+            <!-- Offcanvas sidebar for small screens (moved to end of page) -->
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
                 <!-- Header -->
@@ -47,8 +48,8 @@ try {
                         <h4 class="mb-0 fw-bold">Categories</h4>
                         <p class="mb-0 text-muted">List of all product categories</p>
                     </div>
-                    <!-- Sidebar toggle for small screens -->
-                    <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+                    <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
                         <i class="bi bi-list" style="font-size:1.7rem;"></i>
                     </button>
                 </div>
@@ -242,3 +243,4 @@ document.getElementById('addCategoryModal').addEventListener('hidden.bs.modal', 
     </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>

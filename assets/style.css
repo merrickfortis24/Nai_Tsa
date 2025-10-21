@@ -8,6 +8,8 @@
 
     html {
       scroll-behavior: smooth;
+      /* allow the fixed background element to be visible behind content */
+      background: transparent;
     }
 
     body {
@@ -16,8 +18,27 @@
       min-height: 100vh;
       margin: 0;
       padding: 0;
-      background: var(--beige);
+      /* keep body transparent so the fixed background element is visible */
+      background: transparent;
     }
+
+/* Fixed full-viewport background element: single shared background for all sections
+   Using a separate element provides consistent 'fixed' behavior across mobile browsers */
+.bg-fixed {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  /* put the background behind content but above the document root background */
+  z-index: 0;
+  pointer-events: none;
+  /* Image should be placed in the same `assets/` folder as this CSS file */
+  /* filename corrected to match assets folder (bg10.jpg) */
+  background-image: url('bg10.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  /* Provide a subtle fallback color while image loads */
+  background-color: var(--beige);
+}
 
     .section {
       min-height: 100vh;
@@ -33,18 +54,20 @@
       background-position: center center;
       transition: background-image 0.6s cubic-bezier(.77,0,.18,1);
       /* For fallback color if image fails */
-      background-color: var(--beige);
+      /* sections must be transparent to let the shared fixed background show through */
+      background-color: transparent;
     }
     .section-overlay {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      background: linear-gradient(120deg, var(--beige) 88%, var(--soft-orange) 100%);
-      opacity: 0.45;
+      /* make the gradient more transparent so the background image is visible */
+      background: linear-gradient(120deg, rgba(255,246,237,0.75) 0%, rgba(255,242,230,0.55) 50%, rgba(255,235,220,0.35) 100%);
+      opacity: 0.48; /* reduced overlay opacity for better background visibility */
       z-index: 1;
       pointer-events: none;
-      transition: opacity 0.4s;
+      transition: opacity 0.25s ease;
     }
     .section-content {
       position: relative;

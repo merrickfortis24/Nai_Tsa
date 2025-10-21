@@ -85,19 +85,26 @@ try {
 <body class="dashboard-page">
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
+            <!-- Desktop sidebar (visible on md+) -->
+            <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
                 <?php include 'sidebar.php'; ?>
             </div>
+                <!-- Offcanvas sidebar for small screens (moved to end of page) -->
             
             <!-- Main Content -->
             <div class="col-md-10 col-lg-10 main-content">
                 <!-- Header -->
                 <div class="header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-0 fw-bold">Admin Management</h4>
-                        <p class="mb-0 text-muted">Manage administrators and their roles</p>
-                    </div>
+                        <div class="d-flex align-items-center">
+                            <!-- Mobile burger button for offcanvas sidebar -->
+                            <button class="btn btn-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
+                                <i class="bi bi-list"></i>
+                            </button>
+                            <div>
+                                <h4 class="mb-0 fw-bold">Admin Management</h4>
+                                <p class="mb-0 text-muted">Manage administrators and their roles</p>
+                            </div>
+                        </div>
                     <div class="d-flex align-items-center">
                         <div class="search-container me-3">
                             <i class="bi bi-search"></i>
@@ -109,8 +116,8 @@ try {
                     </div>
                 </div>
                 
-                <!-- Add this button inside your .header div, preferably at the start or left side -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" aria-controls="sidebarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size:1.7rem;"></i>
                 </button>
 
@@ -187,9 +194,15 @@ try {
                                     <option value="this_year">This Year</option>
                                 </select>
                             </div>
-                            <div class="col-auto">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-file-earmark-pdf"></i> Export Sales to PDF
+                            <div class="col-auto d-flex gap-2 align-items-end">
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="Export PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </button>
+                                <button type="submit" class="btn btn-outline-success btn-sm" formaction="export_sales_csv.php?format=csv" title="Export CSV">
+                                    <i class="bi bi-filetype-csv"></i> CSV
+                                </button>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm" formaction="export_sales_csv.php?format=xls" title="Export Excel (.xls)">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                                 </button>
                             </div>
                         </form>
@@ -858,3 +871,4 @@ document.getElementById('quickFraudScanBtn')?.addEventListener('click', async ()
 });
 </script>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>

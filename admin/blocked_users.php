@@ -40,7 +40,7 @@ try {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blocked Users</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/css/style.css" rel="stylesheet">
   <style>
@@ -53,9 +53,11 @@ try {
 <body>
 <div class="container-fluid">
   <div class="row">
-    <div class="col-md-2 col-lg-2 d-md-block sidebar collapse" id="sidebarCollapse">
-        <?php include 'sidebar.php'; ?>
-    </div>
+  <!-- Desktop sidebar (visible on md+) -->
+  <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
+    <?php include 'sidebar.php'; ?>
+  </div>
+  <!-- Offcanvas sidebar for small screens (moved to end of page) -->
     <div class="col-md-10 ms-sm-auto col-lg-10 px-md-4">
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 mb-3 border-bottom">
         <h1 class="h4 mb-0"><i class="bi bi-shield-exclamation me-2"></i>Blocked Users</h1>
@@ -63,11 +65,15 @@ try {
           <button id="runScanBtn" class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle me-1"></i>Run Scan</button>
           <button id="dryScanBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>Dry Run</button>
         </div>
+        <!-- Sidebar toggle button for small screens (opens offcanvas) -->
+  <button class="btn btn-outline-primary d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
+          <i class="bi bi-list" style="font-size:1.7rem;"></i>
+        </button>
       </div>
       <div class="card shadow-sm mb-4">
         <div class="card-body">
           <div class="alert alert-warning py-2 small">
-            Manual unblocks are respected for 48 hours. The auto-scan will skip re-blocking those users during this grace period.
+            Manual unblocks are no longer protected by a grace period. Users manually unblocked by an admin may be auto-blocked immediately if they violate the rules again.
           </div>
           <div class="mb-3">
             <h6 class="mb-2"><i class="bi bi-clock-history me-1"></i>Recent Block Events</h6>
@@ -208,7 +214,7 @@ try {
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 async function runScan(dry=false){
   const out = document.getElementById('scanOutput');
@@ -473,3 +479,4 @@ loadRecentBlocks(1);
 </script>
 </body>
 </html>
+<?php include 'offcanvas_sidebar.php'; ?>
