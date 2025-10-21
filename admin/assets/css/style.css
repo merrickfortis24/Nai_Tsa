@@ -843,6 +843,13 @@
         flex-wrap: wrap !important;        /* allow wrapping on very small screens */
         padding: 6px 0 !important;
     }
+    /* Bootstrap often places stats inside .col-12 on xs viewports which forces full width.
+       Make the column wrappers shrink to fit so the tiles can sit side-by-side. */
+    .stats-row > [class*="col-"] {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        max-width: 260px !important; /* avoid overly wide tiles */
+    }
     .stats-row .tile, .stats-card {
         display: flex !important;
         flex-direction: column !important;
@@ -851,7 +858,7 @@
         text-align: center !important;
         min-width: 120px !important; /* keep tiles visually balanced */
         max-width: 220px !important;
-        width: auto !important;
+        width: 100% !important; /* let the inner card fill its column wrapper */
     }
     /* Slight visual tweak for numbers inside the stat tiles */
     .stats-card .number { font-size: 1.05rem !important; font-weight: 600 !important; }
