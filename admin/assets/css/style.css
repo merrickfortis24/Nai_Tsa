@@ -816,6 +816,22 @@
     select option { color: var(--dark-text) !important; }
     /* Force left text alignment for small selects (some UA styles center small selects) */
     .form-select { text-align: left !important; }
+
+    /* Stronger enforcement for table-inline selects to ensure selected value is visible */
+    .table .form-select, .table select {
+        -webkit-appearance: menulist-button !important;
+        appearance: menulist-button !important;
+        background-image: none !important; /* remove custom arrow overlay that can sometimes hide text */
+        padding: .25rem .5rem !important;
+        line-height: 1.2 !important;
+        font-size: .95rem !important;
+        min-width: 56px !important;
+        color: var(--dark-text) !important;
+        background-color: #fff !important;
+        text-indent: 0 !important;
+    }
+    /* Slightly larger tap target for the small selects */
+    .table .form-select.form-select-sm { padding-top: .35rem !important; padding-bottom: .35rem !important; }
 }
 
 /* Tiny utility: ensure tables in cards don't overflow visual container */
