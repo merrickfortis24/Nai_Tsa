@@ -143,9 +143,15 @@ ksort($methods);
         </button>
       </div>
       <div class="card shadow-sm">
-        <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center"><div><i class="bi bi-stack me-1"></i> Combined Listing</div>
+          <div>
+            <!-- Mobile: toggle filters collapse -->
+            <button id="filtersToggleBtn" class="btn btn-sm btn-outline-primary d-md-none me-2" type="button" aria-expanded="false" aria-controls="filtersCollapse">Filters</button>
+          </div>
+        </div>
         <div class="card-body">
           <!-- debug output removed -->
+          <div id="filtersCollapse" class="collapse show"> 
           <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row uniform-fields">
             <input type="hidden" name="page" value="<?= (int)$page ?>" />
             <div class="col-12 col-md flex-grow-1">
@@ -185,6 +191,7 @@ ksort($methods);
               <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm" title="Clear filters">Clear</button>
             </div>
           </form>
+          </div>
 
           <!-- Stats -->
           <div class="row g-3 mb-3 small stats-row">

@@ -876,3 +876,59 @@
 .card .table-responsive { margin: 0 -12px; padding: 0 12px; }
 
 /* End mobile improvements block */
+/* ---------- Additional responsive refinements ---------- */
+/* Improve overall typography scaling and spacing across breakpoints */
+html { font-size: 16px; }
+@media (max-width: 1200px) { html { font-size: 15px; } }
+@media (max-width: 992px) { html { font-size: 14.5px; } }
+@media (max-width: 576px) { html { font-size: 14px; } }
+
+/* Collapsible filters: smoother spacing when collapsed on mobile */
+#filtersCollapse.collapse { transition: height .22s ease, opacity .18s ease; }
+#filtersCollapse.collapse.show { display: block !important; }
+
+/* Larger touch targets for filter controls and buttons on mobile */
+@media (max-width: 767.98px) {
+    .filter-row .form-control, .filter-row .form-select { padding: .55rem .75rem !important; font-size: .95rem !important; }
+    .filter-row .btn { padding: .6rem .8rem; font-size: .95rem; }
+    .btn-sm { padding: .45rem .6rem; }
+
+    /* Make summary cards stack nicely and keep consistent spacing */
+    .stats-row { gap: 12px !important; }
+    .stats-row > [class*="col-"] { padding-left: 4px !important; padding-right: 4px !important; }
+
+    /* Allow horizontal scroll for table on very small devices but keep nice touch momentum */
+    .table-responsive { -webkit-overflow-scrolling: touch; overflow-x: auto; }
+    .table { min-width: 720px; } /* gives a comfortable layout before scrolling */
+
+    /* Make dropdowns and select controls larger for touch */
+    .form-select, select { min-height: 44px !important; padding: .5rem .75rem !important; }
+}
+
+/* Desktop refinements: readable cards and table alignment */
+@media (min-width: 768px) {
+    .stats-row > [class*="col-"] { flex: 0 0 auto !important; width: auto !important; }
+    .stats-card .number { font-size: 1.6rem !important; }
+    .table { font-size: .95rem; }
+}
+
+/* Visual hierarchy: headings and key labels */
+.card-header { font-size: 1.05rem; }
+.header h4, .fw-bold { font-size: 1.05rem; }
+
+/* Ensure consistent card spacing and stacking order */
+.card { margin-bottom: 16px; }
+.tile { width: 100%; }
+
+/* Touch-friendly action buttons */
+.action-btn, .btn { min-height: 40px; }
+
+/* Accessibility: focus outlines for keyboard users */
+a:focus, button:focus, input:focus, select:focus { outline: 3px solid rgba(67,97,238,0.12); outline-offset: 2px; }
+
+/* Small utility to collapse long table cells on narrow screens */
+@media (max-width: 420px) {
+    .table td, .table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* End responsive refinements */
