@@ -763,10 +763,11 @@
 
 /* ---------- Mobile improvements for admin pages (orders_payments.php) ---------- */
 @media (max-width: 767.98px) {
-    /* Stack filter row controls vertically for small screens; avoid overriding Bootstrap .row
-       which can break internal column layout. Only make the top-level filter container flex-column. */
-    .filter-row, .uniform-fields { display: flex; flex-direction: column; gap: 8px; }
-    .filter-row .col-auto, .filter-row .col-12, .filter-row .col-md, .filter-row .col { flex: 0 0 100% !important; max-width: 100% !important; }
+     /* On narrow screens, let Bootstrap's grid stack naturally. Force filter columns to full width
+         and avoid using display:flex on the .filter-row container which can collapse .col-auto sizing. */
+     .filter-row { display: block !important; }
+     .uniform-fields { display: block !important; }
+     .filter-row > .col-auto, .filter-row > .col-12, .filter-row > .col-md, .filter-row > .col { width: 100% !important; max-width: 100% !important; display: block !important; }
     .filter-row .short-select { width: 100% !important; }
     .filter-row .form-control, .filter-row .form-select { width: 100% !important; }
 
@@ -796,8 +797,12 @@
     .offcanvas .sidebar .nav-link .badge + .badge { right: 44px !important; }
 
     /* Make the toggle button (hamburger) easier to see and tap and prevent unwanted fill */
-    .btn[data-bs-toggle="offcanvas"] { padding: 8px 10px; border-radius: 8px; background: transparent !important; color: var(--primary-color) !important; border: 1px solid rgba(70,102,255,0.9) !important; box-shadow: none !important; }
-    .btn[data-bs-toggle="offcanvas"]:hover, .btn[data-bs-toggle="offcanvas"]:focus { background: rgba(70,102,255,0.06) !important; }
+    .btn[data-bs-toggle="offcanvas"] { padding: 8px 10px; border-radius: 8px; background: transparent !important; color: var(--primary-color) !important; border: 1px solid rgba(70,102,255,0.9) !important; box-shadow: none !important; outline: none !important; }
+    .btn[data-bs-toggle="offcanvas"]:hover { background: rgba(70,102,255,0.06) !important; }
+    .btn[data-bs-toggle="offcanvas"]:focus { box-shadow: none !important; outline: none !important; }
+
+    /* Safety: prevent default focus ring from creating a filled blue blob on some browsers */
+    .btn[data-bs-toggle="offcanvas"]:focus-visible { outline: none !important; box-shadow: 0 0 0 3px rgba(70,102,255,0.12) !important; }
 
     /* Pagination and action buttons spacing */
     .pagination .page-link { padding: .35rem .6rem; }
