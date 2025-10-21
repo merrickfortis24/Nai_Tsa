@@ -932,3 +932,37 @@ a:focus, button:focus, input:focus, select:focus { outline: 3px solid rgba(67,97
 }
 
 /* End responsive refinements */
+
+/* ---------- Page-specific responsive tweaks for orders_payments.php ---------- */
+/* Make filters stack cleanly and remain readable */
+@media (max-width: 991.98px) {
+    .filter-row { row-gap: .6rem !important; }
+    .filter-row .short-select { width: 100% !important; }
+}
+
+/* Stack summary cards vertically on small screens and keep spacing */
+@media (max-width: 767.98px) {
+    .stats-row { flex-direction: column !important; align-items: stretch !important; }
+    .stats-row > [class*="col-"] { width: 100% !important; flex: 0 0 100% !important; }
+    .stats-card { margin-bottom: .6rem !important; }
+}
+
+/* Ensure table header sticks and table scrolls smoothly on mobile */
+.table-responsive { position: relative; }
+.table-responsive thead th { position: sticky; top: 0; background: #fff; z-index: 2; }
+@media (max-width: 767.98px) {
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { min-width: 760px; }
+}
+
+/* Improve spacing for action buttons in table rows */
+.table .action-btn { min-width: 44px; min-height: 44px; }
+
+/* Ensure readable typography and comfortable touch spacing */
+@media (max-width: 575.98px) {
+    .card { padding: .6rem; }
+    .card .card-header { padding: .5rem .6rem; }
+    .form-control, .form-select { font-size: .95rem; }
+}
+
+/* End page-specific tweaks */
