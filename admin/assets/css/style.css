@@ -760,3 +760,49 @@
             visibility: hidden !important;
         }
     }
+
+/* ---------- Mobile improvements for admin pages (orders_payments.php) ---------- */
+@media (max-width: 767.98px) {
+    /* Stack filter row controls vertically for small screens */
+    .filter-row, .uniform-fields, .filter-row .row { display: flex; flex-direction: column; gap: 8px; }
+    .filter-row .col-auto, .filter-row .col-12, .filter-row .col-md, .filter-row .col { flex: 0 0 100% !important; max-width: 100% !important; }
+    .filter-row .short-select { width: 100% !important; }
+    .filter-row .form-control, .filter-row .form-select { width: 100% !important; }
+
+    /* Reduce paddings and card spacing to fit more content vertically */
+    .card, .card-body { margin-bottom: 10px; }
+    .card-header { padding: 10px 12px; font-size: 0.95rem; }
+    .main-content { padding: 12px !important; }
+    .stats-row .tile, .stats-card { padding: 10px 8px; }
+
+    /* Make tables horizontally scrollable with momentum on touch devices */
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { font-size: 0.92rem; }
+
+    /* Slightly larger form controls for easier tapping */
+    .form-select.form-select-sm, .form-control.form-control-sm { height: 42px !important; }
+
+    /* Compact header spacing */
+    .header { padding: 10px 12px; }
+
+    /* Ensure offcanvas is used on phones and fixed sidebar hidden */
+    .sidebar { display: none !important; width: 0 !important; }
+    .offcanvas { visibility: hidden !important; transform: translateX(-110%); }
+    .offcanvas.show { visibility: visible !important; transform: none !important; display: block !important; }
+
+    /* Keep badges visible inside compressed sidebar layout (when offcanvas opens) */
+    .offcanvas .sidebar .nav-link .badge { right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; }
+    .offcanvas .sidebar .nav-link .badge + .badge { right: 44px !important; }
+
+    /* Make the toggle button (hamburger) easier to see and tap */
+    .btn[data-bs-toggle="offcanvas"] { padding: 8px 10px; border-radius: 8px; }
+
+    /* Pagination and action buttons spacing */
+    .pagination .page-link { padding: .35rem .6rem; }
+    .action-btn { width: 40px; height: 40px; }
+}
+
+/* Tiny utility: ensure tables in cards don't overflow visual container */
+.card .table-responsive { margin: 0 -12px; padding: 0 12px; }
+
+/* End mobile improvements block */
