@@ -228,7 +228,7 @@
     }
 
     .offcanvas .sidebar .nav-link,
-    .offcanvas .sidebar .nav-link span,
+    .offcanvas .sidebar .nav-link span:not(.badge),
     .offcanvas .sidebar .nav-link i,
     .offcanvas .sidebar .nav-link .bi {
         color: rgba(255,255,255,0.95) !important;
@@ -449,7 +449,7 @@
             }
 
             .sidebar:not(.offcanvas) .logo-text,
-            .sidebar:not(.offcanvas) .nav-link span {
+            .sidebar:not(.offcanvas) .nav-link span:not(.badge) {
                 display: none;
             }
 
