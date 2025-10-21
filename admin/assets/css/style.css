@@ -832,6 +832,29 @@
     }
     /* Slightly larger tap target for the small selects */
     .table .form-select.form-select-sm { padding-top: .35rem !important; padding-bottom: .35rem !important; }
+
+    /* Center and align the small stats tiles horizontally like the screenshot */
+    .stats-row {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important; /* center horizontally */
+        align-items: center !important;     /* center vertically */
+        gap: 10px !important;
+        flex-wrap: wrap !important;        /* allow wrapping on very small screens */
+        padding: 6px 0 !important;
+    }
+    .stats-row .tile, .stats-card {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
+        min-width: 120px !important; /* keep tiles visually balanced */
+        max-width: 220px !important;
+        width: auto !important;
+    }
+    /* Slight visual tweak for numbers inside the stat tiles */
+    .stats-card .number { font-size: 1.05rem !important; font-weight: 600 !important; }
 }
 
 /* Tiny utility: ensure tables in cards don't overflow visual container */
