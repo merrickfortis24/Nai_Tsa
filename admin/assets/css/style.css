@@ -108,6 +108,10 @@
             /* ensure offcanvas width matches desktop sidebar */
             --bs-offcanvas-width: 260px;
         }
+        /* Defensive: hide offcanvas by default unless .show is present. This prevents
+           the purple sidebar from covering the main content unexpectedly on some devices. */
+        .offcanvas { display: none !important; visibility: hidden !important; }
+        .offcanvas.show { display: block !important; visibility: visible !important; }
         .offcanvas .offcanvas-body {
             padding: 0 !important;
             background: transparent !important;
@@ -291,6 +295,13 @@
         .container-fluid > .row {
             align-items: flex-start;
         }
+
+/* Ensure badges inside tables and main content are visible and not clipped by overlays */
+.table .badge, .card .badge {
+    position: relative !important;
+    z-index: 1075 !important; /* above default page content but below offcanvas/backdrop */
+    display: inline-block !important;
+}
 
         /* On desktop, make the sidebar sticky instead of relying on a hard 100vh height
            which can interact poorly with row stretching. Sticky keeps it visible while
