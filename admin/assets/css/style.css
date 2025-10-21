@@ -833,24 +833,24 @@
     /* Slightly larger tap target for the small selects */
     .table .form-select.form-select-sm { padding-top: .35rem !important; padding-bottom: .35rem !important; }
 
-    /* Center and align the small stats tiles horizontally like the screenshot */
+    /* Center and align the small stats tiles horizontally like the screenshot.
+       Use a wrapping flex row so tiles sit side-by-side when space allows and
+       wrap to the next line on very small screens. Avoid forcing 100% column
+       widths which caused the stacked layout in the screenshot. */
     .stats-row {
         display: flex !important;
         flex-direction: row !important;
         justify-content: center !important; /* center horizontally */
         align-items: center !important;     /* center vertically */
         gap: 10px !important;
-        flex-wrap: nowrap !important;        /* force single line (Option B) */
+        flex-wrap: wrap !important;        /* allow wrapping */
         padding: 6px 0 !important;
-        overflow-x: hidden !important;      /* clip any overflow rather than wrap */
     }
-    /* Bootstrap often places stats inside .col-12 on xs viewports which forces full width.
-       Make the column wrappers shrink to fit so the tiles can sit side-by-side. */
-    /* Force three equal columns (33.333% each) so tiles stay on one row */
+    /* Allow column wrappers to size to their content instead of forcing full width */
     .stats-row > [class*="col-"] {
-        flex: 0 0 33.3333% !important;
-        width: 33.3333% !important;
-        max-width: 33.3333% !important;
+        flex: 0 1 auto !important;
+        width: auto !important;
+        max-width: 260px !important;
         box-sizing: border-box !important;
         padding-left: 6px !important;
         padding-right: 6px !important;
@@ -861,14 +861,12 @@
         justify-content: center !important;
         align-items: center !important;
         text-align: center !important;
-        min-width: 0 !important;
-        max-width: none !important;
-        width: 100% !important; /* inner card fills the column */
+        min-width: 120px !important;
+        max-width: 100% !important;
+        width: auto !important; /* inner card sizes to content */
         padding: 8px !important;
     }
     /* Reduce the prominent number size slightly so it fits better when compressed */
-    .stats-card .number { font-size: 1.25rem !important; font-weight: 700 !important; }
-    /* Slight visual tweak for numbers inside the stat tiles */
     .stats-card .number { font-size: 1.05rem !important; font-weight: 600 !important; }
 }
 
@@ -940,8 +938,9 @@ a:focus, button:focus, input:focus, select:focus { outline: 3px solid rgba(67,97
     .filter-row .short-select { width: 100% !important; }
 }
 
-/* Stack summary cards vertically on small screens and keep spacing */
-@media (max-width: 767.98px) {
+/* For very narrow screens, allow the stats cards to stack; otherwise let the
+   wrapping flex row handle placement so they can sit side-by-side when space allows. */
+@media (max-width: 359.98px) {
     .stats-row { flex-direction: column !important; align-items: stretch !important; }
     .stats-row > [class*="col-"] { width: 100% !important; flex: 0 0 100% !important; }
     .stats-card { margin-bottom: .6rem !important; }
