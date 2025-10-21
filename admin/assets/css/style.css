@@ -840,15 +840,20 @@
         justify-content: center !important; /* center horizontally */
         align-items: center !important;     /* center vertically */
         gap: 10px !important;
-        flex-wrap: wrap !important;        /* allow wrapping on very small screens */
+        flex-wrap: nowrap !important;        /* force single line (Option B) */
         padding: 6px 0 !important;
+        overflow-x: hidden !important;      /* clip any overflow rather than wrap */
     }
     /* Bootstrap often places stats inside .col-12 on xs viewports which forces full width.
        Make the column wrappers shrink to fit so the tiles can sit side-by-side. */
+    /* Force three equal columns (33.333% each) so tiles stay on one row */
     .stats-row > [class*="col-"] {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        max-width: 260px !important; /* avoid overly wide tiles */
+        flex: 0 0 33.3333% !important;
+        width: 33.3333% !important;
+        max-width: 33.3333% !important;
+        box-sizing: border-box !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
     }
     .stats-row .tile, .stats-card {
         display: flex !important;
@@ -856,10 +861,13 @@
         justify-content: center !important;
         align-items: center !important;
         text-align: center !important;
-        min-width: 120px !important; /* keep tiles visually balanced */
-        max-width: 220px !important;
-        width: 100% !important; /* let the inner card fill its column wrapper */
+        min-width: 0 !important;
+        max-width: none !important;
+        width: 100% !important; /* inner card fills the column */
+        padding: 8px !important;
     }
+    /* Reduce the prominent number size slightly so it fits better when compressed */
+    .stats-card .number { font-size: 1.25rem !important; font-weight: 700 !important; }
     /* Slight visual tweak for numbers inside the stat tiles */
     .stats-card .number { font-size: 1.05rem !important; font-weight: 600 !important; }
 }
