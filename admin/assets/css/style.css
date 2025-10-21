@@ -807,6 +807,15 @@
     /* Pagination and action buttons spacing */
     .pagination .page-link { padding: .35rem .6rem; }
     .action-btn { width: 40px; height: 40px; }
+
+    /* Make sure select controls render readable text (some browsers inherit dark backgrounds elsewhere) */
+    .form-select, .form-control, select { color: var(--dark-text) !important; background-color: #fff !important; }
+    /* Inline order/payment selects */
+    select.order-status-select, select[name="payment_status"] { color: var(--dark-text) !important; background-color: #fff !important; }
+    /* Ensure option text is readable in dropdowns */
+    select option { color: var(--dark-text) !important; }
+    /* Force left text alignment for small selects (some UA styles center small selects) */
+    .form-select { text-align: left !important; }
 }
 
 /* Tiny utility: ensure tables in cards don't overflow visual container */
