@@ -86,14 +86,24 @@
             display: inline-flex !important;
             align-items: center;
             justify-content: center;
-            margin-left: auto !important;
-            padding: .25rem .5rem !important;
-            font-size: .75rem !important;
             /* absolute positioning so badge stays visible in narrow sidebars */
             position: absolute !important;
             right: 10px !important;
             top: 50% !important;
             transform: translateY(-50%) !important;
+            margin-left: 0 !important; /* not needed when absolute */
+            padding: .25rem .5rem !important;
+            font-size: .75rem !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            z-index: 1045 !important;
+        }
+
+        /* If there are multiple badges, offset them so they sit side-by-side */
+        .sidebar .nav-link .badge + .badge {
+            right: 40px !important; /* second badge sits slightly left of the first */
+        }
+        .sidebar .nav-link .badge + .badge + .badge {
+            right: 70px !important; /* third badge if ever used */
         }
 
         /* Offcanvas-specific ensure badge sits correctly when offcanvas is shown */
@@ -428,15 +438,6 @@
             color: #6c757d;
             font-size: 0.9rem;
         }
-
-/* Defensive: prevent responsive table containers from clipping badges */
-.table-responsive { overflow: visible !important; }
-
-/* Ensure badges in tables and cards are drawn above overlays (e.g., offcanvas) */
-.table .badge, .card .badge, .status-badge {
-    position: relative !important;
-    z-index: 99999 !important;
-}
         
         .action-btn {
             width: 35px;
