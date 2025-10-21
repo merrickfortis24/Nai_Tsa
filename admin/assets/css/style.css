@@ -428,6 +428,15 @@
             color: #6c757d;
             font-size: 0.9rem;
         }
+
+/* Defensive: prevent responsive table containers from clipping badges */
+.table-responsive { overflow: visible !important; }
+
+/* Ensure badges in tables and cards are drawn above overlays (e.g., offcanvas) */
+.table .badge, .card .badge, .status-badge {
+    position: relative !important;
+    z-index: 99999 !important;
+}
         
         .action-btn {
             width: 35px;
