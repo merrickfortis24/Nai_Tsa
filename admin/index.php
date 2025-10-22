@@ -81,6 +81,16 @@ try {
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Constrain long dropdowns in admin tables and ensure selected option remains visible -->
+    <style>
+        /* Shorten displayed Bootstrap dropdown menus used for long action lists */
+        .order-dropdown-menu { max-height: 220px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .order-dropdown-menu::-webkit-scrollbar { width: 8px; }
+        .order-dropdown-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+
+        /* Small visual hint for native selects when converted to listbox on focus */
+        .table .form-select[size] { outline: none; }
+    </style>
 </head>
 <body class="dashboard-page">
     <div class="container-fluid">
@@ -824,6 +834,89 @@ const salesChart = new Chart(ctx, {
 });
     </script>
 </body>
+<script>
+// 1) For Bootstrap dropdowns: limit height and scroll active item into view when opened
+document.addEventListener('shown.bs.dropdown', function(ev){
+    try {
+        var toggle = ev.target;
+        var parent = toggle.closest ? toggle.closest('.dropdown') : null;
+        var menu = parent ? parent.querySelector('.dropdown-menu') : null;
+        if (!menu) menu = document.querySelector('.dropdown-menu.show') || document.querySelector('.dropdown-menu');
+        if (!menu) return;
+        if (!menu.classList.contains('order-dropdown-menu')) menu.classList.add('order-dropdown-menu');
+        var sel = menu.querySelector('.active, .selected, [aria-current="true"], [aria-checked="true"]');
+        if (sel) {
+            var pad = 8;
+            var selTop = sel.offsetTop;
+            var selBottom = selTop + sel.offsetHeight;
+            if (menu.scrollTop > selTop - pad || (menu.scrollTop + menu.clientHeight) < (selBottom + pad)) {
+                menu.scrollTop = Math.max(0, selTop - pad);
+            }
+            try { sel.focus && sel.focus(); } catch(e){}
+        }
+    } catch(e) { console.debug('dropdown scroll err', e); }
+});
+
+// 2) For native <select> elements inside tables, temporarily set a size on pointer down/focus
+(function(){
+    const MAX_VISIBLE = 6; // maximum rows to show when opening a select
+    function makeShortSelects() {
+        document.querySelectorAll('.table .form-select').forEach(function(sel){
+            // avoid attaching listeners multiple times
+            if (sel.__shortListHooked) return; sel.__shortListHooked = true;
+
+            const reset = function() {
+                try { sel.removeAttribute('size'); } catch(e){}
+            };
+
+            sel.addEventListener('mousedown', function onMouseDown(e){
+                try {
+                    // Set size so the browser shows a constrained listbox
+                    const opts = sel.options ? sel.options.length : 0;
+                    const sz = Math.min(MAX_VISIBLE, Math.max(3, opts));
+                    sel.setAttribute('size', String(sz));
+                    // Ensure selected option is visible
+                    const idx = sel.selectedIndex >= 0 ? sel.selectedIndex : 0;
+                    const opt = sel.options && sel.options[idx];
+                    if (opt && opt.scrollIntoView) opt.scrollIntoView({block:'center'});
+                } catch(e) {}
+                // Reset on next blur
+                const onBlur = function(){ reset(); sel.removeEventListener('blur', onBlur); };
+                sel.addEventListener('blur', onBlur);
+            });
+
+            // Keyboard open (space/arrow) - handle focus as well
+            sel.addEventListener('focus', function(){
+                try {
+                    // small delay to avoid interfering with normal keyboard behavior
+                    setTimeout(()=>{
+                        if (document.activeElement === sel) {
+                            const opts = sel.options ? sel.options.length : 0;
+                            const sz = Math.min(MAX_VISIBLE, Math.max(3, opts));
+                            sel.setAttribute('size', String(sz));
+                            const idx = sel.selectedIndex >= 0 ? sel.selectedIndex : 0;
+                            const opt = sel.options && sel.options[idx];
+                            if (opt && opt.scrollIntoView) opt.scrollIntoView({block:'center'});
+                        }
+                    }, 50);
+                } catch(e){}
+            });
+
+            sel.addEventListener('change', function(){ try{ sel.blur(); } catch(e){} });
+        });
+    }
+    // Run on DOM ready and also when table content updates (simple observer)
+    document.addEventListener('DOMContentLoaded', makeShortSelects);
+    // Observe table containers for dynamic changes
+    const tables = document.querySelectorAll('.table');
+    tables.forEach(function(t){
+        try {
+            const mo = new MutationObserver(function(){ makeShortSelects(); });
+            mo.observe(t, { childList:true, subtree:true });
+        } catch(e){}
+    });
+})();
+</script>
 <script>
 // Dynamic badge & dash card refresh (blocked users) every 60s
 (function(){
