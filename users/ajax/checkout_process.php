@@ -38,6 +38,27 @@ try {
     $data['cart'] = $data['items'];
   }
 
+  // If total is missing, try to compute it from the provided cart/items
+  if (!isset($data['total']) && isset($data['cart']) && is_array($data['cart'])) {
+    $computed = 0;
+    foreach ($data['cart'] as $it) {
+      $qty = isset($it['qty']) ? (int)$it['qty'] : (isset($it['quantity']) ? (int)$it['quantity'] : 1);
+      $price = 0;
+      if (isset($it['unitPrice'])) $price = (float)$it['unitPrice'];
+      elseif (isset($it['price'])) $price = (float)$it['price'];
+      elseif (isset($it['final'])) $price = (float)$it['final'];
+      $computed += $qty * $price;
+      // If addons have prices, try to add them (common shape: [{name, price}])
+      if (!empty($it['addons']) && is_array($it['addons'])) {
+        foreach ($it['addons'] as $a) {
+          if (isset($a['price'])) $computed += (float)$a['price'];
+        }
+      }
+    }
+    // round to 2 decimals
+    $data['total'] = round($computed, 2);
+  }
+
   // If debug=1 requested, save last payload for inspection (safe in temp dir)
   $isDebugReq = isset($_GET['debug']) && in_array((string)$_GET['debug'], ['1','true','on'], true);
   if ($isDebugReq) {
