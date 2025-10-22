@@ -51,6 +51,22 @@ try {
   echo json_encode($result);
 } catch (Throwable $e) {
   http_response_code(500);
+
+  // Log the exception to a local log so we can inspect it on the server.
+  $logDir = __DIR__ . '/tmp';
+  if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+  }
+  $logFile = $logDir . '/checkout_error.log';
+  $logEntry = date('c') . " | Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n---\n";
+  @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+  // Allow verbose error JSON only when explicitly requested via ?debug=1
+  $isDebug = false;
+  if (isset($_GET['debug']) && in_array((string)$_GET['debug'], ['1', 'true', 'on'], true)) {
+    $isDebug = true;
+  }
+
   $resp = ['success' => false, 'message' => 'Server error during checkout'];
   if ($isDebug) {
     $resp['error'] = $e->getMessage();
