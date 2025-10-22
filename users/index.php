@@ -473,7 +473,7 @@ try {
                   <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
                 </div>
                 <div id="qrWrap">
-                  <img id="gcashQrImg" src="users/assets/gcash_QR.jpg" alt="GCash QR" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                  <img id="gcashQrImg" src="assets/gcash_QR.jpg" alt="GCash QR" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
                 </div>
                 <div class="mt-2 small">
                   GCash number: <strong id="gcashNumber">09672556259</strong>
