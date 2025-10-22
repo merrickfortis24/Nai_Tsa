@@ -143,15 +143,21 @@ ksort($methods);
         </button>
       </div>
       <div class="card shadow-sm">
-        <div class="card-header fw-semibold"><i class="bi bi-stack me-1"></i> Combined Listing</div>
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center"><div><i class="bi bi-stack me-1"></i> Combined Listing</div>
+          <div>
+            <!-- Mobile: toggle filters collapse -->
+            <button id="filtersToggleBtn" class="btn btn-sm btn-outline-primary d-md-none me-2" type="button" aria-expanded="false" aria-controls="filtersCollapse">Filters</button>
+          </div>
+        </div>
         <div class="card-body">
           <!-- debug output removed -->
+          <div id="filtersCollapse" class="collapse show"> 
           <form id="filtersForm" method="get" class="row g-2 mb-3 align-items-end filter-row uniform-fields">
             <input type="hidden" name="page" value="<?= (int)$page ?>" />
-            <div class="col-12 col-md flex-grow-1">
+            <div class="col-12 col-md-6">
               <input type="text" name="search" value="<?=h($search)?>" class="form-control form-control-sm" placeholder="Search by Order ID or Customer" />
             </div>
-            <div class="col-auto">
+            <div class="col-12 col-sm-6 col-md-2">
               <select name="status" class="form-select form-select-sm short-select" title="Order Status">
                 <option value="">All Status</option>
                 <?php foreach (["Pending","Preparing","Ready to deliver","On the way","Delivered","Ready to pick up","Received","Cancelled"] as $s): ?>
@@ -159,7 +165,7 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-auto">
+            <div class="col-12 col-sm-6 col-md-2">
               <select name="payment" class="form-select form-select-sm short-select" title="Payment Status">
                 <option value="">All Pay</option>
                 <?php foreach (["Paid","Unpaid"] as $s): ?>
@@ -167,7 +173,7 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-auto">
+            <div class="col-12 col-sm-6 col-md-2">
               <select name="method" class="form-select form-select-sm short-select" title="Payment Method">
                 <option value="">Method</option>
                 <?php foreach ($methods as $m=>$_): ?>
@@ -175,16 +181,17 @@ ksort($methods);
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="col-auto">
+            <div class="col-6 col-sm-4 col-md-1">
               <input type="date" id="date_from" name="from" value="<?=h($from)?>" class="form-control form-control-sm short-select" placeholder="From" aria-label="From date" />
             </div>
-            <div class="col-auto">
+            <div class="col-6 col-sm-4 col-md-1">
               <input type="date" id="date_to" name="to" value="<?=h($to)?>" class="form-control form-control-sm short-select" placeholder="To" aria-label="To date" />
             </div>
-            <div class="col-auto d-grid">
+            <div class="col-12 col-sm-4 col-md-auto d-grid">
               <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm" title="Clear filters">Clear</button>
             </div>
           </form>
+          </div>
 
           <!-- Stats -->
           <div class="row g-3 mb-3 small stats-row">

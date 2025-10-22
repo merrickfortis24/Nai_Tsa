@@ -116,10 +116,7 @@ try {
                     </div>
                 </div>
                 
-                <!-- Sidebar toggle button for small screens (opens offcanvas) -->
-                <button class="btn btn-outline-primary d-lg-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
-                    <i class="bi bi-list" style="font-size:1.7rem;"></i>
-                </button>
+                <!-- (removed duplicate sidebar toggle button; header contains the primary mobile toggle) -->
 
                 <!-- Stats Cards -->
                 <div class="row">

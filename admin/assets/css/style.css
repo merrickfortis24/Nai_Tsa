@@ -17,8 +17,8 @@
         .sidebar {
             background: linear-gradient(180deg, var(--primary-color), var(--secondary-color)) !important;
             color: white;
-            /* prefer min-height so the column doesn't force the row to stretch unexpectedly */
-            min-height: 100vh;
+            height: 100vh;
+            position: fixed;
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
             width: 260px; /* matches --bs-offcanvas-width used for mobile */
             /* overflow: hidden;  Remove this so icons/nav are visible in offcanvas */
@@ -50,6 +50,7 @@
             padding: 10px 16px;
             color: rgba(255,255,255,0.95);
             font-weight: 500;
+            position: relative; /* contain absolute-positioned badges */
         }
 
         /* Make icons a fixed width so text aligns consistently */
@@ -69,12 +70,47 @@
             vertical-align: middle;
         }
 
-        /* Align badges to the right consistently */
+        /* Align badges to the right consistently (let Bootstrap contextual classes control BG)
+           We avoid forcing a background so bg-danger / bg-warning remain visible. */
         .sidebar .nav-link .badge {
             margin-left: auto;
-            background: rgba(255,255,255,0.12);
-            color: white;
+            color: inherit;
             font-weight: 600;
+        }
+
+        /* Ensure badges remain visible on compact/offcanvas sidebars
+           Override floats (float-end) and enforce flex alignment so badges
+           are not clipped or pushed off-screen. */
+        .sidebar .nav-link .badge {
+            float: none !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            /* absolute positioning so badge stays visible in narrow sidebars */
+            position: absolute !important;
+            right: 10px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            margin-left: 0 !important; /* not needed when absolute */
+            padding: .25rem .5rem !important;
+            font-size: .75rem !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+            z-index: 1045 !important;
+        }
+
+        /* If there are multiple badges, offset them so they sit side-by-side */
+        .sidebar .nav-link .badge + .badge {
+            right: 40px !important; /* second badge sits slightly left of the first */
+        }
+        .sidebar .nav-link .badge + .badge + .badge {
+            right: 70px !important; /* third badge if ever used */
+        }
+
+        /* Offcanvas-specific ensure badge sits correctly when offcanvas is shown */
+        .offcanvas.show .sidebar .nav-link .badge {
+            float: none !important;
+            margin-left: auto !important;
+            display: inline-flex !important;
         }
 
         /* Offcanvas (mobile) should reuse same visual styles as the fixed sidebar */
@@ -82,6 +118,10 @@
             /* ensure offcanvas width matches desktop sidebar */
             --bs-offcanvas-width: 260px;
         }
+        /* Defensive: hide offcanvas by default unless .show is present. This prevents
+           the purple sidebar from covering the main content unexpectedly on some devices. */
+        .offcanvas { display: none !important; visibility: hidden !important; }
+        .offcanvas.show { display: block !important; visibility: visible !important; }
         .offcanvas .offcanvas-body {
             padding: 0 !important;
             background: transparent !important;
@@ -228,7 +268,7 @@
     }
 
     .offcanvas .sidebar .nav-link,
-    .offcanvas .sidebar .nav-link span,
+    .offcanvas .sidebar .nav-link span:not(.badge),
     .offcanvas .sidebar .nav-link i,
     .offcanvas .sidebar .nav-link .bi {
         color: rgba(255,255,255,0.95) !important;
@@ -265,6 +305,13 @@
         .container-fluid > .row {
             align-items: flex-start;
         }
+
+/* Ensure badges inside tables and main content are visible and not clipped by overlays */
+.table .badge, .card .badge {
+    position: relative !important;
+    z-index: 1075 !important; /* above default page content but below offcanvas/backdrop */
+    display: inline-block !important;
+}
 
         /* On desktop, make the sidebar sticky instead of relying on a hard 100vh height
            which can interact poorly with row stretching. Sticky keeps it visible while
@@ -449,7 +496,7 @@
             }
 
             .sidebar:not(.offcanvas) .logo-text,
-            .sidebar:not(.offcanvas) .nav-link span {
+            .sidebar:not(.offcanvas) .nav-link span:not(.badge) {
                 display: none;
             }
 
@@ -713,3 +760,208 @@
             visibility: hidden !important;
         }
     }
+
+/* ---------- Mobile improvements for admin pages (orders_payments.php) ---------- */
+@media (max-width: 767.98px) {
+     /* On narrow screens, let Bootstrap's grid stack naturally. Force filter columns to full width
+         and avoid using display:flex on the .filter-row container which can collapse .col-auto sizing. */
+     .filter-row { display: block !important; }
+     .uniform-fields { display: block !important; }
+     .filter-row > .col-auto, .filter-row > .col-12, .filter-row > .col-md, .filter-row > .col { width: 100% !important; max-width: 100% !important; display: block !important; }
+    .filter-row .short-select { width: 100% !important; }
+    .filter-row .form-control, .filter-row .form-select { width: 100% !important; }
+
+    /* Reduce paddings and card spacing to fit more content vertically */
+    .card, .card-body { margin-bottom: 10px; }
+    .card-header { padding: 10px 12px; font-size: 0.95rem; }
+    .main-content { padding: 12px !important; }
+    .stats-row .tile, .stats-card { padding: 10px 8px; }
+
+    /* Make tables horizontally scrollable with momentum on touch devices */
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { font-size: 0.92rem; }
+
+    /* Slightly larger form controls for easier tapping */
+    .form-select.form-select-sm, .form-control.form-control-sm { height: 42px !important; }
+
+    /* Compact header spacing */
+    .header { padding: 10px 12px; }
+
+    /* Ensure offcanvas is used on phones and fixed sidebar hidden */
+    .sidebar { display: none !important; width: 0 !important; }
+    .offcanvas { visibility: hidden !important; transform: translateX(-110%); }
+    .offcanvas.show { visibility: visible !important; transform: none !important; display: block !important; }
+
+    /* Keep badges visible inside compressed sidebar layout (when offcanvas opens) */
+    .offcanvas .sidebar .nav-link .badge { right: 10px !important; top: 50% !important; transform: translateY(-50%) !important; }
+    .offcanvas .sidebar .nav-link .badge + .badge { right: 44px !important; }
+
+    /* Make the toggle button (hamburger) easier to see and tap and prevent unwanted fill */
+    .btn[data-bs-toggle="offcanvas"] { padding: 8px 10px; border-radius: 8px; background: transparent !important; color: var(--primary-color) !important; border: 1px solid rgba(70,102,255,0.9) !important; box-shadow: none !important; outline: none !important; }
+    .btn[data-bs-toggle="offcanvas"]:hover { background: rgba(70,102,255,0.06) !important; }
+    .btn[data-bs-toggle="offcanvas"]:focus { box-shadow: none !important; outline: none !important; }
+
+    /* Safety: prevent default focus ring from creating a filled blue blob on some browsers */
+    .btn[data-bs-toggle="offcanvas"]:focus-visible { outline: none !important; box-shadow: 0 0 0 3px rgba(70,102,255,0.12) !important; }
+
+    /* Pagination and action buttons spacing */
+    .pagination .page-link { padding: .35rem .6rem; }
+    .action-btn { width: 40px; height: 40px; }
+
+    /* Make sure select controls render readable text (some browsers inherit dark backgrounds elsewhere) */
+    .form-select, .form-control, select { color: var(--dark-text) !important; background-color: #fff !important; }
+    /* Inline order/payment selects */
+    select.order-status-select, select[name="payment_status"] { color: var(--dark-text) !important; background-color: #fff !important; }
+    /* Ensure option text is readable in dropdowns */
+    select option { color: var(--dark-text) !important; }
+    /* Force left text alignment for small selects (some UA styles center small selects) */
+    .form-select { text-align: left !important; }
+
+    /* Stronger enforcement for table-inline selects to ensure selected value is visible */
+    .table .form-select, .table select {
+        -webkit-appearance: menulist-button !important;
+        appearance: menulist-button !important;
+        background-image: none !important; /* remove custom arrow overlay that can sometimes hide text */
+        padding: .25rem .5rem !important;
+        line-height: 1.2 !important;
+        font-size: .95rem !important;
+        min-width: 56px !important;
+        color: var(--dark-text) !important;
+        background-color: #fff !important;
+        text-indent: 0 !important;
+    }
+    /* Slightly larger tap target for the small selects */
+    .table .form-select.form-select-sm { padding-top: .35rem !important; padding-bottom: .35rem !important; }
+
+    /* Center and align the small stats tiles horizontally like the screenshot.
+       Use a wrapping flex row so tiles sit side-by-side when space allows and
+       wrap to the next line on very small screens. Avoid forcing 100% column
+       widths which caused the stacked layout in the screenshot. */
+    .stats-row {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important; /* center horizontally */
+        align-items: center !important;     /* center vertically */
+        gap: 10px !important;
+        flex-wrap: wrap !important;        /* allow wrapping */
+        padding: 6px 0 !important;
+    }
+    /* Allow column wrappers to size to their content instead of forcing full width */
+    .stats-row > [class*="col-"] {
+        flex: 0 1 auto !important;
+        width: auto !important;
+        max-width: 260px !important;
+        box-sizing: border-box !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+    .stats-row .tile, .stats-card {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
+        min-width: 120px !important;
+        max-width: 100% !important;
+        width: auto !important; /* inner card sizes to content */
+        padding: 8px !important;
+    }
+    /* Reduce the prominent number size slightly so it fits better when compressed */
+    .stats-card .number { font-size: 1.05rem !important; font-weight: 600 !important; }
+}
+
+/* Tiny utility: ensure tables in cards don't overflow visual container */
+.card .table-responsive { margin: 0 -12px; padding: 0 12px; }
+
+/* End mobile improvements block */
+/* ---------- Additional responsive refinements ---------- */
+/* Improve overall typography scaling and spacing across breakpoints */
+html { font-size: 16px; }
+@media (max-width: 1200px) { html { font-size: 15px; } }
+@media (max-width: 992px) { html { font-size: 14.5px; } }
+@media (max-width: 576px) { html { font-size: 14px; } }
+
+/* Collapsible filters: smoother spacing when collapsed on mobile */
+#filtersCollapse.collapse { transition: height .22s ease, opacity .18s ease; }
+#filtersCollapse.collapse.show { display: block !important; }
+
+/* Larger touch targets for filter controls and buttons on mobile */
+@media (max-width: 767.98px) {
+    .filter-row .form-control, .filter-row .form-select { padding: .55rem .75rem !important; font-size: .95rem !important; }
+    .filter-row .btn { padding: .6rem .8rem; font-size: .95rem; }
+    .btn-sm { padding: .45rem .6rem; }
+
+    /* Make summary cards stack nicely and keep consistent spacing */
+    .stats-row { gap: 12px !important; }
+    .stats-row > [class*="col-"] { padding-left: 4px !important; padding-right: 4px !important; }
+
+    /* Allow horizontal scroll for table on very small devices but keep nice touch momentum */
+    .table-responsive { -webkit-overflow-scrolling: touch; overflow-x: auto; }
+    .table { min-width: 720px; } /* gives a comfortable layout before scrolling */
+
+    /* Make dropdowns and select controls larger for touch */
+    .form-select, select { min-height: 44px !important; padding: .5rem .75rem !important; }
+}
+
+/* Desktop refinements: readable cards and table alignment */
+@media (min-width: 768px) {
+    .stats-row > [class*="col-"] { flex: 0 0 auto !important; width: auto !important; }
+    .stats-card .number { font-size: 1.6rem !important; }
+    .table { font-size: .95rem; }
+}
+
+/* Visual hierarchy: headings and key labels */
+.card-header { font-size: 1.05rem; }
+.header h4, .fw-bold { font-size: 1.05rem; }
+
+/* Ensure consistent card spacing and stacking order */
+.card { margin-bottom: 16px; }
+.tile { width: 100%; }
+
+/* Touch-friendly action buttons */
+.action-btn, .btn { min-height: 40px; }
+
+/* Accessibility: focus outlines for keyboard users */
+a:focus, button:focus, input:focus, select:focus { outline: 3px solid rgba(67,97,238,0.12); outline-offset: 2px; }
+
+/* Small utility to collapse long table cells on narrow screens */
+@media (max-width: 420px) {
+    .table td, .table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* End responsive refinements */
+
+/* ---------- Page-specific responsive tweaks for orders_payments.php ---------- */
+/* Make filters stack cleanly and remain readable */
+@media (max-width: 991.98px) {
+    .filter-row { row-gap: .6rem !important; }
+    .filter-row .short-select { width: 100% !important; }
+}
+
+/* For very narrow screens, allow the stats cards to stack; otherwise let the
+   wrapping flex row handle placement so they can sit side-by-side when space allows. */
+@media (max-width: 359.98px) {
+    .stats-row { flex-direction: column !important; align-items: stretch !important; }
+    .stats-row > [class*="col-"] { width: 100% !important; flex: 0 0 100% !important; }
+    .stats-card { margin-bottom: .6rem !important; }
+}
+
+/* Ensure table header sticks and table scrolls smoothly on mobile */
+.table-responsive { position: relative; }
+.table-responsive thead th { position: sticky; top: 0; background: #fff; z-index: 2; }
+@media (max-width: 767.98px) {
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table { min-width: 760px; }
+}
+
+/* Improve spacing for action buttons in table rows */
+.table .action-btn { min-width: 44px; min-height: 44px; }
+
+/* Ensure readable typography and comfortable touch spacing */
+@media (max-width: 575.98px) {
+    .card { padding: .6rem; }
+    .card .card-header { padding: .5rem .6rem; }
+    .form-control, .form-select { font-size: .95rem; }
+}
+
+/* End page-specific tweaks */
