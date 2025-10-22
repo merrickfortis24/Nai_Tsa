@@ -465,6 +465,10 @@ try {
                 </div>
                 <div style="flex:1; min-width:220px;">
                   <div class="mb-2">
+                    <label class="form-label">GCash Reference Number</label>
+                    <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234-5678-9012" autocomplete="off">
+                  </div>
+                  <div class="mb-2">
                     <label class="form-label">Amount Paid (₱) <small class="text-muted">(optional)</small></label>
                     <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
                   </div>
