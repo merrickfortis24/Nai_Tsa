@@ -505,9 +505,6 @@ function createPasswordResetToken($email) {
     // Add delivery fee to total
     $total_with_fee = $total + $delivery_fee;
 
-    // Assigned driver id placeholder (ensure defined for return payload)
-    $assignedDriverId = null;
-
     // 3. Insert order (normalized schema: address & delivery stored in separate tables)
     $dbOrderType = (strcasecmp($orderType, 'Pick Up') === 0) ? 'Pickup' : 'Delivery';
     // Minimal orders columns now: Order_Amount, Customer_ID, order_type (if exists), order_status
@@ -597,8 +594,6 @@ function createPasswordResetToken($email) {
                 if ($chosen) {
                     $as = $con->prepare("UPDATE orders SET Driver_ID=? WHERE Order_ID=?");
                     $as->execute([$chosen, $order_id]);
-                    // store chosen driver id for response
-                    $assignedDriverId = (int)$chosen;
                 }
             }
         } catch (Throwable $e) { /* swallow auto-assign failures */ }
@@ -716,17 +711,15 @@ function createPasswordResetToken($email) {
         error_log('[processCheckout] mailer exception for order ' . intval($order_id) . ' : ' . $e->getMessage());
     }
 
-    // Hardened response: ensure all fields exist and use safe default values/types
-    $resp = [
+    return [
         'success' => true,
-        'order_id' => isset($order_id) ? (int)$order_id : 0,
-        'delivery_fee' => isset($delivery_fee) ? (float)$delivery_fee : 0.0,
-        'amount' => isset($total_with_fee) ? (float)$total_with_fee : 0.0,
-        'distance_km' => isset($distance_km) && $distance_km !== null ? (float)$distance_km : null,
-        'assigned_driver' => isset($assignedDriverId) ? (int)$assignedDriverId : null,
-        'order_type' => isset($dbOrderType) ? (string)$dbOrderType : 'Pickup'
+        'order_id' => (int)$order_id,
+        'delivery_fee' => $delivery_fee,
+        'amount' => $total_with_fee,
+        'distance_km' => $distance_km,
+        'assigned_driver' => $assignedDriverId,
+        'order_type' => $dbOrderType
     ];
-    return $resp;
 }
 
 public function getRecommendedProducts($customer_id, $limit = 4) {
