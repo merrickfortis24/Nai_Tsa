@@ -199,3 +199,44 @@ function send_contact_email(string $senderName, string $senderEmail, string $mes
         return $e->getMessage() ?: 'send failed';
     }
 }
+
+/**
+ * Send a short notification to site admin(s) when a new order is placed.
+ * Uses MAIL_FORCE_TO -> MAIL_TO -> SMTP_USER as recipient order of preference.
+ * Returns true on success or an error string on failure.
+ */
+function send_new_order_email(int $orderId, array $orderSummary = []): bool|string {
+    $mail = mailer_instance();
+    $forcedTo = trim((string)(getenv('MAIL_FORCE_TO') ?: ''));
+    $envTo    = trim((string)(getenv('MAIL_TO') ?: ''));
+    $fallback = trim((string)(getenv('SMTP_USER') ?: ''));
+    $primary = $forcedTo ?: ($envTo ?: $fallback);
+    if (!$primary || !filter_var($primary, FILTER_VALIDATE_EMAIL)) {
+        return 'no-recipient-configured';
+    }
+    try {
+        $mail->addAddress($primary);
+        $mail->isHTML(true);
+        $mail->Subject = 'New Order Received #' . $orderId;
+        $safe = function($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); };
+        $when = date('M d, Y H:i:s');
+        $body = '<h3>New Order Received</h3>';
+        $body .= '<p>Order ID: <strong>' . $safe($orderId) . '</strong></p>';
+        if (!empty($orderSummary['customer_email'])) $body .= '<p>Customer: ' . $safe($orderSummary['customer_email']) . '</p>';
+        if (!empty($orderSummary['amount'])) $body .= '<p>Amount: ₱' . number_format((float)$orderSummary['amount'], 2) . '</p>';
+        if (!empty($orderSummary['items']) && is_array($orderSummary['items'])) {
+            $body .= '<h4>Items</h4><ul>';
+            foreach($orderSummary['items'] as $it) {
+                $body .= '<li>' . $safe($it['name'] ?? ($it['Product_Name'] ?? 'Item')) . ' x' . intval($it['qty'] ?? ($it['Quantity'] ?? 1)) . '</li>';
+            }
+            $body .= '</ul>';
+        }
+        $body .= '<p style="font-size:12px;color:#666">Received: ' . $safe($when) . '</p>';
+        $mail->Body = $body;
+        $mail->AltBody = strip_tags(str_replace(['</li>','<li>','<ul>','</ul>'],' ', $body));
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        return $e->getMessage();
+    }
+}
