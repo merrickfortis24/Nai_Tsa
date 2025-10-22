@@ -73,14 +73,24 @@ $newToken = bin2hex(random_bytes(33));
 $newHash = hash('sha256', $newToken);
 $newExpires = date('Y-m-d H:i:s', time() + 86400 * 30);
 $db->updateRememberToken($selector, $newSelector, $newHash, $newExpires);
-setcookie('rememberme', $newSelector . ':' . $newToken, [
+// Determine an appropriate cookie domain for broader persistence on real domains
+$cookieOptions = [
     'expires' => time() + 86400 * 30,
     'path' => '/',
-    // 'domain' => '.naitsa.online',
     'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
     'httponly' => true,
     'samesite' => 'Lax'
-]);
+];
+$host = $_SERVER['HTTP_HOST'] ?? '';
+// If host looks like a real domain (contains a dot and not localhost), set domain with leading dot
+if ($host && strpos($host, 'localhost') === false && filter_var('http://' . $host, FILTER_VALIDATE_URL)) {
+    $parts = explode(':', $host, 2); // strip port
+    $hostname = $parts[0];
+    if (substr_count($hostname, '.') >= 1) {
+        $cookieOptions['domain'] = '.' . $hostname; // allows subdomain persistence
+    }
+}
+setcookie('rememberme', $newSelector . ':' . $newToken, $cookieOptions);
 
 // update last_used (optional)
 // handled by updateRememberToken which sets last_used = NOW()
