@@ -8,12 +8,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     $confirm = $_POST['confirm_password'];
+    $agreed = isset($_POST['agree_terms']) && $_POST['agree_terms'] === '1';
 
-  if ($password !== $confirm) {
+  if (!$agreed) {
+    $message = "You must agree to the Terms of Agreement and Privacy Policy before signing up.";
+  } else if ($password !== $confirm) {
     $message = "Passwords do not match!";
   } else {
-    $db = new database();
-    $result = $db->registerCustomer($name, $email, $password);
+  $db = new database();
+  // Pass whether the user agreed to terms so the DB layer can record the timestamp
+  $result = $db->registerCustomer($name, $email, $password, $agreed);
     if ($result === true) {
       // Trigger OTP send via AJAX after render
       $sweetAlertConfig = '<script>window.__POST_SIGNUP_EMAIL__ = ' . json_encode($email) . '; window.__POST_SIGNUP_NAME__ = ' . json_encode($name) . ';</script>';
@@ -69,7 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
           <input type="password" class="form-control" name="confirm_password" id="signupConfirmPassword" placeholder="Confirm Password" required minlength="6">
           <div id="password-warning" class="text-danger mt-1" style="display:none;font-size:0.97rem;"></div>
         </div>
-        <button type="submit" class="btn btn-soft-orange" name="signup">Sign Up</button>
+        <div class="mb-3 form-check">
+          <input class="form-check-input" type="checkbox" value="1" id="agreeTerms" name="agree_terms">
+          <label class="form-check-label" for="agreeTerms">I have read and agree to the <a href="#" id="openTerms">Terms of Agreement and Privacy Policy</a></label>
+        </div>
+        <button type="submit" id="signupBtn" class="btn btn-soft-orange" name="signup" disabled>Sign Up</button>
       </form>
       <a href="login.php" class="login-link">Already have an account? Sign In</a>
     </div>
@@ -100,6 +108,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         </div>
       </div>
     </div>
+
+      <!-- Terms Modal -->
+      <div class="modal fade" id="termsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">NaiTsa Food Hub – Terms of Agreement</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted">Last Updated: <strong>[Insert Date]</strong></p>
+              <p>Welcome to NaiTsa Food Hub, a web and mobile-based ordering and delivery platform managed by NaiTsa Coffee Shop. By creating an account, placing an order, or using any part of our system (as a Customer, Driver, or Administrator), you agree to these Terms of Agreement. Please read carefully before using the service.</p>
+              <ol>
+                <li><strong>General Terms</strong><br>By accessing NaiTsa Food Hub, you confirm that you are at least 18 years old or have obtained parental/guardian consent. You agree to use the platform lawfully and refrain from fraudulent, abusive, or disruptive activities.</li>
+                <li><strong>Account Registration</strong><br>All users (customers and drivers) must register using accurate and complete information, including a valid email address. Users are responsible for keeping their account credentials secure. NaiTsa reserves the right to suspend or terminate any account found to be violating system policies or engaging in suspicious activities.</li>
+                <li><strong>Orders and Payments</strong><br>Orders can be placed through the NaiTsa Food Hub web or mobile app. Available payment options include Cash on Delivery (COD) and Gcash. Once an order is confirmed, changes or cancellations may not be accepted if preparation has started. Orders marked Paid are considered final and non-refundable unless there is a valid service error (e.g., wrong or missing item).</li>
+                <li><strong>Delivery Policy</strong><br>Drivers are assigned automatically or manually based on availability. Customers must ensure that their delivery address and contact details are correct. Delivery times may vary due to weather, traffic, or distance. Cash on Delivery payments must be settled upon delivery before the order is marked as completed.</li>
+                <li><strong>Driver Responsibilities</strong><br>Drivers must verify their identity through the system before activation. They are expected to handle deliveries safely, courteously, and in compliance with local traffic laws. Any form of tampering, misdelivery, or unreported incident may result in account suspension. Drivers must submit proof of delivery (including amount received, if applicable) within the app after each order.</li>
+                <li><strong>Refunds and Disputes</strong><br>Refunds are only processed for incorrect or missing items verified by NaiTsa’s support team. Disputes or complaints should be reported within 24 hours after delivery.</li>
+                <li><strong>Data Privacy</strong><br>Personal data collected through the system (name, contact info, delivery address, payment details) will be used strictly for order processing and improving services. NaiTsa will not sell or share user data with third parties without consent. For full details, please refer to our Privacy Policy.</li>
+                <li><strong>Intellectual Property</strong><br>All logos, trademarks, and content displayed in NaiTsa Food Hub (including its website and mobile app design) are the exclusive property of NaiTsa Coffee Shop. Unauthorized copying or use is strictly prohibited.</li>
+                <li><strong>System Usage and Restrictions</strong><br>Users must not attempt to bypass security, manipulate system data, or engage in fraudulent transactions. NaiTsa reserves the right to suspend or restrict access for violations of this agreement. The system may experience maintenance downtime; NaiTsa is not liable for service interruptions beyond its control.</li>
+                <li><strong>Limitation of Liability</strong><br>NaiTsa Coffee Shop and its developers shall not be held responsible for losses resulting from delayed deliveries due to unforeseen circumstances, incorrect input of order or address information, or system errors caused by third-party services.</li>
+                <li><strong>Updates to Terms</strong><br>NaiTsa reserves the right to modify or update these Terms at any time. Continued use of the system after updates constitutes acceptance of the new terms.</li>
+                <li><strong>Contact Information</strong><br>For concerns or support, contact us through: Email: [Insert Email Address], Phone: [Insert Contact Number], Address: NaiTsa Coffee Shop, [Insert Address].</li>
+              </ol>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" id="agreeTermsBtn" class="btn btn-primary">I Agree</button>
+            </div>
+          </div>
+        </div>
+      </div>
   </div>
 
   <?= $sweetAlertConfig ?>
@@ -281,6 +323,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
       vm.resendEl.onclick = (e) => { e.preventDefault(); vm.send(window.__POST_SIGNUP_EMAIL__, window.__POST_SIGNUP_NAME__); };
     }
   </script>
+
+    <script>
+      // Terms checkbox wiring
+      (function(){
+        const agree = document.getElementById('agreeTerms');
+        const signupBtn = document.getElementById('signupBtn');
+        const openTerms = document.getElementById('openTerms');
+        const termsModal = new bootstrap.Modal(document.getElementById('termsModal'));
+        const agreeBtn = document.getElementById('agreeTermsBtn');
+        if (agree && signupBtn) {
+          agree.addEventListener('change', function(){ signupBtn.disabled = !this.checked; });
+        }
+        if (openTerms) {
+          openTerms.addEventListener('click', function(e){ e.preventDefault(); termsModal.show(); });
+        }
+        if (agreeBtn) {
+          agreeBtn.addEventListener('click', function(){
+            if (agree) { agree.checked = true; signupBtn.disabled = false; }
+            termsModal.hide();
+          });
+        }
+      })();
+    </script>
 
   
 
