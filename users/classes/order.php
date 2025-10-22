@@ -27,23 +27,6 @@ class Order {
 
         if (!$order_id) return false;
 
-        // Send notification to admin about new order (best-effort)
-        try {
-            // Lazy-load mail helper relative to project root
-            $mailerPath = __DIR__ . '/../../utils/mailer.php';
-            if (is_file($mailerPath)) {
-                require_once $mailerPath;
-                // Build a tiny summary for the email
-                $summary = [
-                    'amount' => $total,
-                    'customer_email' => $data['customer_email'] ?? null,
-                    'items' => array_map(function($it){ return ['name'=>$it['name'] ?? ($it['Product_Name'] ?? 'Item'), 'qty'=>$it['qty'] ?? ($it['Quantity'] ?? 1)]; }, $data['cart'] ?? [])
-                ];
-                // Ignore return value (don't block order flow on mail failures)
-                try { send_new_order_email((int)$order_id, $summary); } catch(Throwable $_) { }
-            }
-        } catch (Throwable $_) { /* ignore mail errors */ }
-
         // Insert order items
         foreach ($data['cart'] as $item) {
             $product_id = $this->getProductIdByName($item['name']);
