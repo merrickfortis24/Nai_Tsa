@@ -469,7 +469,7 @@ try {
             <div class="card" style="border-radius:12px;">
               <div class="card-body text-center">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="small text-muted">Scan to Pay (GCash) — Debug</span>
+                  <span class="small text-muted">Scan to Pay (GCash)</span>
                   <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
                 </div>
                 <div id="qrWrap">
@@ -479,7 +479,6 @@ try {
                   GCash number: <strong id="gcashNumber">09672556259</strong>
                   <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
                 </div>
-                <div class="form-text mt-1">For testing only — showing QR does not change your selected payment method.</div>
               </div>
             </div>
           </div>
