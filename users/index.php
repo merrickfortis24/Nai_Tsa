@@ -108,7 +108,8 @@ try {
             <a class="nav-link" href="#contact">Contact</a>
           </li>
         </ul>
-        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
+    <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
+      <span class="navbar-right-text me-lg-3">OPEN 10:00 AM TO 12 AM</span>
   <!-- Search Bar -->
   <form id="menuSearchForm" class="d-flex align-items-center me-2" role="search" autocomplete="off" style="min-width:180px;">
     <input class="form-control form-control-sm" type="search" placeholder="Search menu..." aria-label="Search" id="menuSearchInput" style="min-width:140px;">
@@ -1496,6 +1497,19 @@ document.getElementById('paymentForm').addEventListener('submit', async function
               } else { updateOrdersBadgeFromCache(); }
           }})
           .catch(()=>{});
+        // Fire-and-forget: notify admin backend to send email about this new order
+        try {
+          if (data && data.order_id) {
+            fetch('ajax/notify_new_order.php', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ order_id: data.order_id })
+            }).then(r => {
+              if (!r.ok) return r.text().then(t => console.warn('notify backend responded non-OK', r.status, t));
+              return r.json().then(j => { if (!j.success) console.warn('notify backend error', j); });
+            }).catch(e => console.warn('notify request failed', e));
+          }
+        } catch (e) { console.warn('notify fire-and-forget error', e); }
       });
   } else {
       Swal.fire({

@@ -30,11 +30,28 @@ class database {
 
     // (Email verification columns ensured manually via SQL migration)
 
-    function addCustomer($name, $email, $password) {
+    /**
+     * Add a customer. Optionally provide a terms_accepted_at timestamp string
+     * If $termsAcceptedAt is null, the column will be left NULL.
+     *
+     * @param string $name
+     * @param string $email
+     * @param string $password
+     * @param string|null $termsAcceptedAt  SQL timestamp string or null
+     * @return bool
+     */
+    function addCustomer($name, $email, $password, $termsAcceptedAt = null) {
         $con = $this->opencon();
-        $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, ?, ?)");
-        $hashed = password_hash($password, PASSWORD_BCRYPT);
-        return $stmt->execute([$name, $email, $hashed]);
+        if ($termsAcceptedAt === null) {
+            $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password) VALUES (?, ?, ?)");
+            $hashed = password_hash($password, PASSWORD_BCRYPT);
+            return $stmt->execute([$name, $email, $hashed]);
+        } else {
+            // Use explicit column for terms_accepted_at. Expect caller to pass a SQL timestamp string (e.g. date('Y-m-d H:i:s'))
+            $stmt = $con->prepare("INSERT INTO customer (Customer_Name, Customer_Email, Customer_Password, terms_accepted_at) VALUES (?, ?, ?, ?)");
+            $hashed = password_hash($password, PASSWORD_BCRYPT);
+            return $stmt->execute([$name, $email, $hashed, $termsAcceptedAt]);
+        }
     }
 
     function checkEmailExists($email) {
@@ -45,11 +62,26 @@ class database {
     }
 
     // New: Register customer with duplicate check
-    function registerCustomer($name, $email, $password) {
+    /**
+     * Register a customer with duplicate check. If $termsAccepted is true,
+     * store the current timestamp in terms_accepted_at.
+     *
+     * @param string $name
+     * @param string $email
+     * @param string $password
+     * @param bool $termsAccepted
+     * @return true|string  true on success or error message string
+     */
+    function registerCustomer($name, $email, $password, $termsAccepted = false) {
         if ($this->checkEmailExists($email)) {
             return "Email already registered!";
         }
-        $success = $this->addCustomer($name, $email, $password);
+        $termsTs = null;
+        if ($termsAccepted) {
+            // Use server time, formatted for MySQL TIMESTAMP
+            $termsTs = date('Y-m-d H:i:s');
+        }
+        $success = $this->addCustomer($name, $email, $password, $termsTs);
         if ($success) {
             return true;
         } else {
