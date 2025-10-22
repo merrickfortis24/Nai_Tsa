@@ -505,6 +505,9 @@ function createPasswordResetToken($email) {
     // Add delivery fee to total
     $total_with_fee = $total + $delivery_fee;
 
+    // Assigned driver id placeholder (ensure defined for return payload)
+    $assignedDriverId = null;
+
     // 3. Insert order (normalized schema: address & delivery stored in separate tables)
     $dbOrderType = (strcasecmp($orderType, 'Pick Up') === 0) ? 'Pickup' : 'Delivery';
     // Minimal orders columns now: Order_Amount, Customer_ID, order_type (if exists), order_status
@@ -594,6 +597,8 @@ function createPasswordResetToken($email) {
                 if ($chosen) {
                     $as = $con->prepare("UPDATE orders SET Driver_ID=? WHERE Order_ID=?");
                     $as->execute([$chosen, $order_id]);
+                    // store chosen driver id for response
+                    $assignedDriverId = (int)$chosen;
                 }
             }
         } catch (Throwable $e) { /* swallow auto-assign failures */ }
