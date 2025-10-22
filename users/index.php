@@ -135,7 +135,7 @@ try {
           <div class="text-center mb-3">
             <div class="fw-semibold mb-1">Send payment to:</div>
             <div class="mb-2"><span class="badge bg-soft-orange text-dark">09940780881</span></div>
-            <img id="retryGcashQr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
+            <img id="retryGcashQr" src="assets/gcash_QR.jpg" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" onerror="this.onerror=null;this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881';" />
             <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
           </div>
           <div class="mb-2"><label class="form-label">GCash Reference Number</label>
@@ -459,7 +459,7 @@ try {
                 <div style="min-width:240px;">
                   <div class="card" style="border-radius:12px;">
                     <div class="card-body text-center">
-                      <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                      <img id="gcashQrImg" src="assets/gcash_QR.jpg" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;" onerror="this.onerror=null;this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259';"/>
                     </div>
                   </div>
                 </div>
