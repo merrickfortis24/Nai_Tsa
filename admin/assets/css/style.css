@@ -281,6 +281,12 @@
     }
 }
 
+/* Defensive desktop rules: ensure main content uses remaining width and tables can scroll */
+@media (min-width: 768px) {
+    .main-content { max-width: none !important; }
+    .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
 /* Ensure bootstrap icons render correctly inside the offcanvas */
 @media (max-width: 767.98px) {
         .offcanvas .sidebar .bi,
@@ -327,15 +333,20 @@
                 z-index: 1030; /* keep sidebar above main content/header */
             }
 
-            /* Push main content to the right so it sits next to the fixed sidebar */
+            /* Push main content to the right so it sits next to the fixed sidebar.
+               Also constrain its width to remaining viewport to avoid clipping. */
             .main-content {
                 margin-left: 260px;
                 padding: 20px;
+                box-sizing: border-box;
+                width: calc(100% - 260px);
+                max-width: calc(100% - 260px);
             }
         }
 
-        /* Safe fallback to prevent horizontal scroll when offcanvas is open */
-        body { overflow-x: hidden; }
+        /* Allow horizontal scrolling where needed; hiding overflow can clip content
+           on desktop when a fixed sidebar is used (Windows UAs). */
+        body { overflow-x: auto; }
         
         .header {
             background: white;
