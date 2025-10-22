@@ -33,11 +33,6 @@ try {
     exit;
   }
 
-  // Normalize payload: accept either 'items' or legacy 'cart'
-  if (isset($data['items']) && !isset($data['cart'])) {
-    $data['cart'] = $data['items'];
-  }
-
   // If debug=1 requested, save last payload for inspection (safe in temp dir)
   $isDebugReq = isset($_GET['debug']) && in_array((string)$_GET['debug'], ['1','true','on'], true);
   if ($isDebugReq) {
@@ -46,15 +41,13 @@ try {
     @file_put_contents($tmpDir . '/last_payload.json', json_encode([
       'time' => date('c'),
       'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
-      'payload' => $data,
-      'cart' => $data['cart'] ?? null,
-      'items' => $data['items'] ?? null
+      'payload' => $data
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
   }
 
   // Basic payload validation to fail early with a clear message
   $missing = [];
-  if ((!isset($data['items']) || !is_array($data['items'])) && (!isset($data['cart']) || !is_array($data['cart']))) { $missing[] = 'items or cart (array)'; }
+  if (!isset($data['items']) || !is_array($data['items'])) { $missing[] = 'items (array)'; }
   if (!isset($data['paymentMethod']) || !is_string($data['paymentMethod'])) { $missing[] = 'paymentMethod (string)'; }
   if (!isset($data['orderType']) || !is_string($data['orderType'])) { $missing[] = 'orderType (string)'; }
   if (!isset($data['total'])) { $missing[] = 'total'; }

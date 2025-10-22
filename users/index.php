@@ -1441,42 +1441,22 @@ document.getElementById('paymentForm').addEventListener('submit', async function
   }
 
   // Send data to PHP (non-GCash flows)
-  // Build items array matching server expectations and include total
-  const itemsPayload = Array.isArray(cart) ? cart.map(it => ({
-    product_id: it.id ?? it.productId ?? it.Product_ID ?? null,
-    name: it.name ?? it.productName ?? it.Product_Name ?? null,
-    qty: Number(it.qty ?? it.quantity ?? 1),
-    price: Number(it.unitPrice ?? it.price ?? it.final || 0),
-    size: it.size ?? null,
-    addons: it.addons || []
-  })) : [];
-  const totalVal = Number((summary.totalEl && summary.totalEl.textContent) ? String(summary.totalEl.textContent).replace(/[^0-9.]/g,'') : (window.__calculatedTotal || 0)) || 0;
-
-  let rawResp;
-  try {
-    const orderRes = await fetch('ajax/checkout_process.php', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        items: itemsPayload,
-        orderType,
-        paymentMethod,
-        total: totalVal,
-        street,
-        barangay,
-        city,
-        contact,
-        lat,
-        lng
-      })
-    });
-    rawResp = await orderRes.text();
-  } catch (err) {
-    console.error('Checkout network error', err);
-    Swal.fire({icon:'error', title:'Order Failed', text:'Network error while placing order. Please try again.', confirmButtonColor:'#FFB27A'});
-    return;
-  }
+  const orderRes = await fetch('ajax/checkout_process.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      orderType,
+      paymentMethod,
+      street,
+      barangay,
+      city,
+      contact,
+      lat,
+      lng,
+      cart
+    })
+  });
+  const rawResp = await orderRes.text();
   let data;
   try { data = JSON.parse(rawResp); } catch(e) {
     Swal.fire({icon:'error', title:'Order Failed', text:'Invalid server response: ' + rawResp, confirmButtonColor:'#FFB27A'});
