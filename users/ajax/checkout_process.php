@@ -33,6 +33,30 @@ try {
     exit;
   }
 
+  // If debug=1 requested, save last payload for inspection (safe in temp dir)
+  $isDebugReq = isset($_GET['debug']) && in_array((string)$_GET['debug'], ['1','true','on'], true);
+  if ($isDebugReq) {
+    $tmpDir = __DIR__ . '/tmp';
+    if (!is_dir($tmpDir)) { @mkdir($tmpDir, 0755, true); }
+    @file_put_contents($tmpDir . '/last_payload.json', json_encode([
+      'time' => date('c'),
+      'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
+      'payload' => $data
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+  }
+
+  // Basic payload validation to fail early with a clear message
+  $missing = [];
+  if (!isset($data['items']) || !is_array($data['items'])) { $missing[] = 'items (array)'; }
+  if (!isset($data['paymentMethod']) || !is_string($data['paymentMethod'])) { $missing[] = 'paymentMethod (string)'; }
+  if (!isset($data['orderType']) || !is_string($data['orderType'])) { $missing[] = 'orderType (string)'; }
+  if (!isset($data['total'])) { $missing[] = 'total'; }
+  if (!empty($missing)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Missing or invalid fields', 'fields' => $missing]);
+    exit;
+  }
+
   if (!isset($_SESSION['customer_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -40,9 +64,28 @@ try {
   }
 
   $customer_name = $_SESSION['customer_name'] ?? 'Guest';
-  $db = new database();
 
-  $result = $db->processCheckout($data, $customer_name);
+  // Call processCheckout and guard against exceptions so we can log payload + trace
+  try {
+    $db = new database();
+    $result = $db->processCheckout($data, $customer_name);
+  } catch (Throwable $inner) {
+    // Log the payload and inner exception for diagnosis
+    $tmpDir = __DIR__ . '/tmp';
+    if (!is_dir($tmpDir)) { @mkdir($tmpDir, 0755, true); }
+    $dumpFile = $tmpDir . '/process_error_' . time() . '.log';
+    $dump = date('c') . " | processCheckout exception: " . $inner->getMessage() . "\nTrace:\n" . $inner->getTraceAsString() . "\nPayload:\n" . json_encode($data) . "\n---\n";
+    @file_put_contents($dumpFile, $dump, FILE_APPEND | LOCK_EX);
+    http_response_code(500);
+    $resp = ['success' => false, 'message' => 'Server error during checkout (processing)'];
+    if ($isDebugReq) {
+      $resp['error'] = $inner->getMessage();
+      $resp['trace'] = $inner->getTraceAsString();
+      $resp['dump_file'] = str_replace($_SERVER['DOCUMENT_ROOT'] ?? '', '', $dumpFile);
+    }
+    echo json_encode($resp);
+    exit;
+  }
 
   // Guarantee success flag presence
   if (!isset($result['success'])) {
