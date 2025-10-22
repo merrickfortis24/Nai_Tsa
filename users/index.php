@@ -108,8 +108,7 @@ try {
             <a class="nav-link" href="#contact">Contact</a>
           </li>
         </ul>
-    <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
-      <span class="navbar-right-text me-lg-3">OPEN 10:00 AM TO 12 AM</span>
+        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
   <!-- Search Bar -->
   <form id="menuSearchForm" class="d-flex align-items-center me-2" role="search" autocomplete="off" style="min-width:180px;">
     <input class="form-control form-control-sm" type="search" placeholder="Search menu..." aria-label="Search" id="menuSearchInput" style="min-width:140px;">

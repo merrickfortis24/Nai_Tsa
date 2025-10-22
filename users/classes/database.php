@@ -716,15 +716,17 @@ function createPasswordResetToken($email) {
         error_log('[processCheckout] mailer exception for order ' . intval($order_id) . ' : ' . $e->getMessage());
     }
 
-    return [
+    // Hardened response: ensure all fields exist and use safe default values/types
+    $resp = [
         'success' => true,
-        'order_id' => (int)$order_id,
-        'delivery_fee' => $delivery_fee,
-        'amount' => $total_with_fee,
-        'distance_km' => $distance_km,
-        'assigned_driver' => $assignedDriverId,
-        'order_type' => $dbOrderType
+        'order_id' => isset($order_id) ? (int)$order_id : 0,
+        'delivery_fee' => isset($delivery_fee) ? (float)$delivery_fee : 0.0,
+        'amount' => isset($total_with_fee) ? (float)$total_with_fee : 0.0,
+        'distance_km' => isset($distance_km) && $distance_km !== null ? (float)$distance_km : null,
+        'assigned_driver' => isset($assignedDriverId) ? (int)$assignedDriverId : null,
+        'order_type' => isset($dbOrderType) ? (string)$dbOrderType : 'Pickup'
     ];
+    return $resp;
 }
 
 public function getRecommendedProducts($customer_id, $limit = 4) {
