@@ -133,11 +133,11 @@ try {
         <div class="modal-body">
           <div class="text-center mb-3">
             <div class="fw-semibold mb-1">Send payment to:</div>
-            <div class="mb-2"><span class="badge bg-soft-orange text-dark">09940780881</span></div>
-            <img id="retryGcashQr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
+            <div class="mb-2"><span class="badge bg-soft-orange text-dark">09672556259</span></div>
+            <img id="retryGcashQr" src="assets/gcash_QR.jpg" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
             <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
           </div>
-          <div class="mb-2"><label class="form-label">GCash Reference Number</label>
+            <div class="mb-2"><label class="form-label">GCash Reference Number</label>
             <input type="text" class="form-control" name="ref_number" id="retry_ref_number" required /></div>
           <div class="mb-2"><label class="form-label">Amount</label>
             <input type="number" step="0.01" min="0.01" class="form-control" name="amount" id="retry_amount" required /></div>
@@ -473,7 +473,7 @@ try {
                   <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
                 </div>
                 <div id="qrWrap">
-                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                  <img id="gcashQrImg" src="users/assets/gcash_QR.jpg" alt="GCash QR" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
                 </div>
                 <div class="mt-2 small">
                   GCash number: <strong id="gcashNumber">09672556259</strong>
@@ -639,6 +639,12 @@ try {
           toggleBtn.textContent = hidden ? 'Hide' : 'Show';
         });
       }
+      // Set initial visibility of QR block depending on selected payment method
+      try {
+        const sel = document.querySelector('input[name="paymentMethod"]:checked');
+        const qrBlock = document.getElementById('qrDebugBlock');
+        if (qrBlock) qrBlock.style.display = (sel && sel.value === 'GCash') ? 'block' : 'none';
+      } catch(e) {}
     })();
     // Smooth scroll and highlight active nav
     document.querySelectorAll('.nav-link').forEach(function(link) {
@@ -975,8 +981,10 @@ document.querySelectorAll('input[name="orderType"]').forEach(function(radio) {
 // Show/hide payment fields based on payment method
 document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
   radio.addEventListener('change', function() {
-    const gf = document.getElementById('gcashFields');
-    if (gf) gf.style.display = this.value === 'GCash' ? 'block' : 'none';
+  const gf = document.getElementById('gcashFields');
+  if (gf) gf.style.display = this.value === 'GCash' ? 'block' : 'none';
+  const qrBlock = document.getElementById('qrDebugBlock');
+  if (qrBlock) qrBlock.style.display = this.value === 'GCash' ? 'block' : 'none';
     // If user selected GCash, prefill the GCash amount with the computed total
     if (this.value === 'GCash'){
       try{
