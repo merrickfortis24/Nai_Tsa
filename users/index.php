@@ -452,11 +452,7 @@ try {
             </div>
             <div id="gcashFields" class="mt-2" style="display:none;">
               <div class="alert alert-info mb-2" role="status" aria-live="polite" style="font-size:0.95rem;">
-                Transfer payment to <strong>09940780881</strong>, then upload your receipt image and enter the GCash Reference Number. Your order will be processed after admin verification.
-              </div>
-              <div class="mb-2">
-                <label class="form-label">GCash Reference Number</label>
-                <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234 5678 9012">
+                Transfer payment to <strong>09672556259</strong>, then upload your receipt image. Your order will be processed after admin verification.
               </div>
               <div class="mb-2">
                 <label class="form-label">Amount Paid (₱)</label>
@@ -477,10 +473,10 @@ try {
                   <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
                 </div>
                 <div id="qrWrap">
-                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR Code for 09940780881" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
                 </div>
                 <div class="mt-2 small">
-                  GCash number: <strong id="gcashNumber">09940780881</strong>
+                  GCash number: <strong id="gcashNumber">09672556259</strong>
                   <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
                 </div>
                 <div class="form-text mt-1">For testing only — showing QR does not change your selected payment method.</div>
@@ -1428,13 +1424,12 @@ document.getElementById('paymentForm').addEventListener('submit', async function
       size: it.size || '16oz'
     }))
   };
-  // If GCash selected, ensure local fields are provided (reference, amount, file)
+  // If GCash selected, ensure local fields are provided (amount and file)
   if (paymentMethod === 'GCash') {
-    const ref = document.getElementById('gcashRef')?.value?.trim();
     const amt = parseFloat(document.getElementById('gcashAmt')?.value || '0');
     const file = document.getElementById('gcashFile')?.files?.[0];
-    if (!ref || !(amt > 0) || !file) {
-      Swal.fire({icon:'warning', title:'GCash details required', text:'Enter the reference number, amount, and upload the receipt image.', confirmButtonColor:'#FFB27A'});
+    if (!(amt > 0) || !file) {
+      Swal.fire({icon:'warning', title:'GCash details required', text:'Enter the amount paid and upload the receipt image.', confirmButtonColor:'#FFB27A'});
       return;
     }
   }
@@ -1466,7 +1461,6 @@ document.getElementById('paymentForm').addEventListener('submit', async function
     try {
       const fd = new FormData();
       fd.append('order_id', String(data.order_id||''));
-      fd.append('ref_number', document.getElementById('gcashRef').value.trim());
       fd.append('amount', document.getElementById('gcashAmt').value.trim());
       fd.append('receipt', document.getElementById('gcashFile').files[0]);
       const up = await fetch('ajax/upload_gcash_receipt.php', { method:'POST', body: fd });
