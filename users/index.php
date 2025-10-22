@@ -472,7 +472,7 @@ try {
                     <label class="form-label">Upload Receipt Image</label>
                     <input type="file" accept="image/*" class="form-control" id="gcashFile">
                   </div>
-                  <div class="small text-muted">GCash number: <strong id="gcashNumber">09672556259</strong>
+                  <div class="small text-muted">GCash number: <strong id="gcashNumber" role="button" tabindex="0" title="Click to copy" style="cursor:pointer;">09672556259</strong>
                     <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
                   </div>
                 </div>
@@ -620,12 +620,29 @@ try {
     (function(){
       const copyBtn = document.getElementById('copyGcashBtn');
       const numEl = document.getElementById('gcashNumber');
-      if(copyBtn && numEl){
-        copyBtn.addEventListener('click', async ()=>{
-          try { await navigator.clipboard.writeText(numEl.textContent.trim());
-            if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
-          } catch(e){}
-        });
+      async function doCopy(){
+        if(!numEl) return;
+        const txt = numEl.textContent.trim();
+        try{
+          await navigator.clipboard.writeText(txt);
+          // visual feedback
+          if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
+          if(copyBtn){
+            const orig = copyBtn.textContent;
+            copyBtn.textContent = 'Copied';
+            copyBtn.disabled = true;
+            setTimeout(()=>{ copyBtn.textContent = orig; copyBtn.disabled = false; }, 1200);
+          }
+        }catch(e){
+          if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1800, showConfirmButton:false, icon:'error', title:'Copy failed'}); }
+        }
+      }
+      if(copyBtn){ copyBtn.addEventListener('click', doCopy); }
+      if(numEl){
+        // Click to copy
+        numEl.addEventListener('click', doCopy);
+        // Keyboard accessibility (Enter / Space)
+        numEl.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); doCopy(); } });
       }
     })();
     // Smooth scroll and highlight active nav
