@@ -452,41 +452,34 @@ try {
             </div>
             <div id="gcashFields" class="mt-2" style="display:none;">
               <div class="alert alert-info mb-2" role="status" aria-live="polite" style="font-size:0.95rem;">
-                Transfer payment to <strong>09940780881</strong>, then upload your receipt image and enter the GCash Reference Number. Your order will be processed after admin verification.
+                Transfer payment to <strong>09672556259</strong>, then upload your receipt image and (optionally) enter the amount paid. Your order will be processed after admin verification.
               </div>
-              <div class="mb-2">
-                <label class="form-label">GCash Reference Number</label>
-                <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234 5678 9012">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Amount Paid (₱)</label>
-                <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Upload Receipt Image</label>
-                <input type="file" accept="image/*" class="form-control" id="gcashFile">
+              <div class="mb-2 d-flex gap-3 align-items-center flex-column flex-sm-row">
+                <div style="min-width:240px;">
+                  <div class="card" style="border-radius:12px;">
+                    <div class="card-body text-center">
+                      <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                    </div>
+                  </div>
+                </div>
+                <div style="flex:1; min-width:220px;">
+                  <div class="mb-2">
+                    <label class="form-label">Amount Paid (₱) <small class="text-muted">(optional)</small></label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Upload Receipt Image</label>
+                    <input type="file" accept="image/*" class="form-control" id="gcashFile">
+                  </div>
+                  <div class="small text-muted">GCash number: <strong id="gcashNumber">09672556259</strong>
+                    <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <!-- Debug QR: show a scannable GCash QR at checkout -->
-          <div class="mb-3" id="qrDebugBlock">
-            <div class="card" style="border-radius:12px;">
-              <div class="card-body text-center">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="small text-muted">Scan to Pay (GCash) — Debug</span>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
-                </div>
-                <div id="qrWrap">
-                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR Code for 09940780881" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
-                </div>
-                <div class="mt-2 small">
-                  GCash number: <strong id="gcashNumber">09940780881</strong>
-                  <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
-                </div>
-                <div class="form-text mt-1">For testing only — showing QR does not change your selected payment method.</div>
-              </div>
-            </div>
-          </div>
+          <!-- QR block is now handled inside gcashFields and only shown when GCash is selected -->
           <!-- Order Summary -->
           <div id="orderSummary" class="card" style="border-radius:12px;">
             <div class="card-body py-2">
@@ -622,25 +615,15 @@ try {
   <!-- Leaflet JS for map picker -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-    // QR (debug) helpers
+    // QR copy helper (only copy button present now)
     (function(){
       const copyBtn = document.getElementById('copyGcashBtn');
       const numEl = document.getElementById('gcashNumber');
-      const toggleBtn = document.getElementById('toggleQrBtn');
-      const wrap = document.getElementById('qrWrap');
       if(copyBtn && numEl){
         copyBtn.addEventListener('click', async ()=>{
           try { await navigator.clipboard.writeText(numEl.textContent.trim());
-            // lightweight toast via SweetAlert2
             if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
           } catch(e){}
-        });
-      }
-      if(toggleBtn && wrap){
-        toggleBtn.addEventListener('click', ()=>{
-          const hidden = wrap.style.display === 'none';
-          wrap.style.display = hidden ? 'block' : 'none';
-          toggleBtn.textContent = hidden ? 'Hide' : 'Show';
         });
       }
     })();
