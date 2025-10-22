@@ -81,18 +81,6 @@ try {
   </style>
   <!-- Leaflet CSS for interactive map picker -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <!-- Shorter dropdowns for order lists: constrain height but keep selected item visible -->
-  <style>
-    /* Limit dropdown height and enable smooth scrolling for long lists in order dropdowns */
-    .order-dropdown-menu {
-      max-height: 220px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    /* Subtle scrollbar styling for WebKit browsers */
-    .order-dropdown-menu::-webkit-scrollbar { width: 8px; }
-    .order-dropdown-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
-  </style>
 </head>
 <body>
   <div class="bg-fixed" aria-hidden="true"></div>
@@ -120,8 +108,7 @@ try {
             <a class="nav-link" href="#contact">Contact</a>
           </li>
         </ul>
-    <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
-      <span class="navbar-right-text me-lg-3">OPEN 10:00 AM TO 12 AM</span>
+        <div class="d-flex align-items-center ms-lg-auto flex-column flex-lg-row gap-2 gap-lg-0">
   <!-- Search Bar -->
   <form id="menuSearchForm" class="d-flex align-items-center me-2" role="search" autocomplete="off" style="min-width:180px;">
     <input class="form-control form-control-sm" type="search" placeholder="Search menu..." aria-label="Search" id="menuSearchInput" style="min-width:140px;">
@@ -147,7 +134,7 @@ try {
           <div class="text-center mb-3">
             <div class="fw-semibold mb-1">Send payment to:</div>
             <div class="mb-2"><span class="badge bg-soft-orange text-dark">09940780881</span></div>
-            <img id="retryGcashQr" src="assets/gcash_QR.jpg" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" onerror="this.onerror=null;this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881';" />
+            <img id="retryGcashQr" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR" style="width:160px;height:160px;border-radius:8px;border:1px solid #eee;" />
             <div class="form-text mt-1">Scan QR or copy number to pay via GCash.</div>
           </div>
           <div class="mb-2"><label class="form-label">GCash Reference Number</label>
@@ -465,34 +452,41 @@ try {
             </div>
             <div id="gcashFields" class="mt-2" style="display:none;">
               <div class="alert alert-info mb-2" role="status" aria-live="polite" style="font-size:0.95rem;">
-                Transfer payment to <strong>09672556259</strong>, then upload your receipt image and (optionally) enter the amount paid. Your order will be processed after admin verification.
+                Transfer payment to <strong>09940780881</strong>, then upload your receipt image and enter the GCash Reference Number. Your order will be processed after admin verification.
               </div>
-              <div class="mb-2 d-flex gap-3 align-items-center flex-column flex-sm-row">
-                <div style="min-width:240px;">
-                  <div class="card" style="border-radius:12px;">
-                    <div class="card-body text-center">
-                      <img id="gcashQrImg" src="assets/gcash_QR.jpg" alt="GCash QR Code for 09672556259" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;" onerror="this.onerror=null;this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09672556259';"/>
-                    </div>
-                  </div>
-                </div>
-                <div style="flex:1; min-width:220px;">
-                  <div class="mb-2">
-                    <label class="form-label">Amount Paid (₱) <small class="text-muted">(optional)</small></label>
-                    <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Upload Receipt Image</label>
-                    <input type="file" accept="image/*" class="form-control" id="gcashFile">
-                  </div>
-                  <div class="small text-muted">GCash number: <strong id="gcashNumber" role="button" tabindex="0" title="Click to copy" style="cursor:pointer;">09672556259</strong>
-                    <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
-                  </div>
-                </div>
+              <div class="mb-2">
+                <label class="form-label">GCash Reference Number</label>
+                <input type="text" class="form-control" id="gcashRef" placeholder="e.g. 1234 5678 9012">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Amount Paid (₱)</label>
+                <input type="number" step="0.01" min="0" class="form-control" id="gcashAmt" placeholder="0.00">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Upload Receipt Image</label>
+                <input type="file" accept="image/*" class="form-control" id="gcashFile">
               </div>
             </div>
           </div>
           <!-- Debug QR: show a scannable GCash QR at checkout -->
-          <!-- QR block is now handled inside gcashFields and only shown when GCash is selected -->
+          <div class="mb-3" id="qrDebugBlock">
+            <div class="card" style="border-radius:12px;">
+              <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="small text-muted">Scan to Pay (GCash) — Debug</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleQrBtn">Hide</button>
+                </div>
+                <div id="qrWrap">
+                  <img id="gcashQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=09940780881" alt="GCash QR Code for 09940780881" style="width:240px;height:240px;image-rendering:pixelated;border-radius:8px;border:1px solid #eee;"/>
+                </div>
+                <div class="mt-2 small">
+                  GCash number: <strong id="gcashNumber">09940780881</strong>
+                  <button type="button" class="btn btn-sm btn-soft-orange ms-2" id="copyGcashBtn">Copy</button>
+                </div>
+                <div class="form-text mt-1">For testing only — showing QR does not change your selected payment method.</div>
+              </div>
+            </div>
+          </div>
           <!-- Order Summary -->
           <div id="orderSummary" class="card" style="border-radius:12px;">
             <div class="card-body py-2">
@@ -628,33 +622,26 @@ try {
   <!-- Leaflet JS for map picker -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-    // QR copy helper (only copy button present now)
+    // QR (debug) helpers
     (function(){
       const copyBtn = document.getElementById('copyGcashBtn');
       const numEl = document.getElementById('gcashNumber');
-      async function doCopy(){
-        if(!numEl) return;
-        const txt = numEl.textContent.trim();
-        try{
-          await navigator.clipboard.writeText(txt);
-          // visual feedback
-          if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
-          if(copyBtn){
-            const orig = copyBtn.textContent;
-            copyBtn.textContent = 'Copied';
-            copyBtn.disabled = true;
-            setTimeout(()=>{ copyBtn.textContent = orig; copyBtn.disabled = false; }, 1200);
-          }
-        }catch(e){
-          if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1800, showConfirmButton:false, icon:'error', title:'Copy failed'}); }
-        }
+      const toggleBtn = document.getElementById('toggleQrBtn');
+      const wrap = document.getElementById('qrWrap');
+      if(copyBtn && numEl){
+        copyBtn.addEventListener('click', async ()=>{
+          try { await navigator.clipboard.writeText(numEl.textContent.trim());
+            // lightweight toast via SweetAlert2
+            if(window.Swal){ Swal.fire({toast:true, position:'top-end', timer:1200, showConfirmButton:false, icon:'success', title:'Copied'}); }
+          } catch(e){}
+        });
       }
-      if(copyBtn){ copyBtn.addEventListener('click', doCopy); }
-      if(numEl){
-        // Click to copy
-        numEl.addEventListener('click', doCopy);
-        // Keyboard accessibility (Enter / Space)
-        numEl.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); doCopy(); } });
+      if(toggleBtn && wrap){
+        toggleBtn.addEventListener('click', ()=>{
+          const hidden = wrap.style.display === 'none';
+          wrap.style.display = hidden ? 'block' : 'none';
+          toggleBtn.textContent = hidden ? 'Hide' : 'Show';
+        });
       }
     })();
     // Smooth scroll and highlight active nav
@@ -1526,19 +1513,6 @@ document.getElementById('paymentForm').addEventListener('submit', async function
               } else { updateOrdersBadgeFromCache(); }
           }})
           .catch(()=>{});
-        // Fire-and-forget: notify admin backend to send email about this new order
-        try {
-          if (data && data.order_id) {
-            fetch('ajax/notify_new_order.php', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ order_id: data.order_id })
-            }).then(r => {
-              if (!r.ok) return r.text().then(t => console.warn('notify backend responded non-OK', r.status, t));
-              return r.json().then(j => { if (!j.success) console.warn('notify backend error', j); });
-            }).catch(e => console.warn('notify request failed', e));
-          }
-        } catch (e) { console.warn('notify fire-and-forget error', e); }
       });
   } else {
       Swal.fire({
@@ -3220,41 +3194,4 @@ async function openProductDetailsWithAddons(product){
   </script>
 
 </body>
-<script>
-  // Ensure when any Bootstrap dropdown opens, its selected/active item is scrolled into view
-  document.addEventListener('shown.bs.dropdown', function(ev){
-    try {
-      var toggle = ev.target;
-      // find the dropdown menu associated with the toggle
-      var menu = null;
-      if (toggle && typeof toggle.closest === 'function') {
-        var parent = toggle.closest('.dropdown');
-        if (parent) menu = parent.querySelector('.dropdown-menu');
-      }
-      // fallback: last visible menu
-      if (!menu) menu = document.querySelector('.dropdown-menu.show') || document.querySelector('.dropdown-menu');
-      if (!menu) return;
-      // mark the menu so it gets the constrained height
-      if (!menu.classList.contains('order-dropdown-menu')) menu.classList.add('order-dropdown-menu');
-
-      // Try to find a clearly selected item inside the menu
-      var sel = menu.querySelector('.active, .selected, [aria-current="true"], [aria-checked="true"]');
-      if (!sel) {
-        // also support <option selected> inside native selects rendered as dropdowns
-        sel = menu.querySelector('option[selected]');
-      }
-      if (sel) {
-        // Scroll so the selected element is fully visible with a small padding
-        var pad = 8;
-        var selTop = sel.offsetTop;
-        var selBottom = selTop + sel.offsetHeight;
-        if (menu.scrollTop > selTop - pad || (menu.scrollTop + menu.clientHeight) < (selBottom + pad)) {
-          menu.scrollTop = Math.max(0, selTop - pad);
-        }
-        // move focus for keyboard users if possible
-        try { sel.focus && sel.focus(); } catch(e){}
-      }
-    } catch(e) { /* silent */ }
-  });
-</script>
 </html>

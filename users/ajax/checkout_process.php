@@ -50,24 +50,6 @@ try {
   }
   echo json_encode($result);
 } catch (Throwable $e) {
-  // Attempt to log the exception to a file inside users/ajax for hosting
-  // environments where error_log may be disabled or inaccessible.
-  $logDir = __DIR__ . '/tmp';
-  if (!is_dir($logDir)) {
-    @mkdir($logDir, 0755, true);
-  }
-  $logFile = $logDir . '/checkout_error.log';
-  $logEntry = date('c') . " | Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n---\n";
-  @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
-
-  // If the request includes a debug=1 query param, return the error message
-  // and a hint (useful for debugging from DevTools). Otherwise return a
-  // minimal generic message to avoid leaking internals in production.
-  $isDebug = false;
-  if (isset($_GET['debug']) && in_array($_GET['debug'], ['1','true','on'], true)) {
-    $isDebug = true;
-  }
-
   http_response_code(500);
   $resp = ['success' => false, 'message' => 'Server error during checkout'];
   if ($isDebug) {
