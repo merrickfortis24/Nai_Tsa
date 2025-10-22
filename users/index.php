@@ -925,14 +925,12 @@ function haversineKm(lat1, lon1, lat2, lon2){
 }
 
 function computeDeliveryFee(distanceKm){
+  // Charge a flat rate per km as requested: ₱20 per kilometer.
+  // We round distance up to the next whole kilometer so partial kms are billed as the next km.
   if (!isFinite(distanceKm) || distanceKm <= 0) return 0;
-  // Tiered pricing: <=2km ₱29, <=5km ₱49, <=8km ₱69, <=12km ₱89, >12km => ₱99 + ₱8/km (ceil) beyond 12
-  if (distanceKm <= 2) return 29;
-  if (distanceKm <= 5) return 49;
-  if (distanceKm <= 8) return 69;
-  if (distanceKm <= 12) return 89;
-  const extra = Math.max(0, Math.ceil(distanceKm - 12));
-  return 99 + (8 * extra);
+  const perKm = 20; // ₱20 per km
+  const kms = Math.max(1, Math.ceil(distanceKm));
+  return perKm * kms;
 }
 
 // Rewritten (previous version malformed causing syntax error)

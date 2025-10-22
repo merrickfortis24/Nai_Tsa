@@ -483,22 +483,13 @@ function createPasswordResetToken($email) {
             $c = 2 * atan2(sqrt($a), sqrt(1-$a));
             $distance_km = $R * $c;
 
-            // Tiered pricing policy to match frontend
-            if ($distance_km <= 2) {
-                $delivery_fee = 29.0;
-            } elseif ($distance_km <= 5) {
-                $delivery_fee = 49.0;
-            } elseif ($distance_km <= 8) {
-                $delivery_fee = 69.0;
-            } elseif ($distance_km <= 12) {
-                $delivery_fee = 89.0;
-            } else {
-                $extra = max(0, ceil($distance_km - 12));
-                $delivery_fee = 99.0 + (8.0 * $extra);
-            }
+            // Flat per-kilometer pricing: ₱20 per km (round up partial kms to the next whole km)
+            $per_km = 20.0;
+            $kms = max(1, (int)ceil($distance_km));
+            $delivery_fee = $per_km * $kms;
         } else {
             // Fallback flat fee if no coords
-            $delivery_fee = 49.00;
+            $delivery_fee = 20.00;
         }
     }
 
