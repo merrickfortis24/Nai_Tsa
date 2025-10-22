@@ -517,11 +517,8 @@
         }
 
         @media (max-width: 768px) {
-            /* Hide the fixed sidebar on small screens but keep offcanvas visible */
-            .sidebar:not(.offcanvas) {
-                width: 0;
-                display: none;
-            }
+            /* Hide the fixed desktop sidebar on small screens; mobile uses the offcanvas sidebar */
+            .sidebar:not(.offcanvas) { display: none !important; }
         }
         
         @media (max-width: 576px) {

@@ -127,14 +127,14 @@ ksort($methods);
 </style>
 </head>
 <body class="dashboard-page">
+  <!-- Desktop fixed sidebar (keep it out of the Bootstrap grid so it doesn't reserve column space) -->
+  <div class="sidebar" id="sidebarCollapse">
+    <?php include 'sidebar.php'; ?>
+  </div>
 <div class="container-fluid">
   <div class="row">
-    <!-- Desktop sidebar (visible on md+) -->
-    <div class="col-md-2 col-lg-2 d-none d-md-block sidebar" id="sidebarCollapse">
-      <?php include 'sidebar.php'; ?>
-    </div>
     <!-- Offcanvas sidebar for small screens (moved to end of page) -->
-    <div class="col-md-10 col-lg-10 main-content">
+    <div class="col-12 main-content">
       <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
         <h4 class="fw-bold mb-0">Orders & Payments</h4>
         <!-- Sidebar toggle button for small screens (opens offcanvas) -->
