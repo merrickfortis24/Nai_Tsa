@@ -49,6 +49,18 @@ try {
   }
   echo json_encode($result);
 } catch (Throwable $e) {
+  // Ensure we log the exception (message + trace) and the raw request for diagnosis
+  try {
+    $logDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'logs'; // two levels up -> project root/logs
+    if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+    $logFile = $logDir . DIRECTORY_SEPARATOR . 'checkout_errors.log';
+    $now = date('Y-m-d H:i:s');
+    $raw = isset($raw) ? $raw : '(no raw body)';
+    $msg = "[{$now}] Checkout error: " . $e->getMessage() . "\nTrace:\n" . $e->getTraceAsString() . "\nRaw payload:\n" . substr($raw,0,2000) . "\n----\n";
+    @file_put_contents($logFile, $msg, FILE_APPEND | LOCK_EX);
+  } catch (Throwable $_) {
+    // swallow any logging errors to not mask original exception
+  }
   http_response_code(500);
   echo json_encode([
     'success' => false,
