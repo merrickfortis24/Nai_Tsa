@@ -119,7 +119,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              <p class="small text-muted">Last Updated: <strong>[Insert Date]</strong></p>
               <p>Welcome to NaiTsa Food Hub, a web and mobile-based ordering and delivery platform managed by NaiTsa Coffee Shop. By creating an account, placing an order, or using any part of our system (as a Customer, Driver, or Administrator), you agree to these Terms of Agreement. Please read carefully before using the service.</p>
               <ol>
                 <li><strong>General Terms</strong><br>By accessing NaiTsa Food Hub, you confirm that you are at least 18 years old or have obtained parental/guardian consent. You agree to use the platform lawfully and refrain from fraudulent, abusive, or disruptive activities.</li>
@@ -133,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
                 <li><strong>System Usage and Restrictions</strong><br>Users must not attempt to bypass security, manipulate system data, or engage in fraudulent transactions. NaiTsa reserves the right to suspend or restrict access for violations of this agreement. The system may experience maintenance downtime; NaiTsa is not liable for service interruptions beyond its control.</li>
                 <li><strong>Limitation of Liability</strong><br>NaiTsa Coffee Shop and its developers shall not be held responsible for losses resulting from delayed deliveries due to unforeseen circumstances, incorrect input of order or address information, or system errors caused by third-party services.</li>
                 <li><strong>Updates to Terms</strong><br>NaiTsa reserves the right to modify or update these Terms at any time. Continued use of the system after updates constitutes acceptance of the new terms.</li>
-                <li><strong>Contact Information</strong><br>For concerns or support, contact us through: Email: [Insert Email Address], Phone: [Insert Contact Number], Address: NaiTsa Coffee Shop, [Insert Address].</li>
+                <!-- Contact information removed to avoid placeholders -->
               </ol>
             </div>
             <div class="modal-footer">
