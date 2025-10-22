@@ -1514,6 +1514,19 @@ document.getElementById('paymentForm').addEventListener('submit', async function
               } else { updateOrdersBadgeFromCache(); }
           }})
           .catch(()=>{});
+        // Fire-and-forget: notify admin backend to send email about this new order
+        try {
+          if (data && data.order_id) {
+            fetch('ajax/notify_new_order.php', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ order_id: data.order_id })
+            }).then(r => {
+              if (!r.ok) return r.text().then(t => console.warn('notify backend responded non-OK', r.status, t));
+              return r.json().then(j => { if (!j.success) console.warn('notify backend error', j); });
+            }).catch(e => console.warn('notify request failed', e));
+          }
+        } catch (e) { console.warn('notify fire-and-forget error', e); }
       });
   } else {
       Swal.fire({
