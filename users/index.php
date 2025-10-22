@@ -81,6 +81,18 @@ try {
   </style>
   <!-- Leaflet CSS for interactive map picker -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- Shorter dropdowns for order lists: constrain height but keep selected item visible -->
+  <style>
+    /* Limit dropdown height and enable smooth scrolling for long lists in order dropdowns */
+    .order-dropdown-menu {
+      max-height: 220px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    /* Subtle scrollbar styling for WebKit browsers */
+    .order-dropdown-menu::-webkit-scrollbar { width: 8px; }
+    .order-dropdown-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+  </style>
 </head>
 <body>
   <div class="bg-fixed" aria-hidden="true"></div>
@@ -3208,4 +3220,41 @@ async function openProductDetailsWithAddons(product){
   </script>
 
 </body>
+<script>
+  // Ensure when any Bootstrap dropdown opens, its selected/active item is scrolled into view
+  document.addEventListener('shown.bs.dropdown', function(ev){
+    try {
+      var toggle = ev.target;
+      // find the dropdown menu associated with the toggle
+      var menu = null;
+      if (toggle && typeof toggle.closest === 'function') {
+        var parent = toggle.closest('.dropdown');
+        if (parent) menu = parent.querySelector('.dropdown-menu');
+      }
+      // fallback: last visible menu
+      if (!menu) menu = document.querySelector('.dropdown-menu.show') || document.querySelector('.dropdown-menu');
+      if (!menu) return;
+      // mark the menu so it gets the constrained height
+      if (!menu.classList.contains('order-dropdown-menu')) menu.classList.add('order-dropdown-menu');
+
+      // Try to find a clearly selected item inside the menu
+      var sel = menu.querySelector('.active, .selected, [aria-current="true"], [aria-checked="true"]');
+      if (!sel) {
+        // also support <option selected> inside native selects rendered as dropdowns
+        sel = menu.querySelector('option[selected]');
+      }
+      if (sel) {
+        // Scroll so the selected element is fully visible with a small padding
+        var pad = 8;
+        var selTop = sel.offsetTop;
+        var selBottom = selTop + sel.offsetHeight;
+        if (menu.scrollTop > selTop - pad || (menu.scrollTop + menu.clientHeight) < (selBottom + pad)) {
+          menu.scrollTop = Math.max(0, selTop - pad);
+        }
+        // move focus for keyboard users if possible
+        try { sel.focus && sel.focus(); } catch(e){}
+      }
+    } catch(e) { /* silent */ }
+  });
+</script>
 </html>
