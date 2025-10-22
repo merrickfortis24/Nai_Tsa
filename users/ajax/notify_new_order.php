@@ -64,6 +64,70 @@ try {
     }
 
     $res = send_new_order_email($orderId, $summary);
+
+    // If admin DB wrapper is available, insert a notifications row so signed-in admins see it in the UI
+    try {
+        if (isset($db) && method_exists($db, 'opencon')) {
+            try {
+                $conAdmin = $db->opencon();
+                // Ensure notifications table exists (try not to change existing schema if present)
+                try {
+                    $conAdmin->exec("CREATE TABLE IF NOT EXISTS notifications (
+                        Notification_ID INT NOT NULL AUTO_INCREMENT,
+                        Type VARCHAR(30) DEFAULT '',
+                        Title VARCHAR(150) NOT NULL,
+                        Message TEXT NOT NULL,
+                        Created_At DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        Read_At DATETIME DEFAULT NULL,
+                        Is_Read TINYINT(1) DEFAULT NULL,
+                        PRIMARY KEY (Notification_ID)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                } catch (Throwable $e) {
+                    // ignore create failures (we'll adapt to existing schema)
+                }
+
+                $title = 'New Order #' . intval($orderId);
+                $msgParts = [];
+                if (!empty($summary['customer_email'])) $msgParts[] = 'Customer: ' . $summary['customer_email'];
+                if (!empty($summary['amount'])) $msgParts[] = 'Amount: ₱' . number_format((float)$summary['amount'],2);
+                if (!empty($summary['items']) && is_array($summary['items'])) {
+                    $first = array_slice($summary['items'],0,3);
+                    $names = array_map(function($it){ return ($it['name'] ?? '').' x'.intval($it['qty'] ?? 1); }, $first);
+                    $msgParts[] = 'Items: ' . implode(', ', $names) . (count($summary['items'])>3? '...' : '');
+                }
+                $message = $msgParts ? implode(' | ', $msgParts) : 'A new order has been placed.';
+
+                // Detect which columns exist and insert accordingly to support multiple schema versions
+                $cols = [];
+                try {
+                    $stmtCols = $conAdmin->query("SHOW COLUMNS FROM notifications");
+                    $cols = $stmtCols ? array_map(fn($r)=> $r['Field'], $stmtCols->fetchAll(PDO::FETCH_ASSOC)) : [];
+                } catch (Throwable $e) { $cols = []; }
+
+                if (in_array('Is_Read', $cols, true)) {
+                    $ins = $conAdmin->prepare("INSERT INTO notifications (Title, Message, Created_At, Is_Read) VALUES (?, ?, NOW(), 0)");
+                    $ins->execute([$title, $message]);
+                } elseif (in_array('Read_At', $cols, true) && in_array('Type', $cols, true)) {
+                    $ins = $conAdmin->prepare("INSERT INTO notifications (Type, Title, Message, Created_At, Read_At) VALUES (?, ?, ?, NOW(), NULL)");
+                    $ins->execute(['order', $title, $message]);
+                } else {
+                    // Fallback: try a minimal insert (Title, Message, Created_At)
+                    try {
+                        $ins = $conAdmin->prepare("INSERT INTO notifications (Title, Message, Created_At) VALUES (?, ?, NOW())");
+                        $ins->execute([$title, $message]);
+                    } catch (Throwable $ei) {
+                        // give up silently
+                        error_log('[notify_new_order] could not insert notification: ' . $ei->getMessage());
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log('[notify_new_order] failed to insert admin notification: ' . $e->getMessage());
+            }
+        }
+    } catch (Throwable $e) {
+        // swallow
+    }
+
     if ($res === true) {
         echo json_encode(['success' => true]);
         exit;

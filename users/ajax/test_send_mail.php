@@ -13,6 +13,43 @@ try {
         'amount' => 123.45,
         'items' => [ ['name' => 'Test Coffee', 'qty' => 1], ['name' => 'Sample Milk Tea', 'qty' => 2] ]
     ];
+    // If debug mode requested, return resolved recipients without sending
+    if (isset($_GET['debug']) && $_GET['debug']) {
+        $dbg = intval($_GET['debug']);
+        if ($dbg === 2) {
+            // Provide include path diagnostics
+            $candidates = [
+                __DIR__ . '/../database/database.php',
+                __DIR__ . '/../../database/database.php',
+                __DIR__ . '/../users/classes/database.php',
+                __DIR__ . '/../admin/classes/database.php',
+                __DIR__ . '/../../admin/classes/database.php',
+                __DIR__ . '/../../database.php'
+            ];
+            $checks = [];
+            foreach ($candidates as $c) {
+                $checks[] = [
+                    'path' => $c,
+                    'realpath' => is_file($c) ? realpath($c) : null,
+                    'exists' => is_file($c),
+                    'readable' => is_readable($c)
+                ];
+            }
+            $out = [
+                'cwd' => getcwd(),
+                'dir' => __DIR__,
+                'php_sapi' => PHP_SAPI,
+                'getDB_defined_before' => function_exists('getDB'),
+                'candidates' => $checks
+            ];
+            echo json_encode(['success'=>true,'diagnostic'=>$out], JSON_PRETTY_PRINT);
+            exit;
+        }
+        $debugInfo = mailer_resolve_recipients();
+        echo json_encode(['success'=>true,'debug'=>$debugInfo]);
+        exit;
+    }
+
     $res = send_new_order_email($sampleOrderId, $summary);
     if ($res === true) {
         echo json_encode(['success' => true, 'message' => 'Mail sent (mailer reported success)']);

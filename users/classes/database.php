@@ -685,6 +685,32 @@ function createPasswordResetToken($email) {
         return ['success' => false, 'message' => 'Payment insert failed: ' . $error[2]];
     }
 
+    // Build a small order summary for notification (customer email, amount, items)
+    $summary = ['amount' => $total_with_fee];
+    try {
+        $stmtEmail = $con->prepare("SELECT Customer_Email FROM customer WHERE Customer_ID = ? LIMIT 1");
+        $stmtEmail->execute([$customer_id]);
+        $custEmail = $stmtEmail->fetchColumn();
+        if ($custEmail) $summary['customer_email'] = $custEmail;
+    } catch (Throwable $e) { /* ignore */ }
+    $itemsSummary = [];
+    foreach ($cart as $it) {
+        $itemsSummary[] = [ 'name' => $it['name'] ?? ($it['Product_Name'] ?? ''), 'qty' => (int)($it['qty'] ?? ($it['Quantity'] ?? 1)) ];
+    }
+    if (!empty($itemsSummary)) $summary['items'] = $itemsSummary;
+
+    // Try to send admin notification email (best-effort; failures are logged but do not block checkout)
+    try {
+        /** @noinspection PhpIncludeInspection */
+        require_once __DIR__ . '/../../utils/mailer.php';
+        $mailRes = send_new_order_email((int)$order_id, $summary);
+        if ($mailRes !== true) {
+            error_log('[processCheckout] send_new_order_email failed for order ' . intval($order_id) . ' : ' . (string)$mailRes);
+        }
+    } catch (Throwable $e) {
+        error_log('[processCheckout] mailer exception for order ' . intval($order_id) . ' : ' . $e->getMessage());
+    }
+
     return [
         'success' => true,
         'order_id' => (int)$order_id,

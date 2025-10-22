@@ -211,11 +211,65 @@ function send_new_order_email(int $orderId, array $orderSummary = []): bool|stri
     $envTo    = trim((string)(getenv('MAIL_TO') ?: ''));
     $fallback = trim((string)(getenv('SMTP_USER') ?: ''));
     $primary = $forcedTo ?: ($envTo ?: $fallback);
+
+    // If no recipient is configured via env, try to fetch admin emails from DB as a last resort.
     if (!$primary || !filter_var($primary, FILTER_VALIDATE_EMAIL)) {
+        try {
+            // Ensure getDB() is available: try loading common database helper locations when missing.
+            if (!function_exists('getDB')) {
+                $dbCandidates = [
+                    __DIR__ . '/../database/database.php',        // project root database
+                    __DIR__ . '/../../database/database.php',     // alternate relative path
+                    __DIR__ . '/../users/classes/database.php',   // users wrapper
+                    __DIR__ . '/../admin/classes/database.php',   // admin wrapper
+                ];
+                foreach ($dbCandidates as $dbf) {
+                    if (is_file($dbf)) {
+                        /** @noinspection PhpIncludeInspection */
+                        include_once $dbf;
+                        // stop after first successful include
+                        if (function_exists('getDB')) break;
+                    }
+                }
+            }
+
+            // getDB() helper returns a PDO instance (defined in database/database.php)
+            if (function_exists('getDB')) {
+                $pdo = getDB();
+                $stmt = $pdo->prepare("SELECT Admin_Email FROM admin WHERE Status = 'Active' AND Admin_Email IS NOT NULL AND Admin_Email != ''");
+                $stmt->execute();
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $emails = [];
+                foreach ($rows as $r) {
+                    $e = trim((string)($r['Admin_Email'] ?? ''));
+                    if ($e && filter_var($e, FILTER_VALIDATE_EMAIL)) $emails[] = $e;
+                }
+                // Prefer gmail addresses if present (many admins use Gmail in this project)
+                if (!empty($emails)) {
+                    $g = array_values(preg_grep('/@gmail\.com$/i', $emails));
+                    $chosen = !empty($g) ? $g : $emails;
+                    // join as comma-separated list for PHPMailer addAddress calls below
+                    $primary = implode(',', array_unique($chosen, SORT_STRING));
+                }
+            }
+        } catch (Exception $e) {
+            // ignore DB errors and fallthrough to no-recipient error
+            error_log('[mailer] admin email fallback error: ' . $e->getMessage());
+        }
+    }
+
+    if (!$primary || !filter_var(explode(',', $primary)[0], FILTER_VALIDATE_EMAIL)) {
         return 'no-recipient-configured';
     }
     try {
-        $mail->addAddress($primary);
+        // Support multiple recipients (comma or semicolon separated)
+        $parts = preg_split('/[;,\s]+/', (string)$primary, -1, PREG_SPLIT_NO_EMPTY);
+        foreach ($parts as $p) {
+            $p = trim($p);
+            if ($p && filter_var($p, FILTER_VALIDATE_EMAIL)) {
+                $mail->addAddress($p);
+            }
+        }
         $mail->isHTML(true);
         $mail->Subject = 'New Order Received #' . $orderId;
         $safe = function($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); };
@@ -239,4 +293,66 @@ function send_new_order_email(int $orderId, array $orderSummary = []): bool|stri
     } catch (Exception $e) {
         return $e->getMessage();
     }
+}
+
+/**
+ * Resolve which recipients the mailer would use without sending.
+ * Returns an array: ['env'=>..., 'db'=>[...], 'resolved'=>string|null, 'notes'=>[]]
+ */
+function mailer_resolve_recipients(): array {
+    $out = ['env'=>[], 'db'=>[], 'resolved'=>null, 'notes'=>[]];
+    $forcedTo = trim((string)(getenv('MAIL_FORCE_TO') ?: ''));
+    $envTo    = trim((string)(getenv('MAIL_TO') ?: ''));
+    $fallback = trim((string)(getenv('SMTP_USER') ?: ''));
+    $from     = trim((string)(getenv('MAIL_FROM') ?: ''));
+    $out['env'] = ['MAIL_FORCE_TO'=>$forcedTo,'MAIL_TO'=>$envTo,'SMTP_USER'=>$fallback,'MAIL_FROM'=>$from];
+
+    $primary = $forcedTo ?: ($envTo ?: $fallback ?: $from);
+    if ($primary && filter_var(explode(',', $primary)[0], FILTER_VALIDATE_EMAIL)) {
+        $out['resolved'] = $primary;
+        return $out;
+    }
+
+    // Try DB fallback (attempt to include helpers like the mailer does)
+    try {
+        if (!function_exists('getDB')) {
+            $dbCandidates = [
+                __DIR__ . '/../database/database.php',
+                __DIR__ . '/../../database/database.php',
+                __DIR__ . '/../users/classes/database.php',
+                __DIR__ . '/../admin/classes/database.php'
+            ];
+            foreach ($dbCandidates as $dbf) {
+                if (is_file($dbf)) {
+                    include_once $dbf;
+                    if (function_exists('getDB')) break;
+                }
+            }
+        }
+        if (function_exists('getDB')) {
+            $pdo = getDB();
+            $stmt = $pdo->prepare("SELECT Admin_Email FROM admin WHERE Status = 'Active' AND Admin_Email IS NOT NULL AND Admin_Email != ''");
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $emails = [];
+            foreach ($rows as $r) {
+                $e = trim((string)($r['Admin_Email'] ?? ''));
+                if ($e && filter_var($e, FILTER_VALIDATE_EMAIL)) $emails[] = $e;
+            }
+            $out['db'] = $emails;
+            if (!empty($emails)) {
+                $g = array_values(preg_grep('/@gmail\.com$/i', $emails));
+                $chosen = !empty($g) ? $g : $emails;
+                $out['resolved'] = implode(',', array_unique($chosen, SORT_STRING));
+            } else {
+                $out['notes'][] = 'No admin emails found in DB';
+            }
+        } else {
+            $out['notes'][] = 'getDB() not available';
+        }
+    } catch (Throwable $e) {
+        $out['notes'][] = 'DB check failed: ' . $e->getMessage();
+    }
+
+    return $out;
 }
